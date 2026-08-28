@@ -92,7 +92,15 @@ export function integrate(f: Derivative, y0: Vec, t0: number, t1: number, opts: 
   let rejected = 0;
 
   while (t < t1 - 1e-15 && steps < maxSteps) {
-    if (t + h > t1) h = t1 - t;
+    // Land exactly on each requested output time rather than interpolating to
+    // it. Cubic Hermite dense output is only third-order accurate, so on a
+    // coarse adaptive step it becomes the dominant error — which shows up as a
+    // kinetic curve that is visibly wrong at the sampled points while the
+    // integrator reports success. Stepping onto the point costs a little
+    // efficiency and buys the integrator's full order.
+    const nextOut = tEval && evalIdx < tEval.length ? tEval[evalIdx] : t1;
+    const target = Math.min(t1, nextOut);
+    if (t + h > target) h = target - t;
 
     const k1 = f(t, y);
     const k2 = f(t + A2 * h, y.map((v, i) => v + h * B21 * k1[i]));
@@ -118,12 +126,17 @@ export function integrate(f: Derivative, y0: Vec, t0: number, t1: number, opts: 
       if (opts.nonNegative) yNew = yNew.map((v) => (v < 0 ? 0 : v));
 
       if (tEval) {
-        // Dense output by cubic Hermite between (t, y) and (tNew, yNew).
-        const fEnd = f(tNew, yNew);
-        while (evalIdx < tEval.length && tEval[evalIdx] <= tNew + 1e-15) {
+        let fEnd: Vec | null = null;
+        while (evalIdx < tEval.length && tEval[evalIdx] <= tNew + Math.abs(tNew) * 1e-12 + 1e-15) {
           const te = tEval[evalIdx];
-          const theta = h === 0 ? 0 : (te - t) / h;
-          record(te, hermite(y, k1, yNew, fEnd, h, theta));
+          if (Math.abs(te - tNew) <= Math.abs(tNew) * 1e-12 + 1e-15) {
+            record(te, yNew);                       // landed on it exactly
+          } else {
+            // A point inside the step (possible when several outputs are
+            // closer together than hMin) still needs interpolation.
+            fEnd ??= f(tNew, yNew);
+            record(te, hermite(y, k1, yNew, fEnd, h, h === 0 ? 0 : (te - t) / h));
+          }
           evalIdx++;
         }
       } else {

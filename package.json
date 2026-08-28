@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "watch": "tsc -p tsconfig.json --watch",
-    "test": "tsc -p tsconfig.test.json && node --test build/test/",
+    "test": "tsc -p tsconfig.test.json && node --test \"build-test/test/**/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "serve": "node tools/serve.js",
     "dev": "npm run build && npm run serve"
