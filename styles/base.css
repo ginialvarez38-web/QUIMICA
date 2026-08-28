@@ -1,0 +1,227 @@
+/* ============================================================================
+   CHEMIA — Reset, typography and scientific numerals
+   ========================================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--fg-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+  font-feature-settings: "cv05" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;               /* the app shell owns scrolling */
+  overscroll-behavior: none;
+}
+
+h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, ul, ol {
+  margin: 0;
+}
+ul, ol { padding: 0; list-style: none; }
+
+h1, h2, h3, h4 {
+  line-height: var(--lh-tight);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--fg-primary);
+}
+h1 { font-size: var(--fs-2xl); }
+h2 { font-size: var(--fs-xl); }
+h3 { font-size: var(--fs-lg); }
+h4 { font-size: var(--fs-md); }
+
+a {
+  color: var(--accent-fg);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+a:hover { text-decoration: underline; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+button { background: none; border: none; padding: 0; cursor: pointer; }
+
+img, svg, canvas { display: block; max-width: 100%; }
+
+code, kbd, samp, pre { font-family: var(--font-mono); font-size: 0.92em; }
+
+hr {
+  border: none;
+  border-top: var(--bw) solid var(--border-subtle);
+  margin: var(--sp-5) 0;
+}
+
+/* ---- Focus: always visible, never colour-only ------------------------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ---- Selection --------------------------------------------------------- */
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-fg);
+}
+
+/* ---- Scrollbars -------------------------------------------------------- */
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--r-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--border-strong); background-clip: content-box; }
+
+/* ============================================================================
+   Scientific numerals
+   Numbers must be scannable in columns: tabular figures, monospace digits,
+   and a dedicated exponent form.
+   ========================================================================= */
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.num--lg { font-size: var(--fs-xl); font-weight: 500; }
+.num--xl { font-size: var(--fs-2xl); font-weight: 500; letter-spacing: -0.02em; }
+.num__unit {
+  font-family: var(--font-sans);
+  color: var(--fg-tertiary);
+  font-size: 0.82em;
+  margin-left: 0.28em;
+  letter-spacing: 0;
+}
+.num__exp { font-size: 0.78em; vertical-align: super; line-height: 0; }
+.num__unc { color: var(--fg-tertiary); font-size: 0.88em; }
+
+/* Uncertain digits are dimmed rather than hidden — §33/§66 */
+.num__uncertain { color: var(--fg-muted); }
+
+/* Provenance marks — §66. Never colour alone: each carries a glyph. */
+.prov { font-size: var(--fs-3xs); letter-spacing: var(--tracking-caps); text-transform: uppercase; }
+.prov--theory    { color: var(--prov-theory); }
+.prov--sim       { color: var(--prov-sim); }
+.prov--measured  { color: var(--prov-measured); }
+.prov--estimated { color: var(--prov-estimated); }
+
+/* ---- Chemical formulae -------------------------------------------------- */
+.formula { font-family: var(--font-sans); white-space: nowrap; }
+.formula sub { font-size: 0.72em; vertical-align: -0.22em; line-height: 0; margin-left: 0.02em; }
+.formula sup { font-size: 0.72em; vertical-align: 0.42em; line-height: 0; margin-left: 0.02em; }
+
+/* ---- Equations ---------------------------------------------------------- */
+.eq {
+  font-family: var(--font-serif);
+  font-size: 1.06em;
+  line-height: 1.7;
+  color: var(--fg-primary);
+}
+.eq--display {
+  display: block;
+  margin: var(--sp-5) 0;
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--bg-surface-2);
+  border: var(--bw) solid var(--border-subtle);
+  border-left: 3px solid var(--accent-border);
+  border-radius: var(--r-sm);
+  overflow-x: auto;
+  font-size: 1.16em;
+}
+.eq i, .eq .var { font-style: italic; }
+.eq .op { margin: 0 0.3em; font-style: normal; }
+.eq sub { font-size: 0.68em; vertical-align: -0.25em; line-height: 0; font-style: normal; }
+.eq sup { font-size: 0.68em; vertical-align: 0.45em; line-height: 0; font-style: normal; }
+.eq .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 0.22em; }
+.eq .frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 0.35em 0.1em; }
+.eq .frac > span:last-child { padding: 0.1em 0.35em 0; }
+.eq .sqrt { border-top: 1px solid currentColor; padding: 0.1em 0.2em 0; margin-left: 0.1em; }
+
+/* A variable the reader can interrogate — §73 */
+.eq .var--live {
+  cursor: help;
+  border-bottom: 1px dotted var(--accent);
+  color: var(--accent-fg);
+}
+.eq .var--live:hover { background: var(--accent-soft); }
+
+/* ---- Prose -------------------------------------------------------------- */
+.prose { max-width: 68ch; line-height: var(--lh-loose); color: var(--fg-secondary); }
+.prose > * + * { margin-top: var(--sp-4); }
+.prose h2 { margin-top: var(--sp-10); color: var(--fg-primary); }
+.prose h3 { margin-top: var(--sp-8); color: var(--fg-primary); }
+.prose strong { color: var(--fg-primary); font-weight: 600; }
+.prose ul { list-style: none; }
+.prose ul > li {
+  position: relative;
+  padding-left: var(--sp-5);
+  margin-top: var(--sp-2);
+}
+.prose ul > li::before {
+  content: "";
+  position: absolute;
+  left: 5px; top: 0.66em;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+}
+.prose ol { counter-reset: li; }
+.prose ol > li {
+  position: relative;
+  padding-left: var(--sp-7, 1.75rem);
+  margin-top: var(--sp-2);
+  counter-increment: li;
+}
+.prose ol > li::before {
+  content: counter(li) ".";
+  position: absolute; left: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+}
+
+/* ---- Screen-reader only ------------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.skip-link {
+  position: absolute; top: -100px; left: var(--sp-3);
+  z-index: var(--z-toast);
+  background: var(--accent); color: var(--fg-on-accent);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-sm);
+}
+.skip-link:focus { top: var(--sp-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
