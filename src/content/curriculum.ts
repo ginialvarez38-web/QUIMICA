@@ -85,6 +85,22 @@ export interface Course {
  * is expressed here as data; `u()` expands the shorthand so the file stays
  * readable at 41 courses.
  */
+/**
+ * URL-safe identifier from a Spanish title.
+ * Accents are folded to their base letter rather than replaced by a dash, so
+ * "Ácido fuerte" becomes "acido-fuerte" and the ids stay readable in a URL.
+ */
+const slug = (title: string): string =>
+  title
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/ñ/g, 'n')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 44)
+    .replace(/-$/, '');
+
 const u = (
   id: string, title: string, summary: string,
   chapters: Array<[string, string, Array<[string, string[], number, string?, string?]>]>,
@@ -94,7 +110,7 @@ const u = (
     id: `${id}.${cid}`,
     title: ctitle,
     topics: topics.map(([ttitle, concepts, minutes, simulation, lab]) => ({
-      id: `${id}.${cid}.${ttitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}`,
+      id: `${id}.${cid}.${slug(ttitle)}`,
       title: ttitle, concepts, minutes, simulation, lab,
     })),
   })),
@@ -1542,6 +1558,27 @@ export const COURSES: Course[] = [
     ],
   },
 ];
+
+/**
+ * Qualify every unit, chapter and topic id with its course.
+ *
+ * The `u()` shorthand names units "u1", "u2"… inside each course, which would
+ * make `u1.c1.introduccion` collide across all 41 courses — and since progress
+ * is keyed by topic id, studying a topic in one course would silently credit an
+ * unrelated topic in another. Prefixing here, once, makes every id globally
+ * unique without cluttering the course definitions above.
+ */
+for (const course of COURSES) {
+  for (const unit of course.units) {
+    unit.id = `${course.id}.${unit.id}`;
+    for (const chapter of unit.chapters) {
+      chapter.id = `${course.id}.${chapter.id}`;
+      for (const topic of chapter.topics) {
+        topic.id = `${course.id}.${topic.id}`;
+      }
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Indexes and derived views
