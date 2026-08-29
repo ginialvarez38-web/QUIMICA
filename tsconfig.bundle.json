@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "system",
+    "moduleResolution": "classic",
+    "outFile": "build-bundle/chemia.js",
+    "outDir": null,
+    "sourceMap": false,
+    "removeComments": true,
+    "isolatedModules": false,
+    "ignoreDeprecations": "6.0"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/test/**/*"
+  ]
+}

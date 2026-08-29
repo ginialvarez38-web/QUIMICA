@@ -10,7 +10,8 @@
     "test": "tsc -p tsconfig.test.json && node --test \"build-test/test/**/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "serve": "node tools/serve.js",
-    "dev": "npm run build && npm run serve"
+    "dev": "npm run build && npm run serve",
+    "bundle": "tsc -p tsconfig.bundle.json && node tools/bundle.js"
   },
   "engines": {
     "node": ">=22"

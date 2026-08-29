@@ -582,12 +582,24 @@ export function diagnoseWeakness(): { competency: Competency; value: number; mes
   return { competency, value, message: messages[competency] };
 }
 
-/** Apply the stored theme to the document. */
+/**
+ * Apply the stored theme to the document.
+ *
+ * "Del sistema" means CHEMIA states no preference — not that it overrules one.
+ * When the page is embedded somewhere that has already chosen a theme for the
+ * reader (the artefact viewer stamps `data-theme` on the root), clearing the
+ * attribute would silently override that choice with the operating system's.
+ * So the host's stamp, recorded before boot, is what "system" falls back to.
+ * Standalone there is no stamp and this behaves exactly as before.
+ */
 export function applyTheme(): void {
   const theme = state().settings.theme;
   const root = document.documentElement;
-  if (theme === 'system') root.removeAttribute('data-theme');
-  else root.setAttribute('data-theme', theme);
+  if (theme !== 'system') { root.setAttribute('data-theme', theme); return; }
+
+  const host = (globalThis as { __chemiaHostTheme?: unknown }).__chemiaHostTheme;
+  if (host === 'light' || host === 'dark') root.setAttribute('data-theme', host);
+  else root.removeAttribute('data-theme');
 }
 
 export function setTheme(theme: Theme): void {
