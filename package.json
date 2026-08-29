@@ -1,0 +1,20 @@
+{
+  "name": "quimica-chemical-sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CHEMICAL SANDBOX — entorno interactivo de construccion, interpretacion y simulacion de transformaciones quimicas.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
+    "serve": "node scripts/serve.mjs",
+    "dev": "npm run build && node scripts/serve.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
