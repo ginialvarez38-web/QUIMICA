@@ -228,6 +228,14 @@
   display: flex;
   flex-direction: column;
 }
+/* Blocks stacked in a workbench stage keep their natural height; the stage
+   scrolls instead of crushing them. Without this a mimic diagram or a plot
+   inside a flex column collapses to a strip. */
+.bench__stage > .stack > *,
+.bench__stage > .stack > .panel {
+  flex: 0 0 auto;
+}
+
 .bench__console {
   grid-area: console;
   height: var(--console-h);
@@ -288,28 +296,35 @@
   .app .nav__item { justify-content: center; padding: var(--sp-2); }
   .app .nav__footer { flex-direction: column; }
 
-  /* One rail at a time; the other becomes an overlay sheet. */
-  .bench {
-    grid-template-columns: minmax(0, 1fr) var(--rail-w);
-    grid-template-areas: "toolbar toolbar" "stage right" "console console";
-  }
-  .bench__left {
-    position: absolute;
-    inset: var(--topbar-h) auto 0 0;
-    width: var(--rail-w);
-    z-index: var(--z-rail);
-    box-shadow: var(--shadow-lg);
-    transform: translateX(-100%);
-    transition: transform var(--dur-base) var(--ease-out);
-    border-right: var(--bw) solid var(--border-default);
-  }
-  .bench[data-left-open="true"] .bench__left { transform: none; }
-
   .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid--sidebar { grid-template-columns: minmax(0, 1fr); }
   .grid--main { grid-template-columns: minmax(0, 1fr); }
   .screen__inner { padding: var(--sp-6) var(--sp-5) var(--sp-16); }
+}
+
+/* ---------------------------- TABLET BENCH -------------------------------
+   Two rails plus a stage do not fit on a tablet, so a bench that has both
+   shows one rail at a time and the toolbar's "Herramientas" switch chooses.
+   Kept in its own range query — below 760 px the rails become pull-up sheets
+   instead, and these rules must not outrank those.
+   A bench with only one rail keeps it; there is nothing to trade it against. */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .bench--dual {
+    grid-template-columns: minmax(0, 1fr) var(--rail-w);
+    grid-template-areas: "toolbar toolbar" "stage right" "console console";
+  }
+  .bench--dual .bench__left { display: none; }
+  .bench--dual[data-sheet="left"] {
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    grid-template-areas: "toolbar toolbar" "left stage" "console console";
+  }
+  .bench--dual[data-sheet="left"] .bench__left { display: block; }
+  .bench--dual[data-sheet="left"] .bench__right { display: none; }
+
+  /* Only the tools switch survives at this width, so it is a button, not a
+     segment of a group, and should be rounded on both sides. */
+  .bench__sheet-switch .btn { border-radius: var(--r-sm); }
 }
 
 /* =============================== MOBILE ================================= */
@@ -365,13 +380,21 @@
   }
   .mobilenav__item {
     flex: 1 1 0;
+    min-width: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 3px;
     min-height: 54px;
+    padding: 0 2px;
     color: var(--fg-tertiary);
-    font-size: var(--fs-3xs);
+    font-size: 10px;
     font-weight: 500;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  .mobilenav__item > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .mobilenav__item[aria-current="page"] { color: var(--accent-fg); }
   .mobilenav__item[aria-current="page"] .mobilenav__icon { color: var(--accent); }
   .mobilenav__icon { width: 20px; height: 20px; }
@@ -392,7 +415,16 @@
     animation: sheet-up var(--dur-base) var(--ease-out);
   }
 
-  .bench__toolbar { overflow-x: auto; flex-wrap: nowrap; }
+  /* The toolbar wraps rather than scrolling: a control that requires a
+     horizontal swipe to discover is a control nobody finds. */
+  .bench__toolbar { flex-wrap: wrap; row-gap: var(--sp-2); }
+  .bench__toolbar .spacer { display: none; }
+  .bench__sheet-switch { order: -1; }
+
+  /* Sheets get a visible dismiss affordance and stay above the bottom nav. */
+  .bench[data-sheet] .bench__left,
+  .bench[data-sheet] .bench__right,
+  .bench[data-sheet] .bench__console { padding-bottom: 64px; }
 }
 
 /* Fine-pointer-free devices get larger hit areas throughout. */

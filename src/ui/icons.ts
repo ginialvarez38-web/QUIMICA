@@ -93,7 +93,10 @@ const P: Record<IconName, string> = {
 /** Icons that need a filled shape rather than a stroke. */
 const FILLED = new Set<IconName>(['reproducir']);
 
-export function icon(name: IconName, opts: { size?: number; class?: string; title?: string } = {}): SVGSVGElement {
+export function icon(
+  name: IconName,
+  opts: { size?: number; class?: string; title?: string; style?: string } = {},
+): SVGSVGElement {
   const size = opts.size ?? 18;
   const filled = FILLED.has(name);
   const node = svg('svg', {
@@ -105,6 +108,7 @@ export function icon(name: IconName, opts: { size?: number; class?: string; titl
     'stroke-linecap': 'round',
     'stroke-linejoin': 'round',
     class: opts.class,
+    style: opts.style,
     'aria-hidden': opts.title ? undefined : 'true',
     role: opts.title ? 'img' : undefined,
   });

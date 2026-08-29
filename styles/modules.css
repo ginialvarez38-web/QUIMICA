@@ -245,6 +245,9 @@
 /* ============================== SCADA =================================== */
 .scada {
   position: relative;
+  /* The mimic must keep its full height inside a flex column stage; without
+     this it is shrunk to a strip and the diagram is unreadable. */
+  flex: 0 0 auto;
   background:
     linear-gradient(var(--grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,

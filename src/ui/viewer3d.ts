@@ -431,7 +431,12 @@ export class MoleculeViewer {
       const baseWidth = skeleton ? 3.6 : 5.4;
       const width = baseWidth * cue;
 
-      const orders = bond.order === 3 ? [-1, 0, 1] : bond.order >= 2 ? [-0.62, 0.62] : [0];
+      // A bond of order 1.5 (aromatic) is drawn as one solid line plus a
+      // dashed inner one — the convention that says "delocalised", not
+      // "alternating single and double".
+      const orders = bond.order === 3 ? [-1, 0, 1]
+        : bond.order >= 1.5 ? [-0.62, 0.62]
+          : [0];
       const gap = width * 0.85;
 
       orders.forEach((offset, index) => {
