@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CHEMIA — Laboratorio científico digital</title>
+  <meta name="description" content="Plataforma universitaria interactiva de química, ciencias fundamentales, laboratorio e investigación.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#12161d" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+
+  <link rel="stylesheet" href="./styles/tokens.css">
+  <link rel="stylesheet" href="./styles/base.css">
+  <link rel="stylesheet" href="./styles/layout.css">
+  <link rel="stylesheet" href="./styles/components.css">
+  <link rel="stylesheet" href="./styles/modules.css">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%231f5fbf' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M9 3h6M10 3v6.2L4.6 18.4A2 2 0 0 0 6.3 21.5h11.4a2 2 0 0 0 1.7-3.1L14 9.2V3M7.2 14.5h9.6'/%3E%3C/svg%3E">
+
+  <script>
+    // Apply the stored theme before first paint so the page never flashes the
+    // wrong ground colour on load.
+    try {
+      var saved = JSON.parse(localStorage.getItem('chemia:state:v1') || '{}');
+      var theme = saved && saved.settings && saved.settings.theme;
+      if (theme === 'light' || theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+    } catch (e) { /* first run, or storage unavailable */ }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido principal</a>
+
+  <div id="app">
+    <!-- Replaced by the application on boot. Shown if the module fails to load. -->
+    <noscript>
+      <div style="padding:3rem;max-width:60ch;margin:0 auto;font-family:system-ui">
+        <h1>CHEMIA</h1>
+        <p>Esta plataforma necesita JavaScript para ejecutar los motores de
+          simulación científica. Actívalo para continuar.</p>
+      </div>
+    </noscript>
+  </div>
+
+  <script type="module">
+    import('./build/main.js').catch((error) => {
+      document.getElementById('app').innerHTML =
+        '<div style="padding:3rem;max-width:70ch;margin:0 auto;font-family:system-ui;line-height:1.6">'
+        + '<h1 style="font-size:1.5rem">No se pudo iniciar CHEMIA</h1>'
+        + '<p>La aplicación se compila con TypeScript a módulos ES nativos. '
+        + 'Si es la primera vez que la ejecutas, compila el proyecto y sirve la carpeta:</p>'
+        + '<pre style="background:#eee;padding:1rem;border-radius:6px;overflow:auto">npm run build\nnpm run serve</pre>'
+        + '<p style="color:#a00;font-family:monospace;font-size:0.85rem">' + String(error) + '</p>'
+        + '</div>';
+    });
+  </script>
+</body>
+</html>
