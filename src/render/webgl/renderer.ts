@@ -607,12 +607,28 @@ export class MoleculeRenderer {
 
   // --- Camara y control ---------------------------------------------------
 
+  /**
+   * Correccion por relacion de aspecto.
+   *
+   * La proyeccion en perspectiva fija el campo de vision VERTICAL, asi que en
+   * un viewport mas alto que ancho (un movil en vertical) la molecula se sale
+   * por los lados aunque quepa de sobra en altura. Se aleja la camara en la
+   * misma proporcion para que siga entrando entera.
+   */
+  private aspectCompensation(): number {
+    const width = this.canvas.clientWidth || this.canvas.width;
+    const height = this.canvas.clientHeight || this.canvas.height;
+    const aspect = width / Math.max(1, height);
+    return aspect < 1 ? 1 / Math.max(aspect, 0.25) : 1;
+  }
+
   private eyePosition(): Vec3 {
+    const distance = this.distance * this.aspectCompensation();
     const cosPitch = Math.cos(this.pitch);
     return {
-      x: this.target.x + this.distance * cosPitch * Math.sin(this.yaw),
-      y: this.target.y + this.distance * Math.sin(this.pitch),
-      z: this.target.z + this.distance * cosPitch * Math.cos(this.yaw),
+      x: this.target.x + distance * cosPitch * Math.sin(this.yaw),
+      y: this.target.y + distance * Math.sin(this.pitch),
+      z: this.target.z + distance * cosPitch * Math.cos(this.yaw),
     };
   }
 
