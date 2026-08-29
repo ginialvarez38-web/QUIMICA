@@ -14,7 +14,7 @@
  */
 
 import type { ChemicalEquation } from '../core/types.js';
-import { assignOxidationStates } from '../core/oxidation.js';
+import { assignOxidationStates, discreteIonCharge } from '../core/oxidation.js';
 import { fmt } from '../core/oxidation.js';
 import { parseFormula } from '../core/formula/parse.js';
 import { formatPlainUnicode } from '../core/formula/render.js';
@@ -153,16 +153,20 @@ export function analyzeRedox(equation: ChemicalEquation): RedoxAnalysis {
 
   const halfReactions: HalfReaction[] = [];
   if (mainOx) {
+    const from = speciesLabel(mainOx.fromFormula, mainOx.element);
+    const to = speciesLabel(mainOx.toFormula, mainOx.element);
     halfReactions.push({
       kind: 'oxidation',
-      text: `${formatPlainUnicode(mainOx.fromFormula)} → ${formatPlainUnicode(mainOx.toFormula)} + ${mainOx.electronsPerAtom}e⁻`,
+      text: `${from} → ${to} + ${mainOx.electronsPerAtom}e⁻`,
       electrons: mainOx.electronsPerAtom,
     });
   }
   if (mainRed) {
+    const from = speciesLabel(mainRed.fromFormula, mainRed.element);
+    const to = speciesLabel(mainRed.toFormula, mainRed.element);
     halfReactions.push({
       kind: 'reduction',
-      text: `${formatPlainUnicode(mainRed.fromFormula)} + ${mainRed.electronsPerAtom}e⁻ → ${formatPlainUnicode(mainRed.toFormula)}`,
+      text: `${from} + ${mainRed.electronsPerAtom}e⁻ → ${to}`,
       electrons: mainRed.electronsPerAtom,
     });
   }
@@ -213,6 +217,31 @@ export function analyzeRedox(equation: ChemicalEquation): RedoxAnalysis {
     isDisproportionation,
     explanation: parts.join(' '),
   };
+}
+
+/**
+ * Como escribir una especie dentro de una semirreaccion.
+ *
+ * Si el elemento que cambia forma un ion monoatomico discreto, se escribe el
+ * ion y se deja fuera al espectador: ZnSO4 se convierte en Zn²⁺. Si no, se
+ * escribe la especie completa, porque el elemento no existe suelto: el
+ * permanganato se escribe MnO4⁻, no Mn⁷⁺.
+ */
+function speciesLabel(formula: string, element: string): string {
+  const parsed = parseFormula(formula);
+  if (!parsed.ok) return formatPlainUnicode(formula);
+
+  const ionCharge = discreteIonCharge(
+    parsed.value.composition,
+    parsed.value.charge,
+    formula,
+    element,
+  );
+  if (ionCharge === null || ionCharge === 0) return formatPlainUnicode(formula);
+
+  const magnitude = Math.abs(ionCharge);
+  const digits = magnitude === 1 ? '' : String(magnitude).replace(/\d/g, (d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[Number(d)]!);
+  return `${element}${digits}${ionCharge > 0 ? '⁺' : '⁻'}`;
 }
 
 function notRedox(explanation: string): RedoxAnalysis {
