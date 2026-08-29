@@ -371,15 +371,14 @@ export function nameCompound(
       // como "acido pernitrico". Si no esta en la tabla, se devuelve null.
       const traditional = state === null ? null : OXOACID_TRADITIONAL[`${central}:${state}`] ?? null;
 
-      // Nomenclatura de hidrogeno: H2SO4 -> "tetraoxosulfato(VI) de hidrogeno".
-      const nO = composition.get('O') ?? 0;
-      const nH = composition.get('H') ?? 0;
-      const stock =
-        state === null
-          ? null
-          : `${joinPrefix(prefix(nO, true), 'oxo')}${root}ato(${roman(state)}) de ${joinPrefix(prefix(nH), 'hidrogeno')}`;
+      // Nomenclatura de hidrogeno (IUPAC): se nombra el oxoanion y se anade
+      // "de hidrogeno". H2SO4 -> "sulfato de hidrogeno".
+      // Se toma el nombre del anion de la base de datos de iones en lugar de
+      // construirlo con prefijos: "tetraoxosulfurato" no es un nombre real.
+      const anionName = c.anionFormula ? polyatomicAnionName(c.anionFormula) : null;
+      const hydrogen = anionName ? `${anionName} de hidrogeno` : null;
 
-      return { stock, systematic: stock, traditional, common: null };
+      return { stock: hydrogen, systematic: hydrogen, traditional, common: null };
     }
 
     // --- Sales -----------------------------------------------------------
@@ -483,11 +482,41 @@ export function nameCompound(
   }
 }
 
-/** Version de conveniencia a partir de una cadena de formula. */
+/**
+ * Nombra una formula, incluidos los hidratos.
+ *
+ * Un hidrato no se puede nombrar a partir de su composicion total: la de
+ * CuSO4·5H2O incluye el hidrogeno y el oxigeno del agua, y el motor de
+ * oxidacion no sabria despejar el estado del cobre. Se nombra la parte
+ * anhidra y se anade el prefijo correspondiente.
+ */
 export function nameFormula(formula: string): Nomenclature | null {
   const parsed = parseFormula(formula);
   if (!parsed.ok) return null;
-  return nameCompound(formula, parsed.value.composition);
+
+  if (parsed.value.hydrate.length === 0) {
+    return nameCompound(formula, parsed.value.composition);
+  }
+
+  const baseFormula = formula.split(/·|(?<=[a-zA-Z0-9)\]])\s*[.*]\s*(?=\d*[A-Z])/)[0]!.trim();
+  const base = parseFormula(baseFormula);
+  if (!base.ok) return nameCompound(formula, parsed.value.composition);
+
+  const anhydrous = nameCompound(baseFormula, base.value.composition);
+  const waters = parsed.value.hydrate
+    .filter((h) => h.formula.replace(/\s/g, '') === 'H2O')
+    .reduce((a, h) => a + h.count, 0);
+  if (waters === 0) return anhydrous;
+
+  const suffix = ` ${joinPrefix(prefix(waters, true), 'hidratado')}`;
+  const decorate = (n: string | null): string | null => (n ? n + suffix : null);
+
+  return {
+    stock: decorate(anhydrous.stock),
+    systematic: decorate(anhydrous.systematic),
+    traditional: decorate(anhydrous.traditional),
+    common: anhydrous.common,
+  };
 }
 
 /** El primer nombre disponible, en orden de preferencia didactica. */
