@@ -96,7 +96,7 @@ const CANCELLATION_THRESHOLD = 0.02;
  * "ionico" se conserva ese dato para poder explicar por que la regla del 1,7
  * no basta.
  */
-function classifyBond(deltaEN: number, symbolA: string, symbolB: string): {
+export function classifyBond(deltaEN: number, symbolA: string, symbolB: string): {
   kind: BondPolarityKind;
   overridesThreshold: boolean;
 } {

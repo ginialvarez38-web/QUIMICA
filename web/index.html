@@ -26,6 +26,7 @@
       <nav class="mode-tabs" id="mode-tabs" role="tablist" aria-label="Modo de trabajo">
         <button class="mode-tab" role="tab" data-mode="build" aria-selected="true"><span class="mode-icon">⬡</span>Construir</button>
         <button class="mode-tab" role="tab" data-mode="react" aria-selected="false"><span class="mode-icon">⇄</span>Reaccionar</button>
+        <button class="mode-tab" role="tab" data-mode="tabla" aria-selected="false"><span class="mode-icon">⊞</span>Tabla</button>
         <button class="mode-tab" role="tab" data-mode="routes" aria-selected="false"><span class="mode-icon">⇢</span>Rutas</button>
         <button class="mode-tab" role="tab" data-mode="lab" aria-selected="false"><span class="mode-icon">⚗</span>Laboratorio</button>
       </nav>
@@ -60,6 +61,28 @@
 
     <!-- ================= Escenario ================= -->
     <main class="stage">
+      <!-- Tabla de combinaciones: sustituye al visor 3D en el modo Tabla.
+           Es hermana del visor y no una capa encima, para que el lienzo WebGL
+           quede realmente fuera del arbol visible y no siga componiendo. -->
+      <section class="combos" id="combos" aria-label="Tabla de combinaciones" hidden>
+        <div class="combos-controls">
+          <div class="search-box combos-search">
+            <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+              <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" stroke-linecap="round" />
+            </svg>
+            <input class="search-input" id="combos-query" type="search" autocomplete="off" spellcheck="false"
+                   placeholder="sulfato, Ca, hierro, nitrato…" aria-label="Filtrar iones" />
+          </div>
+          <label class="combos-toggle">
+            <input type="checkbox" id="combos-verified"> Solo verificadas
+          </label>
+          <label class="combos-toggle">
+            <input type="checkbox" id="combos-insoluble"> Solo precipitados
+          </label>
+        </div>
+        <div class="combos-body" id="combos-body"></div>
+      </section>
+
       <div class="viewport" id="viewport">
         <canvas id="gl-canvas" aria-label="Vista tridimensional de la estructura"></canvas>
         <div class="viewport-overlay" id="overlay"></div>

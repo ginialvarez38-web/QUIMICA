@@ -24,8 +24,10 @@ import type { Ion, Structure } from '../core/types.js';
 import { analyzeSpecies, type AnalysisProfile } from '../analysis/analyze.js';
 import { renderAnalysis, renderWhy } from './analysis-view.js';
 import { LEVEL_LABEL } from '../analysis/findings.js';
+import { buildCombinationTable, comboKey, type CombinationTable } from '../engine/combinations.js';
+import { renderCombos, renderComboDetail, type CombosFilters } from './combos-view.js';
 
-type Mode = 'build' | 'react' | 'routes' | 'lab';
+type Mode = 'build' | 'react' | 'tabla' | 'routes' | 'lab';
 type Tab = 'ficha' | 'estructura' | 'analisis' | 'balance' | 'profesor';
 
 interface State {
@@ -55,6 +57,15 @@ interface State {
   whyTrail: string[];
   /** Nivel de profundidad mostrado (§48). */
   analysisLevel: number;
+  /**
+   * Tabla de combinaciones. Se calcula UNA vez, la primera que se entra en el
+   * modo: 2538 celdas cuestan unos 150 ms, que se notan si se pagan en cada
+   * pulsacion de tecla del filtro.
+   */
+  combos: CombinationTable | null;
+  combosFilters: CombosFilters;
+  /** Celda seleccionada, con la clave `comboKey`. */
+  combosSelected: string | null;
   /** Ruta: origen y destino. */
   routeFrom: string;
   routeTo: string;
@@ -75,6 +86,9 @@ const state: State = {
   analysis: null,
   whyTrail: [],
   analysisLevel: 3,
+  combos: null,
+  combosFilters: { query: '', onlyVerified: false, onlyInsoluble: false },
+  combosSelected: null,
   routeFrom: 'Ca',
   routeTo: 'CaCO3',
   builder: { cation: null, anion: null },
@@ -470,6 +484,15 @@ function renderInspector(): void {
     return;
   }
 
+  // En la tabla, el inspector muestra la celda elegida.
+  if (state.mode === 'tabla') {
+    const cell = state.combosSelected ? state.combos?.cells.get(state.combosSelected) : undefined;
+    content.innerHTML = cell
+      ? renderComboDetail(cell)
+      : '<div class="empty-state">Toca cualquier casilla de la tabla y aqui apareceran los seis pasos que llevan de los dos iones a la formula, con la comprobacion de cargas.</div>';
+    return;
+  }
+
   switch (state.tab) {
     case 'ficha': {
       // En el constructor, lo primero que debe ver el estudiante es COMO se
@@ -668,7 +691,27 @@ function setMode(mode: Mode): void {
   setPressed($$('.mode-tab'), (b) => b.dataset['mode'] === mode, 'aria-selected');
 
   $('#build-bar').hidden = mode !== 'build';
-  $('#bench-bar').hidden = mode === 'build';
+  $('#bench-bar').hidden = mode === 'build' || mode === 'tabla';
+
+  // La tabla ocupa el sitio del visor 3D, no se superpone a el.
+  $('#combos').hidden = mode !== 'tabla';
+  $('#viewport').hidden = mode === 'tabla';
+
+  /*
+   * La franja inferior entera (banco, linea temporal, resultados) se retira en
+   * el modo Tabla. No es solo que no haga falta: se quedaba mostrando los
+   * resultados de la ultima prediccion, que hablan de otra cosa. Ademas la
+   * cuadricula agradece toda la altura que se le pueda dar.
+   */
+  $<HTMLElement>('.bench').hidden = mode === 'tabla';
+
+  /*
+   * Hay dos modos que se apoderan del inspector entero: Tabla y Rutas. En
+   * ellos las pestanas (Ficha, Lewis, Analizar…) no hacen nada — se pulsan y
+   * el contenido no cambia — asi que se ocultan en lugar de dejarlas
+   * enganando. Una pestana muerta ensena al usuario a desconfiar de todas.
+   */
+  $('#inspector-tabs').hidden = mode === 'tabla' || mode === 'routes';
 
   switch (mode) {
     case 'build':
@@ -690,6 +733,10 @@ function setMode(mode: Mode): void {
       }
       break;
 
+    case 'tabla':
+      renderCombosView();
+      break;
+
     case 'routes':
       if (state.selected) state.routeTo = state.selected;
       break;
@@ -702,6 +749,31 @@ function setMode(mode: Mode): void {
   renderLibrary();
   renderModeHint();
   renderInspector();
+}
+
+/**
+ * Pinta la tabla de combinaciones.
+ *
+ * La tabla se construye la primera vez que hace falta y se guarda. Filtrar es
+ * entonces recorrer un mapa ya calculado, que es instantaneo; recalcular en
+ * cada tecla costaria 150 ms y el filtro se sentiria pegajoso.
+ */
+function renderCombosView(): void {
+  if (!state.combos) state.combos = buildCombinationTable();
+  $('#combos-body').innerHTML = renderCombos(state.combos, state.combosFilters, state.combosSelected);
+}
+
+function selectCombo(key: string): void {
+  if (!state.combos) return;
+  const cell = state.combos.cells.get(key);
+  if (!cell) return;
+
+  state.combosSelected = key;
+  renderCombosView();
+
+  // El detalle va al inspector, que es donde el usuario ya espera encontrar
+  // la explicacion de lo que acaba de tocar.
+  $('#inspector-content').innerHTML = renderComboDetail(cell);
 }
 
 function selectSubstance(formula: string): void {
@@ -985,6 +1057,45 @@ function wireEvents(): void {
     state.routeTo = $<HTMLInputElement>('#route-to').value.trim() || state.routeTo;
     renderInspector();
   });
+
+  // --- Tabla de combinaciones ---------------------------------------------
+  delegate($('#combos-body'), 'click', '[data-combo]', (_e, target) => {
+    selectCombo(target.dataset['combo']!);
+    // En movil el inspector es una hoja oculta: tocar una casilla sin abrirla
+    // pareceria no hacer nada. En escritorio la regla vive dentro de una
+    // consulta de ≤900 px, asi que esto no tiene efecto.
+    toggleSheet(true);
+  });
+
+  // Teclado: la cuadricula es navegable con tabulador, asi que las casillas
+  // tienen que responder tambien a Enter y espacio.
+  delegate<KeyboardEvent>($('#combos-body'), 'keydown', '[data-combo]', (event, target) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    selectCombo(target.dataset['combo']!);
+  });
+
+  // Desde el detalle se puede saltar a la sustancia y analizarla.
+  delegate($('#inspector-content'), 'click', '[data-open-formula]', (_e, target) => {
+    const formula = target.dataset['openFormula']!;
+    setMode('react');
+    selectSubstance(formula);
+    state.tab = 'analisis';
+    renderTabs();
+    renderInspector();
+  });
+
+  $<HTMLInputElement>('#combos-query').addEventListener('input', (event) => {
+    state.combosFilters = { ...state.combosFilters, query: (event.target as HTMLInputElement).value.trim() };
+    renderCombosView();
+  });
+
+  for (const [id, key] of [['#combos-verified', 'onlyVerified'], ['#combos-insoluble', 'onlyInsoluble']] as const) {
+    $<HTMLInputElement>(id).addEventListener('change', (event) => {
+      state.combosFilters = { ...state.combosFilters, [key]: (event.target as HTMLInputElement).checked };
+      renderCombosView();
+    });
+  }
 
   // --- Modos -------------------------------------------------------------
   delegate($('#mode-tabs'), 'click', '[data-mode]', (_e, target) => {

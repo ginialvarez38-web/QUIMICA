@@ -93,6 +93,17 @@ encadenando cada resultado con los que lo fundamentan.
 | `imf.ts` | Fuerzas intermoleculares y el orden relativo de puntos de ebullicion. |
 | `analyze.ts` | Orquestador: recorre la cadena y emite los hallazgos con sus dependencias. |
 
+### `src/engine/combinations.ts` — tabla de combinaciones
+
+Cruza los 47 cationes con los 54 aniones (2538 casillas, ~150 ms) y etiqueta
+cada una por lo que se sabe de ella, no por si la aritmetica cuadra:
+
+| Estado | Que significa |
+|---|---|
+| **Verificada** (70) | La sustancia esta en la base de datos. Nombre, solubilidad y propiedades son datos medidos. |
+| **Derivada** (2413) | La formula se deduce de las cargas — es la respuesta correcta al ejercicio de formulacion — pero el motor NO afirma que el compuesto exista o sea estable. |
+| **No procede** (55) | El modelo ionico no se aplica, y se explica por que. |
+
 ### `src/data` — base de datos curada y versionada
 
 118 elementos, ~60 iones, 100 sustancias y 45 reacciones. La procedencia de
@@ -232,7 +243,7 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**222 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+**241 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
 motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
 ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
 de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los
@@ -244,15 +255,29 @@ ninguna cifra.
 
 ### Lo que el motor de analisis se NIEGA a responder
 
-Tres casos, y en los tres explica por que en lugar de dar un resultado
-plausible:
+El motor de Lewis construye esqueletos de **un solo centro** con terminales
+alrededor. Cuando la especie no tiene esa forma, el algoritmo no falla: cuelga
+igualmente todos los atomos del centro y devuelve una estructura **bien
+formada y equivocada**. Por eso cada caso se comprueba ANTES de construir
+nada, y se explica en lugar de dibujarse:
 
-- **NaCl y demas ionicos.** No existe «una molecula» de NaCl. Aplicarle la
-  cadena molecular daria una respuesta bien formada y falsa.
-- **NO, NO₂, O₂⁻.** Numero impar de electrones de valencia: son radicales, y
-  un modelo que reparte electrones en PARES no puede describirlos.
-- **C₂H₆O, CH₃COOH, glucosa.** Con varios carbonos la conectividad ya no se
-  deduce de la formula: C₂H₆O puede ser etanol (C–C–O) o dimetil eter (C–O–C).
+- **Oxoacidos** (HNO₃, H₂SO₄, HClO₄…). El hidrogeno va sobre un OXIGENO, no
+  sobre el centro: el nitrico es HO–NO₂ y el sulfurico (HO)₂SO₂. Es un
+  esqueleto de dos niveles.
+- **Metales** (NaOH, NaCl, FeCl₃…). Un metal no comparte pares: los cede. Con
+  una excepcion declarada, el **berilio**, cuyos compuestos son covalentes por
+  las reglas de Fajans — y por eso el BeCl₂ si se analiza.
+- **Varios hidrogenos sobre varios centros** (H₂O₂, N₂H₄). El agua oxigenada
+  es H–O–O–H, con un hidrogeno en cada oxigeno. Con UN solo hidrogeno no hay
+  nada que repartir, y por eso el HCN (H–C≡N) si sale.
+- **Sustancias simples de cuatro atomos o mas** (P₄, S₈). Son anillos y
+  jaulas, no estrellas. El corte esta en cuatro: el ozono O₃ es angular y si
+  se construye.
+- **Radicales** (NO, NO₂, O₂⁻). Numero impar de electrones de valencia, y el
+  modelo reparte en PARES.
+- **Cadenas de carbono** (C₂H₆O, CH₃COOH, glucosa). C₂H₆O puede ser etanol
+  (C–C–O) o dimetil eter (C–O–C), y la formula no lo decide.
+- **Compuestos ionicos** (NaCl y demas). No existe «una molecula» de NaCl.
 
 El mapa completo de los 45 apartados del brief, con lo que esta implementado,
 lo que esta parcialmente y lo que falta, esta en

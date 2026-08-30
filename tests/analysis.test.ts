@@ -11,13 +11,16 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { configureAtom, lewisValenceElectrons, ionise, quantumNumbers } from '../src/analysis/electronic.js';
-import { deriveLewis, lewisLine, validateLewis, formalChargeWorkings } from '../src/analysis/lewis.js';
+import { deriveLewis, diagnoseLewis, lewisLine, validateLewis, formalChargeWorkings } from '../src/analysis/lewis.js';
 import { FindingGraph } from '../src/analysis/findings.js';
 import { analyzeResonance } from '../src/analysis/resonance.js';
 import { analyzeGeometry } from '../src/analysis/hybridization.js';
-import { analyzePolarity } from '../src/analysis/polarity.js';
+import { analyzePolarity, classifyBond } from '../src/analysis/polarity.js';
 import { analyzeIntermolecularForces, compareBoilingPoint } from '../src/analysis/imf.js';
 import { analyzeSpecies } from '../src/analysis/analyze.js';
+import { buildCombinationTable, comboKey } from '../src/engine/combinations.js';
+import { filterTable, ionLabel } from '../src/ui/combos-view.js';
+import { allSpecies } from '../src/data/species.js';
 import { getElement } from '../src/data/elements.js';
 
 // ---------------------------------------------------------------------------
@@ -486,9 +489,15 @@ describe('polaridad', () => {
     // metal que pueda ceder el electron.
     assert.equal(pol('HF').bonds[0]?.kind, 'polar');
     assert.equal(pol('BF3').bonds[0]?.kind, 'polar');
-    // Con un metal de por medio si es ionico.
-    assert.equal(pol('NaCl').bonds[0]?.kind, 'ionico');
-    assert.equal(pol('LiF').bonds[0]?.kind, 'ionico');
+    assert.equal(pol('HF').bonds[0]?.explanation.includes('contraejemplo clasico'), true);
+
+    // La regla se comprueba directamente para las parejas con metal, porque
+    // esos compuestos ya no tienen estructura de Lewis molecular: son redes
+    // ionicas, y el motor lo declara antes de intentar construirlas.
+    assert.equal(classifyBond(2.23, 'Na', 'Cl').kind, 'ionico');
+    assert.equal(classifyBond(3.0, 'Li', 'F').kind, 'ionico');
+    assert.equal(classifyBond(1.78, 'H', 'F').kind, 'polar');
+    assert.equal(classifyBond(1.78, 'H', 'F').overridesThreshold, true);
   });
 
   test('un enlace entre atomos iguales es perfectamente apolar', () => {
@@ -679,10 +688,16 @@ describe('clasificacion y nombre de las especies analizadas', () => {
     }
   });
 
-  test('el agua oxigenada es molecular, no una red ionica', () => {
-    // Marcarla como ionica la dejaba fuera de todo el analisis molecular.
+  test('el agua oxigenada se clasifica como molecular, no como red ionica', () => {
     const profile = analyzeSpecies('H2O2');
-    assert.ok(profile?.lewis, 'deberia analizarse como molecula');
+    assert.ok(profile);
+    assert.equal(profile.graph.get('lewis.notApplicable'), undefined,
+      'no debe descartarse por ionica: no hay ningun metal');
+    // Su estructura, en cambio, queda fuera de este modelo: H2O2 es H–O–O–H,
+    // con un hidrogeno en CADA oxigeno, y el motor solo construye esqueletos
+    // de un centro. Lo dice en vez de juntar los dos hidrogenos.
+    assert.equal(profile.lewis, null);
+    assert.match(profile.graph.get('lewis.unavailable')?.because ?? '', /H–O–O–H/);
   });
 
   test('el nombre de uso gana al derivado cuando existe', () => {
@@ -691,5 +706,222 @@ describe('clasificacion y nombre de las especies analizadas', () => {
     assert.equal(analyzeSpecies('HNO3')?.graph.get('identity.name')?.value, 'acido nitrico');
     assert.equal(analyzeSpecies('H2SO4')?.graph.get('identity.name')?.value, 'acido sulfurico');
     assert.equal(analyzeSpecies('H2O')?.graph.get('identity.name')?.value, 'agua');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('tabla de combinaciones', () => {
+  const table = buildCombinationTable();
+  const cation = (formula: string, charge: number) =>
+    table.cations.find((i) => i.formula === formula && i.charge === charge)!;
+  const anion = (formula: string) => table.anions.find((i) => i.formula === formula)!;
+  const cell = (c: string, q: number, a: string) => table.cells.get(comboKey(cation(c, q), anion(a)))!;
+
+  test('la cuadricula esta completa', () => {
+    assert.equal(table.counts.total, table.cations.length * table.anions.length);
+    for (const c of table.cations) {
+      for (const a of table.anions) {
+        assert.ok(table.cells.get(comboKey(c, a)), `falta la celda ${c.formula}+${a.formula}`);
+      }
+    }
+  });
+
+  test('lo verificado y lo derivado no se confunden', () => {
+    // Es la distincion que justifica el modulo entero: presentar las 2500
+    // combinaciones como compuestos existentes seria inventar quimica.
+    assert.equal(cell('Na', 1, 'Cl').status, 'verified');
+    assert.equal(cell('Ag', 1, 'Cl').status, 'verified');
+    assert.equal(cell('NH4', 1, 'ClO4').status, 'derived');
+    assert.ok(table.counts.verified > 0 && table.counts.derived > table.counts.verified);
+  });
+
+  test('una sustancia curada se reconoce aunque el constructor la escriba distinto', () => {
+    // Del H⁺ con el OH⁻ sale la cadena "HOH", que es agua mal escrita.
+    // Comparar cadenas la daria por desconocida; comparar composiciones no.
+    const water = cell('H', 1, 'OH');
+    assert.equal(water.status, 'verified');
+    assert.equal(water.formula, 'H2O');
+    assert.equal(water.name, 'agua');
+  });
+
+  test('el nombre de uso gana cuando la sustancia esta curada', () => {
+    assert.equal(cell('H', 1, 'Cl').name, 'acido clorhidrico');
+    assert.equal(cell('Na', 1, 'Cl').name, 'sal comun');
+    // Y las derivadas se nombran con las reglas.
+    assert.equal(cell('Al', 3, 'SO4').name, 'sulfato de aluminio');
+  });
+
+  test('un elemento no puede ser a la vez el cation y el anion', () => {
+    const hydrogen = cell('H', 1, 'H');
+    assert.equal(hydrogen.status, 'impossible');
+    assert.equal(hydrogen.formula, null, 'no debe emitir la cadena "HH"');
+    assert.match(hydrogen.reason ?? '', /MISMO elemento/);
+  });
+
+  test('el hidronio no se combina como un cation cualquiera', () => {
+    // H3O⁺ es un proton hidratado: "H3OCl" no es una formula sin verificar,
+    // es una formula mal escrita. Lo que se escribe es el acido.
+    for (const a of ['Cl', 'SO4', 'NO3', 'O']) {
+      const c = cell('H3O', 1, a);
+      assert.equal(c.status, 'impossible', `H3O+ + ${a}`);
+      assert.equal(c.formula, null);
+      assert.match(c.reason ?? '', /HIDRATADO/);
+    }
+    // Pero el H⁺ si da el acido, que es como se escribe.
+    assert.equal(cell('H', 1, 'Cl').formula, 'HCl');
+  });
+
+  test('la proporcion de iones y la comprobacion de cargas son correctas', () => {
+    const alum = cell('Al', 3, 'SO4');
+    assert.equal(alum.formula, 'Al2(SO4)3');
+    assert.equal(alum.cationCount, 2);
+    assert.equal(alum.anionCount, 3);
+    assert.match(alum.neutralityCheck ?? '', /=\s*0/);
+
+    const nacl = cell('Na', 1, 'Cl');
+    assert.equal(nacl.cationCount, 1);
+    assert.equal(nacl.anionCount, 1);
+  });
+
+  test('cada combinacion viable trae su derivacion completa', () => {
+    for (const c of table.cells.values()) {
+      if (c.status === 'impossible') continue;
+      assert.ok(c.built, `${c.formula}: falta la derivacion`);
+      assert.equal(c.built.derivation.length, 6, `${c.formula}: los seis pasos`);
+    }
+  });
+
+  test('la solubilidad conocida llega a la celda', () => {
+    assert.equal(cell('Ag', 1, 'Cl').solubility, 'insoluble');
+    assert.equal(cell('Na', 1, 'Cl').solubility, 'soluble');
+  });
+
+  test('los filtros vacian filas y columnas enteras, no dejan huecos', () => {
+    const verified = filterTable(table, { query: '', onlyVerified: true, onlyInsoluble: false });
+    // Toda fila y toda columna que queden deben tener al menos un resultado.
+    for (const c of verified.cations) {
+      assert.ok(
+        verified.anions.some((a) => table.cells.get(comboKey(c, a))?.status === 'verified'),
+        `la fila ${c.formula} no tiene ninguna verificada`,
+      );
+    }
+    assert.equal(verified.shown, table.counts.verified);
+  });
+
+  test('el filtro de texto busca en las dos listas a la vez', () => {
+    const sulfate = filterTable(table, { query: 'sulfato', onlyVerified: false, onlyInsoluble: false });
+    // "sulfato" no casa con ningun cation, asi que la lista de cationes se
+    // deja entera: lo que se quiere ver es CON QUIEN se combina el sulfato.
+    assert.equal(sulfate.cations.length, table.cations.length);
+    assert.ok(sulfate.anions.length < table.anions.length);
+    assert.ok(sulfate.anions.some((a) => a.formula === 'SO4'));
+
+    const iron = filterTable(table, { query: 'hierro', onlyVerified: false, onlyInsoluble: false });
+    assert.ok(iron.cations.every((c) => c.name.includes('hierro')));
+    assert.equal(iron.anions.length, table.anions.length);
+  });
+
+  test('las etiquetas de los iones llevan carga y subindices', () => {
+    assert.equal(ionLabel(cation('Ca', 2)), 'Ca²⁺');
+    assert.equal(ionLabel(anion('SO4')), 'SO₄²⁻');
+    assert.equal(ionLabel(anion('Cl')), 'Cl⁻');
+    assert.equal(ionLabel(cation('Na', 1)), 'Na⁺');
+    assert.equal(ionLabel(anion('PO4')), 'PO₄³⁻');
+  });
+
+  test('no hay dos sustancias curadas con la misma composicion', () => {
+    // La tabla identifica una sustancia curada por su COMPOSICION, para
+    // reconocer "HOH" como agua. Ese atajo deja de ser valido en cuanto
+    // existan dos isomeros curados, y entonces la tabla llamaria a uno por el
+    // nombre del otro sin avisar. Esta prueba es la alarma.
+    const seen = new Map<string, string>();
+    for (const species of allSpecies()) {
+      if (species.charge !== 0) continue;
+      const key = [...species.composition].map(([s, n]) => `${s}${n}`).sort().join('');
+      const previous = seen.get(key);
+      assert.equal(previous, undefined, `${species.formula} y ${previous} comparten composicion`);
+      seen.set(key, species.formula);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('el motor de Lewis rehusa antes que mentir', () => {
+  /*
+   * Estas pruebas existen porque el fallo que cubren NO se manifiesta como un
+   * error: el algoritmo cuelga todos los atomos del centro y, cuando esa
+   * suposicion es falsa, devuelve una estructura bien formada y equivocada.
+   * Se descubrieron mirando la pantalla, no viendo fallar una prueba.
+   */
+  const refuses = (formula: string, pattern: RegExp): void => {
+    assert.equal(deriveLewis(formula), null, `${formula} no deberia construirse`);
+    assert.match(diagnoseLewis(formula) ?? '', pattern, `${formula}: el motivo`);
+  };
+
+  test('el hidrogeno de un oxoacido va sobre el oxigeno, no sobre el centro', () => {
+    // El sulfurico salia con los DOS hidrogenos sobre el azufre y un oxigeno
+    // con carga formal +3. Es (HO)2SO2, un esqueleto de dos niveles.
+    for (const acid of ['H2SO4', 'HNO3', 'HClO4', 'H2CO3', 'H3PO4', 'H2SO3']) {
+      refuses(acid, /esta unido a un oxigeno/);
+    }
+  });
+
+  test('un metal no forma estructura de Lewis molecular', () => {
+    // El NaOH salia con el SODIO de atomo central y carga formal −1, y el
+    // Ca(OH)2 con el calcio a −2.
+    for (const salt of ['NaOH', 'Ca(OH)2', 'NaCl', 'FeCl3', 'KMnO4']) {
+      refuses(salt, /es un METAL/);
+    }
+  });
+
+  test('pero el berilio si, porque sus compuestos son covalentes', () => {
+    // Reglas de Fajans: el Be2+ es tan pequeno y tan cargado que comparte en
+    // lugar de ceder. Ademas es el ejemplo clasico de centro sin octeto.
+    const becl2 = deriveLewis('BeCl2');
+    assert.ok(becl2, 'BeCl2 deberia construirse');
+    assert.equal(lewisLine(becl2.best), 'Cl—Be—Cl');
+    assert.equal(becl2.best.atoms.find((a) => a.symbol === 'Be')?.electronCount, 4);
+  });
+
+  test('varios hidrogenos repartidos entre varios centros', () => {
+    // El agua oxigenada es H–O–O–H, no HO(H)–O.
+    refuses('H2O2', /H–O–O–H/);
+    refuses('N2H4', /se reparten entre varios/);
+    // Con UN solo hidrogeno no hay nada que repartir, y el HCN sale bien.
+    const hcn = deriveLewis('HCN');
+    assert.ok(hcn);
+    assert.equal(lewisLine(hcn.best), 'H—C≡N');
+  });
+
+  test('una sustancia simple de cuatro atomos es un anillo o una jaula', () => {
+    // El fosforo blanco es un tetraedro donde cada P se une a los otros tres;
+    // salia como una estrella con el fosforo central a carga formal +2.
+    refuses('P4', /ANILLO o una\s+JAULA|ANILLO o una JAULA/);
+    refuses('S8', /ANILLO o una\s+JAULA|ANILLO o una JAULA/);
+    // El corte esta en cuatro: el ozono si es angular y se construye.
+    assert.equal(lewisLine(deriveLewis('O3')!.best), 'O=O⁺—O⁻');
+  });
+
+  test('todo lo que el motor SI construye sigue saliendo correcto', () => {
+    const expected: [string, string][] = [
+      ['H2O', 'H—O—H'],
+      ['CO2', 'O=C=O'],
+      ['NH3', 'N(—H)(—H)(—H)'],
+      ['CH4', 'C(—H)(—H)(—H)(—H)'],
+      ['SO2', 'O=S=O'],
+      ['SO3', 'S(=O)(=O)(=O)'],
+      ['N2', 'N≡N'],
+      ['CO', 'C⁻≡O⁺'],
+      ['HCl', 'Cl—H'],
+      ['H2S', 'H—S—H'],
+      ['CHCl3', 'C(—H)(—Cl)(—Cl)(—Cl)'],
+    ];
+    for (const [formula, line] of expected) {
+      const result = deriveLewis(formula);
+      assert.ok(result, formula);
+      assert.equal(lewisLine(result.best), line, formula);
+    }
   });
 });

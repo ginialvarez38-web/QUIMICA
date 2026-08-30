@@ -73,17 +73,28 @@ function stepsHtml(finding: Finding): string {
  * pulsarlo tambien donde si lleva.
  */
 function findingCard(finding: Finding, hasDependencies: boolean): string {
+  /*
+   * Cuando el motor NO puede responder, el motivo va SIEMPRE a la vista.
+   *
+   * Un «no determinable con este modelo» detras de un boton parece que la
+   * aplicacion se ha roto. Y el motivo es justo la parte que ensena: que el
+   * hidrogeno del acido nitrico esta sobre un oxigeno y no sobre el
+   * nitrogeno vale mas que la estructura que no se ha podido dibujar.
+   */
+  const showReason = !hasDependencies || finding.confidence === 'unknown';
+
   return `
-    <article class="finding" data-finding="${escapeHtml(finding.id)}">
+    <article class="finding${finding.confidence === 'unknown' ? ' finding-unknown' : ''}" data-finding="${escapeHtml(finding.id)}">
       <header class="finding-head">
         <span class="finding-label">${escapeHtml(finding.label)}</span>
         ${chip(finding)}
       </header>
       <div class="finding-value">${escapeHtml(finding.value)}</div>
+      ${showReason ? `<p class="finding-because">${escapeHtml(finding.because)}</p>` : ''}
       ${
         hasDependencies
           ? `<button class="why-button" data-why="${escapeHtml(finding.id)}">¿Por que? →</button>`
-          : `<p class="finding-because">${escapeHtml(finding.because)}</p>`
+          : ''
       }
     </article>`;
 }

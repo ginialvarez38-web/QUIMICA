@@ -86,8 +86,25 @@ PROPIEDADES, y deja cada resultado abierto a la pregunta «¿por que?».
 | 62 | Separacion estricta de motores: ninguno conoce a los demas | `analysis/analyze.ts` |
 | 64 | Perfil completo de la especie | `analysis/analyze.ts` |
 
+## Tabla de combinaciones
+
+Cuadricula de 47 cationes × 54 aniones (`engine/combinations.ts`,
+`ui/combos-view.ts`), con las cabeceras fijas en los dos ejes, filtro de texto
+sobre las dos listas y dos conmutadores («solo verificadas», «solo
+precipitados»). Cada casilla lleva la derivacion en seis pasos y salta al
+analisis completo.
+
+Lo que la hace util es que distingue lo verificado de lo derivado: presentar
+las 2538 combinaciones como compuestos existentes seria justo lo que el §32
+prohibe.
+
 ## Parcial
 
+- **Esqueleto de dos niveles (oxoacidos).** Hoy el motor rehusa el HNO₃ y el
+  H₂SO₄ porque el hidrogeno va sobre un oxigeno y no sobre el centro. Poder
+  construir H–O–X seria la mejora de mas valor del motor de Lewis: son de las
+  especies mas frecuentes del temario. Exige que el esqueleto pase de estrella
+  a arbol, y arrastra a geometria y polaridad.
 - **§10, §25 (orbitales moleculares).** Se declara explicitamente donde Lewis
   falla — O₂ paramagnetico, los radicales — pero no se calcula el diagrama de
   OM. Es lo que haria falta para responder esos casos en vez de solo senalarlos.
@@ -111,18 +128,20 @@ PROPIEDADES, y deja cada resultado abierto a la pregunta «¿por que?».
 
 ## Lo siguiente, por orden de valor
 
-1. **Motor acido-base (§32, §33).** Es lo que mas se echa en falta del segundo
+1. **Esqueleto de dos niveles para los oxoacidos.** Ver «Parcial». Es lo que
+   mas especies desbloquea de una vez.
+2. **Motor acido-base (§32, §33).** Es lo que mas se echa en falta del segundo
    brief: el perfil llega hasta las propiedades fisicas y se detiene antes del
    comportamiento en disolucion, que es lo que mas se pregunta.
-2. **Interfaz de cantidades (§26).** El motor esta hecho y probado; solo falta
+3. **Interfaz de cantidades (§26).** El motor esta hecho y probado; solo falta
    el formulario. Es el mayor retorno por esfuerzo del primer brief.
-3. **Dibujo de la red de transformaciones (§22).** El grafo ya esta calculado;
+4. **Dibujo de la red de transformaciones (§22).** El grafo ya esta calculado;
    falta la disposicion visual de nodos y aristas.
-4. **Modo descubrimiento (§23).** Interponer «¿que crees que ocurrira?» antes
+5. **Modo descubrimiento (§23).** Interponer «¿que crees que ocurrira?» antes
    de mostrar el resultado. El motor ya devuelve las alternativas necesarias.
-5. **Modo examen (§35).** Los metadatos por reaccion (dificultad, conceptos)
+6. **Modo examen (§35).** Los metadatos por reaccion (dificultad, conceptos)
    estan puestos precisamente para esto.
-6. **Ampliar la base de datos.** Es el eje que mas mejora la experiencia sin
+7. **Ampliar la base de datos.** Es el eje que mas mejora la experiencia sin
    tocar una linea de motor: mas sustancias y mas reacciones densifican
    automaticamente la red de rutas.
 

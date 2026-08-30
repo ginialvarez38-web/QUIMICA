@@ -28,6 +28,7 @@
 import { getElement } from '../data/elements.js';
 import { parseFormula } from '../core/formula/parse.js';
 import { lewisValenceElectrons } from './electronic.js';
+import { METALLIC_CATEGORIES } from '../core/types.js';
 import type { Composition } from '../core/types.js';
 
 export interface LewisAtom {
@@ -285,6 +286,120 @@ export function structureScore(structure: LewisStructure): number {
 }
 
 /**
+ * Especies que quedan fuera del esqueleto central-terminal.
+ *
+ * Devuelve el motivo, o null si la especie si encaja. Se comprueba ANTES de
+ * construir nada, porque el algoritmo cuelga todos los atomos del central y,
+ * cuando esa suposicion es falsa, no falla: produce una estructura bien
+ * formada y equivocada, que es mucho peor que no producir ninguna.
+ */
+function outOfScopeReason(composition: Composition): string | null {
+  const symbols = [...composition.keys()];
+
+  /*
+   * METALES. Un metal no comparte pares de electrones: los cede. Sin esta
+   * comprobacion el algoritmo elegia el metal como atomo central por ser el
+   * menos electronegativo y salian disparates como el Ca con carga formal −2
+   * en el Ca(OH)2, o el Na de atomo central en el NaOH.
+   */
+  const metal = symbols.find((s) => {
+    /*
+     * EL BERILIO ES LA EXCEPCION, y no por conveniencia: sus compuestos son
+     * COVALENTES. El Be²⁺ seria un ion tan pequeno y tan cargado que, antes de
+     * llegar a formarse, deforma la nube electronica del anion y acaba
+     * compartiendo en lugar de ceder — es el caso de manual de las reglas de
+     * Fajans. El BeCl2 es una molecula lineal, y ademas uno de los ejemplos
+     * clasicos de atomo central sin octeto, asi que dejarlo fuera costaria un
+     * caso que merece la pena poder analizar.
+     */
+    if (s === 'Be') return false;
+    const element = getElement(s);
+    return element !== undefined && METALLIC_CATEGORIES.has(element.category);
+  });
+  if (metal) {
+    return (
+      `${getElement(metal)!.name} es un METAL. Los metales no comparten pares de electrones: los ` +
+      'ceden. Lo que se forma es un compuesto ionico, una red de iones, y el modelo de Lewis para ' +
+      'moleculas covalentes no lo describe. Se puede dibujar la estructura de cada ion por separado.'
+    );
+  }
+
+  /*
+   * OXOACIDOS Y OXOANIONES PROTONADOS: el hidrogeno va sobre el OXIGENO.
+   *
+   * El acido nitrico es HO–NO2 y el sulfurico es (HO)2SO2: los hidrogenos
+   * cuelgan de un oxigeno, no del atomo central. Es un esqueleto de DOS
+   * niveles, y este algoritmo solo construye uno.
+   *
+   * Sin esta comprobacion el motor no se quedaba callado: colocaba los
+   * hidrogenos sobre el nitrogeno o el azufre y devolvia estructuras
+   * plausibles a la vista y falsas — el H2SO4 salia con los dos hidrogenos
+   * sobre el azufre y un oxigeno con carga formal +3.
+   *
+   * El criterio es el que define a un oxoacido: hidrogeno, oxigeno, y un
+   * tercer elemento que hace de centro. Con solo H y O (agua, peroxido,
+   * hidroxido) el esqueleto vuelve a ser de un nivel y si se construye.
+   */
+  if (composition.has('H') && composition.has('O') && symbols.length >= 3) {
+    const central = symbols.find((s) => s !== 'H' && s !== 'O');
+    return (
+      `El hidrogeno de esta especie NO esta unido al ${getElement(central ?? '')?.name ?? 'atomo central'}: ` +
+      'esta unido a un oxigeno. El acido nitrico es HO–NO₂ y el sulfurico (HO)₂SO₂. Eso es un ' +
+      'esqueleto de dos niveles — H sobre O, y O sobre el atomo central — y este motor solo ' +
+      'construye esqueletos de un nivel, con todos los atomos colgando del centro. Prefiere decirlo ' +
+      'a colocar el hidrogeno donde no esta.'
+    );
+  }
+
+  /*
+   * VARIOS HIDROGENOS REPARTIDOS ENTRE VARIOS CENTROS.
+   *
+   * El agua oxigenada es H–O–O–H: un hidrogeno en CADA oxigeno. Colgandolos
+   * todos de un mismo centro sale "HO(H)–O", que no es el peroxido. Lo mismo
+   * le pasa a la hidracina, H2N–NH2.
+   *
+   * El umbral es «mas de un hidrogeno con dos o mas atomos pesados», y el
+   * matiz de «mas de uno» importa: con UN solo hidrogeno no hay nada que
+   * repartir, y por eso el HCN (H–C≡N) si se construye, y bien.
+   */
+  /*
+   * SUSTANCIAS SIMPLES DE CUATRO ATOMOS O MAS: son anillos o jaulas.
+   *
+   * El fosforo blanco es un TETRAEDRO P4 en el que cada fosforo se une a los
+   * otros tres; el azufre es una corona S8. Ninguna es una estrella con un
+   * atomo en el centro, que es lo que este motor construye — para el P4
+   * devolvia un fosforo central con carga formal +2, que no existe.
+   *
+   * El corte esta en cuatro y no en tres a proposito: el ozono O3 SI es
+   * central-terminal (angular), y sale correcto.
+   */
+  if (symbols.length === 1) {
+    const atoms = composition.get(symbols[0]!) ?? 0;
+    if (atoms >= 4) {
+      return (
+        `${getElement(symbols[0]!)?.name ?? symbols[0]} con ${atoms} atomos iguales forma un ANILLO o una ` +
+        'JAULA, no una estrella con un atomo en el centro: el fosforo blanco es un tetraedro P₄ en el ' +
+        'que cada atomo se une a los otros tres, y el azufre una corona S₈. Este motor construye ' +
+        'esqueletos de un centro con terminales alrededor, y esa forma no es una de ellos.'
+      );
+    }
+  }
+
+  const hydrogens = composition.get('H') ?? 0;
+  const heavy = [...composition].reduce((sum, [s, n]) => (s === 'H' ? sum : sum + n), 0);
+  if (hydrogens > 1 && heavy >= 2) {
+    return (
+      `Hay ${hydrogens} hidrogenos y ${heavy} atomos pesados: los hidrogenos se reparten entre varios ` +
+      'centros, no cuelgan todos del mismo. El agua oxigenada es H–O–O–H, con un hidrogeno en cada ' +
+      'oxigeno, y la hidracina es H₂N–NH₂. Este motor construye esqueletos de un solo centro, asi ' +
+      'que no puede colocarlos, y prefiere decirlo a ponerlos todos juntos.'
+    );
+  }
+
+  return null;
+}
+
+/**
  * Deriva la estructura de Lewis de una formula.
  *
  * Devuelve null cuando la especie no encaja en el modelo central-terminal:
@@ -303,6 +418,10 @@ export function deriveLewis(formula: string): LewisResult | null {
     for (let i = 0; i < count; i++) symbols.push(symbol);
   }
   if (symbols.length === 0) return null;
+
+  // Fuera del alcance del esqueleto central-terminal: se declina antes de
+  // construir nada. Ver `outOfScopeReason` para el porque de cada caso.
+  if (outOfScopeReason(composition) !== null) return null;
 
   const steps: { n: number; text: string; math?: string }[] = [];
   const warnings: string[] = [];
@@ -515,6 +634,9 @@ export function diagnoseLewis(formula: string): string | null {
   for (const [symbol, count] of composition) {
     totalValence += lewisValenceElectrons(getElement(symbol)!) * count;
   }
+
+  const scope = outOfScopeReason(composition);
+  if (scope) return scope;
 
   if (totalValence % 2 !== 0) {
     return (

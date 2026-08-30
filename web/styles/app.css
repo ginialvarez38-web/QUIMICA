@@ -2100,3 +2100,387 @@ button { cursor: pointer; border: none; background: none; }
     letter-spacing: -0.01em;
   }
 }
+
+/* ==========================================================================
+   TABLA DE COMBINACIONES
+   ==========================================================================
+
+   Cuadricula de 47 cationes × 54 aniones. Dos exigencias que gobiernan todo
+   lo demas:
+
+   1. Las cabeceras tienen que quedarse fijas en LOS DOS ejes. A mitad de la
+      tabla, sin ellas, una casilla es una formula suelta sin saber de que
+      iones sale.
+
+   2. El estado no puede comunicarse SOLO con color. Las verificadas llevan
+      ademas un punto; el color es refuerzo, no el unico canal.
+   ========================================================================== */
+
+.combos {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--bg);
+}
+
+.combos-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.combos-search {
+  flex: 1;
+  min-width: 180px;
+  max-width: 340px;
+}
+
+.combos-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.combos-toggle input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.combos-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.combos-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.combos-shown strong { color: var(--text); }
+
+.combos-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.legend-item em {
+  font-style: normal;
+  color: var(--text-faint);
+}
+
+.swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 10px;
+  border: 1px solid var(--border-strong);
+}
+
+/* --- La cuadricula ------------------------------------------------------ */
+
+.combos-scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  /* El desplazamiento vive AQUI, no en la pagina: asi las cabeceras pegajosas
+     tienen un contenedor contra el que pegarse. */
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+
+.combos-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11px;
+}
+
+.combo-head,
+.combo-row-head,
+.combo-corner {
+  position: sticky;
+  background: var(--surface-2);
+  font-weight: 600;
+  text-align: left;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.combo-head {
+  top: 0;
+  z-index: 2;
+  min-width: 92px;
+  max-width: 92px;
+  padding: 6px 7px;
+  vertical-align: bottom;
+}
+
+.combo-row-head {
+  left: 0;
+  z-index: 2;
+  min-width: 104px;
+  max-width: 104px;
+  padding: 5px 8px;
+}
+
+/* La esquina se solapa con las dos cabeceras, asi que necesita ir por encima
+   de ambas. */
+.combo-corner {
+  top: 0;
+  left: 0;
+  z-index: 3;
+  padding: 5px 8px;
+  min-width: 104px;
+  background: var(--surface-3);
+}
+
+.corner-cation,
+.corner-anion {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.head-ion {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.head-name {
+  display: block;
+  margin-top: 1px;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--text-faint);
+  /* Un nombre largo no puede ensanchar su columna: rompe la cuadricula. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 96px;
+}
+
+.combo-cell {
+  padding: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  text-align: center;
+  vertical-align: middle;
+  height: 30px;
+  cursor: pointer;
+  position: relative;
+}
+
+.combo-formula {
+  display: block;
+  padding: 5px 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.25;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 92px;
+}
+
+/* Verificada: la sustancia existe y hay datos. Punto + color. */
+.combo-verified {
+  background: color-mix(in srgb, var(--evidence-established) 13%, var(--surface));
+}
+.combo-verified .combo-formula {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.combo-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--evidence-established);
+}
+
+/* Derivada: formula correcta, compuesto sin verificar. Se deja neutra a
+   proposito — es el fondo sobre el que destacan las demas. */
+.combo-derived { background: var(--surface); }
+
+/* Precipita: es lo que se busca al trabajar con solubilidad, asi que se marca
+   aunque la combinacion sea solo derivada. */
+.sol-insoluble .combo-formula {
+  color: var(--hazard-danger);
+  font-weight: 600;
+}
+
+.combo-impossible {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--surface-2),
+    var(--surface-2) 4px,
+    var(--surface-3) 4px,
+    var(--surface-3) 8px
+  );
+  cursor: not-allowed;
+}
+
+.combo-x { color: var(--text-faint); font-size: 12px; }
+
+.combo-hidden {
+  background: var(--bg-deep);
+  cursor: default;
+}
+
+.combo-cell:not(.combo-impossible):not(.combo-hidden):hover {
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-line);
+  outline-offset: -1px;
+}
+
+.combo-cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.combo-cell.is-selected {
+  background: var(--accent-soft);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.combos-caution {
+  margin: 0;
+  padding: 9px 14px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.combos-empty {
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  height: 100%;
+  padding: 30px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.combos-empty h2 { margin: 0; font-size: 16px; color: var(--text); }
+.combos-empty p { margin: 0; font-size: 13px; max-width: 40ch; line-height: 1.6; }
+
+/* --- Detalle de una casilla, en el inspector ---------------------------- */
+
+.combo-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.combo-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.combo-detail-formula {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.combo-detail-name {
+  margin: -8px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.combo-detail-note {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.combo-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.combo-steps strong { color: var(--text); }
+
+@media (max-width: 900px) {
+  .combos-controls { padding: 8px 10px; gap: 8px; }
+  .combos-meta { padding: 7px 10px; }
+  .combos-caution { padding: 8px 10px; }
+  /* Casillas mas altas: en una pantalla tactil el objetivo manda sobre la
+     densidad de informacion. */
+  .combo-cell { height: 38px; }
+  .combo-head { min-width: 82px; max-width: 82px; }
+  .combo-row-head, .combo-corner { min-width: 88px; max-width: 88px; }
+  .combo-detail-formula { font-size: 22px; }
+}
+
+/* Un resultado que el motor no puede dar se marca en la propia tarjeta: es
+   informacion, no un fallo, y conviene que se distinga de un resultado. */
+.finding-unknown {
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
