@@ -28,6 +28,7 @@ import { classify } from '../core/classify.js';
 import { assignOxidationStates, fmt } from '../core/oxidation.js';
 import { nameFormula, preferredName } from '../core/nomenclature/inorganic.js';
 import { getElement } from '../data/elements.js';
+import { allSpecies } from '../data/species.js';
 import { formatFormulaUnicode } from '../core/formula/render.js';
 
 import { FindingGraph } from './findings.js';
@@ -152,8 +153,18 @@ export function analyzeSpecies(input: string): AnalysisProfile | null {
     }),
   );
 
+  /*
+   * El nombre curado gana al derivado cuando existe.
+   *
+   * Las reglas de nomenclatura dan para el HNO3 "nitrato de hidrogeno", que es
+   * correcto y sistematico, pero nadie lo llama asi: es acido nitrico. La
+   * biblioteca ya guarda el nombre de uso para las sustancias que la gente
+   * busca, y ese es el que hay que mostrar. Para todo lo demas, las reglas.
+   */
+  const curated = allSpecies().find((sp) => sp.formula === formula);
   const nomenclature = nameFormula(formula);
-  const name = nomenclature ? preferredName(nomenclature) : null;
+  const name =
+    (curated ? preferredName(curated.names) : null) ?? (nomenclature ? preferredName(nomenclature) : null);
   if (name) {
     graph.add(
       finding({

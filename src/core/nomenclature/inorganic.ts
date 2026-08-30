@@ -494,6 +494,25 @@ export function nameFormula(formula: string): Nomenclature | null {
   const parsed = parseFormula(formula);
   if (!parsed.ok) return null;
 
+  /*
+   * Un ION no se nombra con las reglas de los compuestos neutros.
+   *
+   * Sin esta comprobacion, el nitrato NO3⁻ salia como "oxido de
+   * nitrogeno(VI)" y el sulfato SO4²⁻ como "oxido de azufre(VIII)": las reglas
+   * de los oxidos reparten la carga entre los oxigenos suponiendo que la
+   * especie es neutra, y con un anion esa suposicion es falsa. El nombre de
+   * un ion viene de la tabla de iones, que es donde esta.
+   */
+  if (parsed.value.charge !== 0) {
+    const body = [...parsed.value.composition]
+      .map(([sym, n]) => `${sym}${n > 1 ? n : ''}`)
+      .join('');
+    const ion = getIonsByFormula(body).find((i) => i.charge === parsed.value.charge);
+    if (!ion) return null; // preferible a inventarle un nombre de compuesto
+    const label = `ion ${ion.name}`;
+    return { stock: label, systematic: label, traditional: null, common: ion.name };
+  }
+
   if (parsed.value.hydrate.length === 0) {
     return nameCompound(formula, parsed.value.composition);
   }

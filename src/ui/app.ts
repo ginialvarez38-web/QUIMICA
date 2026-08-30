@@ -21,9 +21,12 @@ import { renderFicha, renderEstructura, renderBalance, renderProfesor, renderRea
 import { buildIonicFormula, type BuiltFormula } from '../core/build/ionicFormula.js';
 import { getIon } from '../data/ions.js';
 import type { Ion, Structure } from '../core/types.js';
+import { analyzeSpecies, type AnalysisProfile } from '../analysis/analyze.js';
+import { renderAnalysis, renderWhy } from './analysis-view.js';
+import { LEVEL_LABEL } from '../analysis/findings.js';
 
 type Mode = 'build' | 'react' | 'routes' | 'lab';
-type Tab = 'ficha' | 'estructura' | 'balance' | 'profesor';
+type Tab = 'ficha' | 'estructura' | 'analisis' | 'balance' | 'profesor';
 
 interface State {
   mode: Mode;
@@ -38,6 +41,20 @@ interface State {
   activePrediction: Prediction | null;
   /** Atomos marcados con "seguir atomo" (§12). */
   followed: Set<string>;
+  /**
+   * Perfil del Chemical Analysis Engine para la sustancia seleccionada.
+   * Se calcula una sola vez por sustancia y se guarda: el grafo se consulta
+   * en cada pulsacion de «¿por que?» y recalcularlo seria tirar trabajo.
+   */
+  analysis: AnalysisProfile | null;
+  /**
+   * Camino de descenso del «¿por que?». Vacio = vista general.
+   * Es una PILA, no un solo identificador, porque el §66 pide poder seguir
+   * bajando y tambien poder volver a cualquier punto del camino.
+   */
+  whyTrail: string[];
+  /** Nivel de profundidad mostrado (§48). */
+  analysisLevel: number;
   /** Ruta: origen y destino. */
   routeFrom: string;
   routeTo: string;
@@ -55,6 +72,9 @@ const state: State = {
   predictions: [],
   activePrediction: null,
   followed: new Set(),
+  analysis: null,
+  whyTrail: [],
+  analysisLevel: 3,
   routeFrom: 'Ca',
   routeTo: 'CaCO3',
   builder: { cation: null, anion: null },
@@ -472,6 +492,23 @@ function renderInspector(): void {
         ? renderEstructura(state.selected, currentStructure)
         : '<div class="empty-state">Selecciona una sustancia para ver su geometria molecular y su estructura de Lewis.</div>';
       break;
+    case 'analisis': {
+      if (!state.selected) {
+        content.innerHTML =
+          '<div class="empty-state">Selecciona una sustancia para analizarla. El motor recorre la cadena completa — atomos, electrones, Lewis, resonancia, hibridacion, geometria, polaridad, fuerzas intermoleculares — y deja cada resultado abierto a la pregunta «¿por que?».</div>';
+        break;
+      }
+      if (!state.analysis || state.analysis.formula !== state.selected) {
+        state.analysis = analyzeSpecies(state.selected);
+        state.whyTrail = [];
+      }
+      content.innerHTML = state.analysis
+        ? state.whyTrail.length > 0
+          ? renderWhy(state.analysis, state.whyTrail)
+          : renderAnalysis(state.analysis, state.analysisLevel)
+        : `<div class="empty-state">No se ha podido interpretar <strong>${state.selected}</strong> como una especie quimica.</div>`;
+      break;
+    }
     case 'balance':
       content.innerHTML = renderBalance(state.activePrediction);
       break;
@@ -670,6 +707,10 @@ function setMode(mode: Mode): void {
 function selectSubstance(formula: string): void {
   state.selected = formula;
   state.followed.clear();
+  // El perfil pertenece a una sustancia concreta: al cambiar de sustancia hay
+  // que tirarlo, o el boton «¿por que?» explicaria la anterior.
+  state.analysis = null;
+  state.whyTrail = [];
   showStructure(formula);
   renderLibrary();
   if (state.tab === 'balance' && !state.activePrediction) state.tab = 'ficha';
@@ -881,6 +922,56 @@ function wireEvents(): void {
   delegate($('#inspector-tabs'), 'click', '[data-tab]', (_e, target) => {
     state.tab = target.dataset['tab'] as Tab;
     renderTabs();
+    renderInspector();
+  });
+
+  /*
+   * Al bajar o subir un nivel hay que volver arriba, o el usuario aterriza a
+   * media pagina en un sitio que no reconoce. El que desplaza no es
+   * #inspector-content sino el .panel-body que lo envuelve, que es donde esta
+   * el overflow.
+   */
+  const scrollInspectorToTop = (): void => {
+    const content = $('#inspector-content');
+    (content.closest('.panel-body') ?? content).scrollTop = 0;
+  };
+
+  // --- Navegacion «¿POR QUE?» (§50, §66) ----------------------------------
+  // Bajar un nivel: se apila el hallazgo y se vuelve a pintar.
+  delegate($('#inspector-content'), 'click', '[data-why]', (_e, target) => {
+    const id = target.dataset['why']!;
+    // Si ya estaba en el camino, se vuelve a el en lugar de duplicarlo: el
+    // grafo converge, y sin esto un ida y vuelta dejaria migas repetidas.
+    const existing = state.whyTrail.indexOf(id);
+    state.whyTrail = existing >= 0 ? state.whyTrail.slice(0, existing + 1) : [...state.whyTrail, id];
+    renderInspector();
+    scrollInspectorToTop();
+  });
+
+  // Migas de pan: volver a cualquier punto del camino, o a la vista general.
+  delegate($('#inspector-content'), 'click', '[data-crumb]', (_e, target) => {
+    const index = Number(target.dataset['crumb']);
+    state.whyTrail = index < 0 ? [] : state.whyTrail.slice(0, index + 1);
+    renderInspector();
+    scrollInspectorToTop();
+  });
+
+  /*
+   * Nivel de profundidad (§48).
+   *
+   * Se separan los dos eventos a proposito. Volver a pintar en cada 'input'
+   * destruye el propio control mientras el usuario lo arrastra, y el arrastre
+   * se corta a la primera. Durante el arrastre solo se actualiza la etiqueta;
+   * la lista se recalcula al soltar.
+   */
+  delegate($('#inspector-content'), 'input', '#analysis-level', (_e, target) => {
+    const level = Number((target as HTMLInputElement).value);
+    state.analysisLevel = level;
+    const label = document.getElementById('analysis-level-label');
+    if (label) label.textContent = LEVEL_LABEL[level] ?? '';
+  });
+
+  delegate($('#inspector-content'), 'change', '#analysis-level', () => {
     renderInspector();
   });
 

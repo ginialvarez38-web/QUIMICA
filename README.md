@@ -47,6 +47,7 @@ Siete capas, cada una dependiendo solo de las anteriores (§31 del brief):
  src/ui/          MOTOR DE INTERFAZ      como se maneja
  src/render/      MOTOR VISUAL           como se representa
  src/teach/       MOTOR EDUCATIVO        como se explica
+ src/analysis/    MOTOR DE ANALISIS      por que cada cosa es como es
  src/geometry/    GEOMETRIA              donde esta cada atomo
  src/engine/      MOTOR QUIMICO          que reglas se aplican
  src/data/        BASE DE DATOS          que sustancias existen
@@ -76,6 +77,22 @@ Una dependencia solo puede apuntar hacia abajo. `core/` no conoce a nadie.
 Hess), `stoichiometry.ts`, `graph.ts` (red de transformaciones con Dijkstra) y
 `rules/` (solubilidad, serie de actividad).
 
+### `src/analysis` — Chemical Analysis Engine
+
+El cerebro quimico: toma una especie y construye su perfil completo,
+encadenando cada resultado con los que lo fundamentan.
+
+| Modulo | Que resuelve |
+|---|---|
+| `findings.ts` | El grafo de hallazgos y los cinco niveles de confianza. Es la columna vertebral. |
+| `electronic.ts` | Configuracion electronica, orbitales, numeros cuanticos, ionizacion paso a paso. |
+| `lewis.ts` | DERIVA la estructura de Lewis desde la formula: cuenta electrones, elige centro, explora ordenes de enlace y elige por carga formal. |
+| `resonance.ts` | Detecta la resonancia comparando las estructuras que empatan, y promedia el orden de enlace. |
+| `hybridization.ts` | Numero esterico, hibridacion, geometria electronica y molecular, recuento sigma/pi. |
+| `polarity.ts` | Polaridad de enlace y suma VECTORIAL de dipolos sobre la geometria real. |
+| `imf.ts` | Fuerzas intermoleculares y el orden relativo de puntos de ebullicion. |
+| `analyze.ts` | Orquestador: recorre la cadena y emite los hallazgos con sus dependencias. |
+
 ### `src/data` — base de datos curada y versionada
 
 118 elementos, ~60 iones, 100 sustancias y 45 reacciones. La procedencia de
@@ -83,7 +100,44 @@ cada dato esta citada en la cabecera de cada archivo.
 
 ---
 
-## Tres decisiones de diseno que conviene conocer
+## Cuatro decisiones de diseno que conviene conocer
+
+### 0. «¿Por que?» no es un texto: es una arista del grafo
+
+El requisito mas exigente del segundo brief (§50 y §66) es que cada resultado
+se pueda abrir con «¿por que?» y lleve a los resultados que lo fundamentan,
+tan abajo como el usuario quiera.
+
+Eso admite dos implementaciones. Una es escribir a mano un arbol de textos
+explicativos; se desincroniza del calculo en la primera modificacion y acaba
+mintiendo. La otra es que cada paso del analisis emita un HALLAZGO que declare
+de que otros hallazgos depende.
+
+El proyecto hace lo segundo. Entonces «¿por que?» no es una funcion aparte:
+es recorrer las aristas que el propio calculo construyo, y la explicacion no
+puede contradecir al resultado porque **es el mismo objeto**.
+
+La consecuencia se ve mejor con un ejemplo real, que ademas es una prueba:
+
+```
+Punto de ebullicion: ANORMALMENTE ALTO para su masa molar
+└ Fuerza dominante: puente-hidrogeno
+  └ Fuerzas intermoleculares: dispersion · dipolo-dipolo · puente-hidrogeno
+    └ Polaridad de la molecula: POLAR
+      └ Polaridad de los enlaces: O–H: polar (Δχ 1,24)
+      └ Geometria molecular: angular
+        └ Estructura de Lewis: H—O—H
+        └ Geometria electronica: tetraedrica
+          └ Electrones de valencia totales: 8 e⁻
+          └ Regiones de densidad electronica: 4 (2 enlaces + 2 pares libres)
+            └ Electrones de valencia de O: 6
+              └ Configuracion de O: [He] 2s² 2p⁴
+                └ Oxigeno (O): Z = 8 · grupo 16 · periodo 2
+                  └ Composicion: 2×H + 1×O
+                    └ Formula: H₂O
+```
+
+Doce niveles, y ninguno es un texto escrito para la ocasion.
 
 ### 1. Los coeficientes de las reacciones no se escriben a mano
 
@@ -178,10 +232,27 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**151 pruebas** cubren el nucleo, la nomenclatura y el motor. Incluyen redox
-exigentes, la cadena completa del calcio, la ruta del azufre al acido
-sulfurico, y el ejemplo estequiometrico del §26 (2,00 g de CaCO₃ en 50 mL de
-HCl 1,0 M: limitante, exceso y volumen de CO₂).
+**222 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
+ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
+de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los
+casos de analisis que separan a quien entiende un modelo de quien lo aplica de
+memoria: CO con su carga formal invertida, BF₃ sin octeto, SF₆ y XeF₄
+expandidos, Fe²⁺ perdiendo los 4s antes que los 3d, la fosfina polar sin
+enlaces polares, y el orden de puntos de ebullicion H₂O > H₂S sin conocer
+ninguna cifra.
+
+### Lo que el motor de analisis se NIEGA a responder
+
+Tres casos, y en los tres explica por que en lugar de dar un resultado
+plausible:
+
+- **NaCl y demas ionicos.** No existe «una molecula» de NaCl. Aplicarle la
+  cadena molecular daria una respuesta bien formada y falsa.
+- **NO, NO₂, O₂⁻.** Numero impar de electrones de valencia: son radicales, y
+  un modelo que reparte electrones en PARES no puede describirlos.
+- **C₂H₆O, CH₃COOH, glucosa.** Con varios carbonos la conectividad ya no se
+  deduce de la formula: C₂H₆O puede ser etanol (C–C–O) o dimetil eter (C–O–C).
 
 El mapa completo de los 45 apartados del brief, con lo que esta implementado,
 lo que esta parcialmente y lo que falta, esta en
@@ -196,11 +267,12 @@ lo este.
 src/core/         nucleo quimico puro (sin dependencias, ni siquiera de data/)
 src/data/         elementos, iones, sustancias, reacciones, buscador
 src/engine/       prediccion, redox, energia, estequiometria, grafo, reglas
+src/analysis/     Chemical Analysis Engine: perfil completo y grafo de «¿por que?»
 src/geometry/     VSEPR y generacion de estructuras 3D
 src/render/       renderizador WebGL2 y estructuras de Lewis
 src/teach/        modo profesor
 src/ui/           interfaz
-tests/            pruebas del nucleo, la nomenclatura y el motor
+tests/            pruebas del nucleo, la nomenclatura, el motor y el analisis
 web/              index.html y hoja de estilos
 docs/             arquitectura y hoja de ruta
 ```

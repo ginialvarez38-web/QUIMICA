@@ -60,17 +60,69 @@ No hay nada marcado como hecho que no lo este.
 
 ---
 
+---
+
+# CHEMICAL ANALYSIS ENGINE (segundo brief, 66 apartados)
+
+El motor que responde «por que». Toma una especie y encadena
+ATOMOS → ELECTRONES → ORBITALES → LEWIS → ENLACES → RESONANCIA →
+HIBRIDACION → GEOMETRIA → POLARIDAD → FUERZAS INTERMOLECULARES →
+PROPIEDADES, y deja cada resultado abierto a la pregunta «¿por que?».
+
+## Implementado
+
+| § | Apartado | Donde |
+|---|---|---|
+| 6–9 | Configuracion electronica, orbitales, numeros cuanticos, ionizacion | `analysis/electronic.ts` |
+| 11–13 | Estructura de Lewis derivada, validacion con diagnostico, carga formal | `analysis/lewis.ts` |
+| 14, 15, 26 | Resonancia, hibrido, orden de enlace promedio y sus consecuencias | `analysis/resonance.ts` |
+| 16–20 | Hibridacion, numero esterico, geometria electronica y molecular, sigma/pi | `analysis/hybridization.ts` |
+| 21–24 | Polaridad de enlace y de molecula por suma vectorial | `analysis/polarity.ts` |
+| 29–31 | Fuerzas intermoleculares y orden relativo de puntos de ebullicion | `analysis/imf.ts` |
+| 47, 48, 50, 66 | Grafo de informacion, niveles de profundidad, «¿POR QUE?» | `analysis/findings.ts`, `ui/analysis-view.ts` |
+| 55 | Identidad de atomo estable, para el futuro Reaction Engine | `analysis/lewis.ts` |
+| 57 | Motor de confianza: experimental / calculado / teorico / educativo / desconocido | `analysis/findings.ts` |
+| 58, 59, 32 | Limites declarados; ningun modelo educativo se presenta como realidad cuantica | todos los modulos |
+| 62 | Separacion estricta de motores: ninguno conoce a los demas | `analysis/analyze.ts` |
+| 64 | Perfil completo de la especie | `analysis/analyze.ts` |
+
+## Parcial
+
+- **§10, §25 (orbitales moleculares).** Se declara explicitamente donde Lewis
+  falla — O₂ paramagnetico, los radicales — pero no se calcula el diagrama de
+  OM. Es lo que haria falta para responder esos casos en vez de solo senalarlos.
+- **§28 (longitud y energia de enlace).** Se da la tendencia (orden mayor,
+  enlace mas corto y fuerte) pero no los picometros: exigen datos
+  experimentales por pareja de elementos que la base de datos aun no tiene.
+- **§61 (interfaz).** Existe como pestana «Analizar» del inspector, con
+  descenso y migas de pan. No hay todavia el mapa visual del §47 ni la
+  comparacion de dos especies lado a lado.
+
+## No implementado
+
+- **§32, §33 (acido-base).** El motor clasifica y asigna estados de oxidacion,
+  pero no calcula fuerza acida ni predice el comportamiento en agua.
+- **§37, §38 (reactividad).** Sitios electrofilos y nucleofilos.
+- **§39–§46 (Reaction Engine).** El segundo brief lo deja fuera de alcance
+  explicitamente; §55 prepara el terreno conservando la identidad de cada atomo.
+- **Cadenas y ciclos.** El motor de Lewis construye esqueletos de un centro con
+  terminales. Cualquier especie con mas de un carbono queda declarada fuera de
+  alcance, con su razon.
+
 ## Lo siguiente, por orden de valor
 
-1. **Interfaz de cantidades (§26).** El motor esta hecho y probado; solo falta
-   el formulario. Es el mayor retorno por esfuerzo del proyecto.
-2. **Dibujo de la red de transformaciones (§22).** El grafo ya esta calculado;
+1. **Motor acido-base (§32, §33).** Es lo que mas se echa en falta del segundo
+   brief: el perfil llega hasta las propiedades fisicas y se detiene antes del
+   comportamiento en disolucion, que es lo que mas se pregunta.
+2. **Interfaz de cantidades (§26).** El motor esta hecho y probado; solo falta
+   el formulario. Es el mayor retorno por esfuerzo del primer brief.
+3. **Dibujo de la red de transformaciones (§22).** El grafo ya esta calculado;
    falta la disposicion visual de nodos y aristas.
-3. **Modo descubrimiento (§23).** Interponer «¿que crees que ocurrira?» antes
+4. **Modo descubrimiento (§23).** Interponer «¿que crees que ocurrira?» antes
    de mostrar el resultado. El motor ya devuelve las alternativas necesarias.
-4. **Modo examen (§35).** Los metadatos por reaccion (dificultad, conceptos)
+5. **Modo examen (§35).** Los metadatos por reaccion (dificultad, conceptos)
    estan puestos precisamente para esto.
-5. **Ampliar la base de datos.** Es el eje que mas mejora la experiencia sin
+6. **Ampliar la base de datos.** Es el eje que mas mejora la experiencia sin
    tocar una linea de motor: mas sustancias y mas reacciones densifican
    automaticamente la red de rutas.
 
@@ -85,3 +137,8 @@ No hay nada marcado como hecho que no lo este.
 - **Anadir una regla de prediccion:** una funcion en `engine/predict.ts` y una
   entrada en `PAIR_RULES`. Toda prediccion se balancea antes de devolverse.
 - **Anadir una geometria:** una entrada en `SPECS` de `geometry/vsepr.ts`.
+- **Anadir un resultado al analisis:** una llamada a `graph.add()` en
+  `analysis/analyze.ts` declarando de que otros hallazgos depende. El boton
+  «¿por que?», el mapa de informacion, el filtro por profundidad y el resumen
+  de fiabilidad lo recogen solos; no hay que tocar la interfaz. Si la
+  dependencia esta mal escrita, las pruebas lo dicen.

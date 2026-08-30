@@ -1717,3 +1717,386 @@ button { cursor: pointer; border: none; background: none; }
   /* Algo menos alta, para que la franja del fondo sea alcanzable de verdad. */
   .inspector { max-height: 82dvh; }
 }
+
+/* ==========================================================================
+   CHEMICAL ANALYSIS ENGINE (§50, §61, §66)
+   ==========================================================================
+
+   Los colores de confianza se construyen sobre los tokens de acento que ya
+   estan definidos en las tres ramas de tema (claro, oscuro y sin marcar), de
+   modo que no hace falta redefinirlos tres veces ni se pueden quedar a medias
+   en el estado por defecto, que es el que no lleva data-theme.
+   ========================================================================== */
+
+.analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.analysis-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.analysis-formula {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.analysis-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.conf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* --- Etiqueta de confianza (§57) ---------------------------------------- */
+
+.conf {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+  /* El fondo se tine del propio color con muy poca opacidad: asi la etiqueta
+     se lee en tema claro y en oscuro sin definir dos paletas. */
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.conf-experimental { color: var(--evidence-established); }
+.conf-calculated   { color: var(--accent); }
+.conf-theoretical  { color: var(--violet); }
+.conf-educational  { color: var(--evidence-conditional); }
+.conf-unknown      { color: var(--text-faint); }
+
+/* --- Secciones ---------------------------------------------------------- */
+
+.analysis-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.analysis-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text);
+}
+
+/* --- Tarjeta de resultado ------------------------------------------------ */
+
+.finding-grid {
+  display: grid;
+  /* minmax(0, …) y no 1fr: 1fr tiene suelo de contenido minimo y una formula
+     larga desbordaria la columna en pantallas estrechas. */
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 10px;
+}
+
+.finding {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+
+.finding-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.finding-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.finding-value {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.finding-value.big {
+  font-size: 22px;
+}
+
+.finding-because {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* El boton «¿por que?» es la pieza central del §66: tiene que verse como una
+   invitacion, no como un enlace secundario. */
+.why-button {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.why-button:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.why-button:active {
+  transform: translateY(1px);
+}
+
+/* --- Control de profundidad (§48) --------------------------------------- */
+
+.level-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.level-control label {
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10.5px;
+}
+
+.level-control input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.level-control output {
+  min-width: 76px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.analysis-hint {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+}
+
+.limitations {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* --- Vista «¿por que?» --------------------------------------------------- */
+
+.why-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.crumb {
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.crumb:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.crumb.current {
+  color: var(--text);
+  font-weight: 600;
+  cursor: default;
+}
+
+.crumb-root {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.crumb-sep {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.why-subject {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.why-because {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.why-model,
+.why-confidence {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.why-steps {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.why-math {
+  display: block;
+  margin-top: 5px;
+  padding: 6px 9px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  /* Una expresion larga se desplaza dentro de su caja: la pagina nunca
+     desplaza en horizontal. */
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.used-by {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.used-by-item {
+  text-align: left;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.used-by-item strong {
+  color: var(--text);
+}
+
+.used-by-item:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+@media (max-width: 900px) {
+  .analysis-formula { font-size: 22px; }
+  .finding-grid { grid-template-columns: 1fr; }
+  /* En movil el boton se estira: es el objetivo tactil mas pulsado de la
+     vista y una pildora estrecha se falla. */
+  .why-button { align-self: stretch; text-align: center; padding: 9px 12px; }
+}
+
+/* Con la pestana «Analizar» son cinco, y en las pantallas mas estrechas la
+   suma de sus anchos supera la del panel: la ultima quedaba cortada sin que
+   nada indicara que hay mas. La fila ya puede desplazarse, pero es mejor que
+   quepan: se aprieta el texto lo justo. */
+@media (max-width: 400px) {
+  .inspector-tab {
+    padding: 5px 5px;
+    font-size: 10.5px;
+    letter-spacing: -0.01em;
+  }
+}

@@ -11,7 +11,7 @@
 import type { Composition, CompoundClass, Element } from './types.js';
 import { METALLIC_CATEGORIES } from './types.js';
 import { getElement } from '../data/elements.js';
-import { ANION_LIST } from '../data/ions.js';
+import { ANION_LIST, getIonsByFormula } from '../data/ions.js';
 import { parseFormula } from './formula/parse.js';
 
 export interface Classification {
@@ -119,6 +119,49 @@ export function classify(formula: string, composition: Composition, charge = 0):
   const has = (s: string): boolean => composition.has(s);
   const tags: string[] = [];
 
+  /*
+   * --- Especies cargadas -------------------------------------------------
+   *
+   * Un ion NO es un compuesto, y tratarlo como tal produce disparates: el
+   * nitrato NO3⁻ encajaba en la rama de los oxidos (no metal + oxigeno) y
+   * salia clasificado como "oxido acido (anhidrido)", con el nombre "oxido de
+   * nitrogeno(VI)". Ni es un oxido, ni el nitrogeno esta a +6: en el nitrato
+   * esta a +5, y la diferencia viene precisamente de la carga que la rama
+   * anterior ignoraba.
+   *
+   * La comprobacion tiene que ir ANTES que todo lo demas, porque la formula de
+   * un ion es indistinguible de la de un compuesto neutro si no se mira su
+   * carga.
+   */
+  if (charge !== 0) {
+    const sign = charge > 0 ? 'cation' : 'anion';
+    /*
+     * La busqueda usa la COMPOSICION, no la cadena. La tabla de iones guarda
+     * "NO3", pero el usuario puede haber escrito "NO3-", "NO3^-", "NO3(-)" o
+     * "NO3 -", y recortar la notacion a base de expresiones regulares falla
+     * justo en la forma corta: en "SO4-2" el "4" pertenece al oxigeno y el "2"
+     * a la carga, y ninguna regla local sobre la cadena distingue los dos.
+     * La composicion ya viene resuelta por el analizador.
+     */
+    const body = [...composition].map(([sym, n]) => `${sym}${n > 1 ? n : ''}`).join('');
+    const known = getIonsByFormula(body).find((i) => i.charge === charge);
+    const monatomic = composition.size === 1 && [...composition.values()][0] === 1;
+    return {
+      compoundClass: 'other',
+      label: charge > 0 ? 'Cation' : 'Anion',
+      reason:
+        `Especie con carga ${charge > 0 ? '+' : ''}${charge}: es un ION, no un compuesto. ` +
+        (known ? `Se reconoce como el ion ${known.name}. ` : '') +
+        (monatomic
+          ? 'Al ser monoatomico, su carga es directamente el estado de oxidacion del elemento.'
+          : 'Al ser poliatomico, se comporta como una unidad: entra y sale de las reacciones entero.'),
+      cationSymbol: charge > 0 ? leadingSymbol(compact) : null,
+      anionFormula: charge < 0 ? compact : null,
+      ionic: false,
+      tags: ['ion', sign, ...(known?.polyatomic ? ['polyatomic'] : []), ...(monatomic ? ['monatomic'] : [])],
+    };
+  }
+
   // --- Sustancia simple --------------------------------------------------
   if (composition.size === 1 && charge === 0) {
     const sym = symbols[0]!;
@@ -155,15 +198,53 @@ export function classify(formula: string, composition: Composition, charge = 0):
     }
   }
 
+  /*
+   * --- Agua -------------------------------------------------------------
+   *
+   * El agua necesita su propio caso, y no por capricho.
+   *
+   * Sin el, "H2O" encajaba en el patron "H seguido de un no metal" y salia
+   * clasificada como ACIDO BINARIO, lo cual es falso: el agua no es un
+   * hidracido. Y la rama de los oxidos la excluye a proposito, porque esa
+   * rama existe para separar oxidos basicos de acidos segun el otro elemento
+   * sea metal o no, y con el hidrogeno esa pregunta no lleva a ninguna parte.
+   *
+   * Lo que el agua es, quimicamente, es ANFOTERA: se comporta como acido
+   * frente a una base y como base frente a un acido. Decir eso es mas
+   * informativo que forzarla dentro de cualquiera de las dos familias.
+   */
+  if (compact === 'H2O') {
+    return {
+      compoundClass: 'amphoteric-oxide',
+      label: 'Oxido de hidrogeno (agua)',
+      reason:
+        'El agua es ANFOTERA: cede un proton frente a una base y lo acepta frente a un acido. No es ' +
+        'un hidracido (el enlace O–H es demasiado fuerte y el ion O²⁻ demasiado basico) ni un oxido ' +
+        'basico o acido al uso. Es el disolvente de referencia de toda la quimica en disolucion.',
+      cationSymbol: 'H',
+      anionFormula: 'O',
+      ionic: false,
+      tags: ['oxide', 'amphoteric', 'solvent'],
+    };
+  }
+
   // --- Peroxidos ---------------------------------------------------------
   if (PEROXIDES.has(compact)) {
+    // El caracter ionico depende de con quien vaya el grupo peroxo: Na2O2 y
+    // BaO2 son solidos ionicos, pero el H2O2 es una molecula covalente. Sin
+    // esta distincion el agua oxigenada quedaria fuera de todo el analisis
+    // molecular, que si le corresponde.
+    const peroxideCation = leadingSymbol(compact);
+    const peroxideIsIonic = peroxideCation !== null && METAL(getElement(peroxideCation));
     return {
       compoundClass: 'peroxide',
       label: 'Peroxido',
-      reason: 'Contiene el grupo peroxo O—O, en el que el oxigeno actua con -1 en lugar de -2.',
-      cationSymbol: leadingSymbol(compact),
+      reason:
+        'Contiene el grupo peroxo O—O, en el que el oxigeno actua con -1 en lugar de -2.' +
+        (peroxideIsIonic ? '' : ' Al no haber ningun metal, es una molecula covalente, no una red ionica.'),
+      cationSymbol: peroxideCation,
       anionFormula: 'O2',
-      ionic: true,
+      ionic: peroxideIsIonic,
       tags: ['peroxide', 'oxide'],
     };
   }
@@ -243,7 +324,21 @@ export function classify(formula: string, composition: Composition, charge = 0):
           tags: ['acid', 'oxoacid'],
         };
       }
-      if (composition.size === 2) {
+      /*
+       * Hidracido: hidrogeno con un HALOGENO o con un calcogeno POR DEBAJO
+       * del oxigeno (S, Se, Te). Son los que ceden H⁺ en disolucion acuosa.
+       *
+       * La restriccion no es cosmetica. Sin ella, "H2O" encaja en el patron
+       * "H + un no metal" y el agua sale clasificada como acido binario, que
+       * es falso: el agua es anfotera y su nombre sistematico es oxido de
+       * hidrogeno. El H2O2 caia en la misma trampa.
+       *
+       * Quimicamente la razon de excluir al oxigeno es que el enlace O–H es
+       * demasiado fuerte y el ion O²⁻ demasiado basico: el agua no se
+       * comporta como HCl o H2S.
+       */
+      const HYDRACID_PARTNERS = new Set(['F', 'Cl', 'Br', 'I', 'At', 'S', 'Se', 'Te']);
+      if (composition.size === 2 && restSymbol !== null && HYDRACID_PARTNERS.has(restSymbol)) {
         return {
           compoundClass: 'binary-acid',
           label: 'Acido binario (hidracido)',

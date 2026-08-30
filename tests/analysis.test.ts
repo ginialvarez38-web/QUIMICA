@@ -628,3 +628,68 @@ describe('perfil completo', () => {
     assert.equal(analyzeSpecies('NH4+')?.pretty, 'NH₄⁺');
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe('limites del motor', () => {
+  test('una formula grande no cuelga el motor', () => {
+    // La busqueda de estructuras prueba 3^terminales combinaciones. Con la
+    // glucosa (23 terminales) serian 9,4·10¹⁰ y el motor se quedaba colgado
+    // en lugar de contestar. El limite se comprueba ANTES del bucle.
+    const started = Date.now();
+    for (const formula of ['C6H12O6', 'C8H18', 'CH3COOH', 'IF7']) {
+      const profile = analyzeSpecies(formula);
+      assert.ok(profile, formula);
+      assert.equal(profile.lewis, null, `${formula} queda fuera del modelo central-terminal`);
+      assert.ok(profile.graph.get('lewis.unavailable'), `${formula}: deberia explicarse`);
+    }
+    assert.ok(Date.now() - started < 2000, 'el analisis debe ser inmediato');
+  });
+
+  test('seis terminales siguen entrando', () => {
+    for (const formula of ['SF6', 'XeF6']) {
+      assert.ok(deriveLewis(formula), formula);
+    }
+  });
+});
+
+describe('clasificacion y nombre de las especies analizadas', () => {
+  test('un ion no se clasifica ni se nombra como un compuesto neutro', () => {
+    // El nitrato encajaba en la rama de los oxidos y salia como "oxido de
+    // nitrogeno(VI)": las reglas de los oxidos suponen carga cero, y con un
+    // anion esa suposicion es falsa.
+    const no3 = analyzeSpecies('NO3-');
+    assert.equal(no3?.graph.get('identity.class')?.value, 'Anion');
+    assert.equal(no3?.graph.get('identity.name')?.value, 'nitrato');
+    assert.equal(no3?.graph.get('redox.oxidationStates')?.value, 'N +5 · O -2');
+
+    assert.equal(analyzeSpecies('SO4-2')?.graph.get('identity.name')?.value, 'sulfato');
+    assert.equal(analyzeSpecies('NH4+')?.graph.get('identity.name')?.value, 'amonio');
+  });
+
+  test('el agua no es un hidracido', () => {
+    // "H2O" encajaba en el patron "H seguido de un no metal" y salia como
+    // acido binario. El agua es anfotera.
+    const water = analyzeSpecies('H2O');
+    assert.match(water?.graph.get('identity.class')?.value ?? '', /agua/);
+    assert.match(water?.graph.get('identity.class')?.because ?? '', /ANFOTERA/);
+    // Los hidracidos de verdad siguen siendolo.
+    for (const acid of ['HCl', 'HF', 'H2S']) {
+      assert.equal(analyzeSpecies(acid)?.graph.get('identity.class')?.value, 'Acido binario (hidracido)', acid);
+    }
+  });
+
+  test('el agua oxigenada es molecular, no una red ionica', () => {
+    // Marcarla como ionica la dejaba fuera de todo el analisis molecular.
+    const profile = analyzeSpecies('H2O2');
+    assert.ok(profile?.lewis, 'deberia analizarse como molecula');
+  });
+
+  test('el nombre de uso gana al derivado cuando existe', () => {
+    // Las reglas dan "nitrato de hidrogeno", que es correcto, pero nadie lo
+    // llama asi.
+    assert.equal(analyzeSpecies('HNO3')?.graph.get('identity.name')?.value, 'acido nitrico');
+    assert.equal(analyzeSpecies('H2SO4')?.graph.get('identity.name')?.value, 'acido sulfurico');
+    assert.equal(analyzeSpecies('H2O')?.graph.get('identity.name')?.value, 'agua');
+  });
+});

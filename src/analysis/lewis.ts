@@ -400,12 +400,20 @@ export function deriveLewis(formula: string): LewisResult | null {
       '(el hidrogeno nunca puede ser central, porque solo forma un enlace).',
   });
 
-  // Un esqueleto central-terminal exige que el central pueda con todos.
+  /*
+   * LIMITE DURO, y por dos razones a la vez.
+   *
+   * La quimica: alrededor de un solo atomo central caben como mucho seis
+   * terminales. Una formula que pida mas no es un esqueleto central-terminal,
+   * es una cadena o un ciclo, y este modelo no los construye.
+   *
+   * El coste: la busqueda prueba 3^terminales combinaciones de ordenes de
+   * enlace. Con 6 son 729, instantaneas. Con los 23 terminales de la glucosa
+   * serian 9,4·10¹⁰, y el motor se queda colgado en lugar de contestar. El
+   * limite tiene que comprobarse ANTES del bucle, no dentro.
+   */
   if (terminalCount > 6) {
-    warnings.push(
-      `${terminalCount} atomos terminales alrededor de un solo centro exceden lo que este modelo ` +
-        'sabe describir. La estructura mostrada puede no corresponder a la real.',
-    );
+    return null;
   }
 
   steps.push({
