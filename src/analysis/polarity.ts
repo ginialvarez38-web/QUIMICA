@@ -61,6 +61,11 @@ export interface PolarityResult {
   /** Por que se cancelan o por que no. */
   readonly reason: string;
   readonly symmetric: boolean;
+  /**
+   * La polaridad la decide el par libre y no los enlaces: los dipolos de
+   * enlace se cancelan (o son nulos) pero queda un par libre sin compensar.
+   */
+  readonly decidedByLonePairs: boolean;
   readonly steps: readonly { readonly n: number; readonly text: string; readonly math?: string }[];
   readonly caution: string;
 }
@@ -250,9 +255,46 @@ export function analyzePolarity(structure: LewisStructure, geometry: GeometryRes
   }
 
   const magnitude = norm(net);
-  const isPolar = magnitude >= CANCELLATION_THRESHOLD;
   const polarBonds = bonds.filter((b) => b.kind !== 'apolar');
-  const symmetric = !isPolar && polarBonds.length > 0;
+
+  /*
+   * CONTRIBUCION DE LOS PARES LIBRES.
+   *
+   * Sumar solo dipolos de ENLACE deja fuera algo real: un par libre es una
+   * acumulacion de carga negativa que no esta compensada por ningun nucleo, y
+   * tambien aporta al dipolo.
+   *
+   * Normalmente no cambia la conclusion, porque en las moleculas con pares
+   * libres los enlaces ya son polares y apuntan al mismo lado (H2O, NH3). Pero
+   * hay un caso en que decide: la FOSFINA. P y H tienen practicamente la misma
+   * electronegatividad (2,19 y 2,20), asi que los dipolos de enlace son nulos
+   * y la suma vectorial da cero — y sin embargo el PH3 es polar (μ = 0,58 D),
+   * porque el par libre no esta compensado.
+   *
+   * En lugar de inventarle un modulo al par libre, se comprueba si su
+   * DIRECCION queda sin compensar. Eso depende solo de la geometria molecular,
+   * y estas cinco son las formas en que los pares libres no se cancelan entre
+   * si.
+   */
+  const ASYMMETRIC_LONE_PAIR_SHAPES = new Set([
+    'angular',
+    'piramidal trigonal',
+    'balancin',
+    'forma de T',
+    'piramidal cuadrada',
+  ]);
+  const lonePairsUncompensated =
+    central !== null &&
+    central.lonePairs > 0 &&
+    central.vsepr !== null &&
+    ASYMMETRIC_LONE_PAIR_SHAPES.has(central.vsepr.geometry);
+
+  const bondDipolesCancel = magnitude < CANCELLATION_THRESHOLD;
+  const isPolar = !bondDipolesCancel || lonePairsUncompensated;
+  /** Los dipolos de enlace existen y la geometria los anula. */
+  const symmetric = bondDipolesCancel && polarBonds.length > 0 && !lonePairsUncompensated;
+  /** El resultado depende del par libre, no de los enlaces. */
+  const decidedByLonePairs = bondDipolesCancel && lonePairsUncompensated;
 
   const steps: { n: number; text: string; math?: string }[] = [
     {
@@ -273,7 +315,13 @@ export function analyzePolarity(structure: LewisStructure, geometry: GeometryRes
     },
     {
       n: 3,
-      text: isPolar
+      text: decidedByLonePairs
+        ? 'La suma de los dipolos de ENLACE da cero. Pero el atomo central tiene pares libres cuya ' +
+          'direccion no esta compensada por ningun otro, y un par libre tambien es carga negativa ' +
+          'acumulada. La molecula es POLAR por el par libre, no por los enlaces. La fosfina (PH3) es ' +
+          'el caso de manual: P y H tienen casi la misma electronegatividad, los enlaces son ' +
+          'practicamente apolares, y aun asi el PH3 tiene momento dipolar.'
+        : !bondDipolesCancel
         ? 'La suma NO es cero: queda un momento dipolar neto y la molecula es POLAR.'
         : polarBonds.length > 0
           ? 'La suma es CERO. Los enlaces son polares, pero la geometria los coloca de forma que se ' +
@@ -293,7 +341,11 @@ export function analyzePolarity(structure: LewisStructure, geometry: GeometryRes
     });
   }
 
-  const reason = isPolar
+  const reason = decidedByLonePairs
+    ? `Los dipolos de enlace se cancelan, pero la geometria (${central?.vsepr?.geometry}) deja los ` +
+      'pares libres del atomo central sin compensar. Un par libre es carga negativa sin nucleo ' +
+      'que la equilibre, asi que tambien contribuye al dipolo, y aqui es el unico que queda.'
+    : isPolar
     ? central && central.lonePairs > 0
       ? `Los ${central.lonePairs} par${central.lonePairs === 1 ? '' : 'es'} libre${central.lonePairs === 1 ? '' : 's'} sobre el ` +
         `${central.symbol} rompen la simetria: los dipolos de enlace ya no pueden cancelarse porque no ` +
@@ -316,6 +368,7 @@ export function analyzePolarity(structure: LewisStructure, geometry: GeometryRes
     direction: describeDirection(structure, contributions, net),
     reason,
     symmetric,
+    decidedByLonePairs,
     steps,
     caution:
       'La magnitud que aparece aqui esta en unidades de diferencia de electronegatividad, NO en ' +

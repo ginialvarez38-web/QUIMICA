@@ -13,6 +13,11 @@ import assert from 'node:assert/strict';
 import { configureAtom, lewisValenceElectrons, ionise, quantumNumbers } from '../src/analysis/electronic.js';
 import { deriveLewis, lewisLine, validateLewis, formalChargeWorkings } from '../src/analysis/lewis.js';
 import { FindingGraph } from '../src/analysis/findings.js';
+import { analyzeResonance } from '../src/analysis/resonance.js';
+import { analyzeGeometry } from '../src/analysis/hybridization.js';
+import { analyzePolarity } from '../src/analysis/polarity.js';
+import { analyzeIntermolecularForces, compareBoilingPoint } from '../src/analysis/imf.js';
+import { analyzeSpecies } from '../src/analysis/analyze.js';
 import { getElement } from '../src/data/elements.js';
 
 // ---------------------------------------------------------------------------
@@ -299,5 +304,327 @@ describe('grafo de hallazgos', () => {
     const breakdown = build().confidenceBreakdown();
     assert.equal(breakdown.theoretical, 2);
     assert.equal(breakdown.calculated, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('resonancia', () => {
+  const resonanceOf = (formula: string) => {
+    const lewis = deriveLewis(formula);
+    assert.ok(lewis, `no se pudo derivar ${formula}`);
+    return analyzeResonance(lewis);
+  };
+
+  test('el orden de enlace del hibrido sale del promedio, no de una tabla', () => {
+    // Son los valores de los libros. Aqui estan CALCULADOS: si el motor de
+    // Lewis cambiara, estos numeros cambiarian con el, y por eso valen como
+    // prueba de que la deduccion es correcta.
+    const expected: [string, number, number][] = [
+      // formula, numero de estructuras, orden de enlace promedio
+      ['NO3-', 3, 4 / 3],
+      ['CO3-2', 3, 4 / 3],
+      ['NO2-', 2, 1.5],
+      ['O3', 2, 1.5],
+      ['SO4-2', 6, 1.5],
+      ['PO4-3', 4, 1.25],
+      ['ClO4-', 4, 1.75],
+    ];
+    for (const [formula, count, order] of expected) {
+      const r = resonanceOf(formula);
+      assert.equal(r.hasResonance, true, `${formula} deberia tener resonancia`);
+      assert.equal(r.count, count, `${formula}: numero de estructuras`);
+      const delocalized = r.bonds.filter((b) => b.delocalized);
+      for (const bond of delocalized) {
+        assert.ok(
+          Math.abs(bond.averageOrder - order) < 1e-9,
+          `${formula} ${bond.label}: orden ${bond.averageOrder}, esperado ${order}`,
+        );
+      }
+    }
+  });
+
+  test('todos los enlaces equivalentes salen con el MISMO orden', () => {
+    // Es la razon de ser de la resonancia: los tres N–O del nitrato miden lo
+    // mismo, y una sola estructura de Lewis no lo explicaria.
+    const orders = new Set(resonanceOf('NO3-').bonds.map((b) => b.averageOrder));
+    assert.equal(orders.size, 1);
+  });
+
+  test('sin estructuras equivalentes no hay resonancia', () => {
+    for (const formula of ['CO2', 'H2O', 'CH4', 'BF3', 'N2', 'NH3']) {
+      assert.equal(resonanceOf(formula).hasResonance, false, `${formula} no deberia tener resonancia`);
+    }
+  });
+
+  test('la carga se reparte solo entre los atomos cuya carga formal cambia', () => {
+    // El nitrogeno del nitrato lleva +1 en las TRES estructuras: esa carga no
+    // esta deslocalizada, esta fija. Los oxigenos alternan y esos si comparten.
+    const shared = resonanceOf('NO3-').chargeSharedBy;
+    assert.deepEqual([...shared], ['O2', 'O3', 'O4']);
+  });
+
+  test('la advertencia del §59 acompana siempre al resultado', () => {
+    const r = resonanceOf('NO3-');
+    assert.ok(r.caution.includes('NO salta'));
+    assert.ok(r.caution.includes('NOTACION'));
+  });
+
+  test('no se inventa una energia de resonancia', () => {
+    assert.ok(resonanceOf('CO3-2').stabilization.includes('no estima'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('geometria e hibridacion', () => {
+  const geom = (formula: string) => {
+    const lewis = deriveLewis(formula);
+    assert.ok(lewis, `no se pudo derivar ${formula}`);
+    return analyzeGeometry(lewis.best);
+  };
+
+  test('numero esterico, hibridacion y geometria de los casos de manual', () => {
+    const cases: [string, number, string, string][] = [
+      // formula, numero esterico, hibridacion, geometria molecular
+      ['CH4', 4, 'sp³', 'tetraedrica'],
+      ['NH3', 4, 'sp³', 'piramidal trigonal'],
+      ['H2O', 4, 'sp³', 'angular'],
+      ['CO2', 2, 'sp', 'lineal'],
+      ['BF3', 3, 'sp²', 'trigonal plana'],
+      ['SO2', 3, 'sp²', 'angular'],
+      ['PCl5', 5, 'sp³d', 'bipiramidal trigonal'],
+      ['SF6', 6, 'sp³d²', 'octaedrica'],
+      ['SF4', 5, 'sp³d', 'balancin'],
+      ['ClF3', 5, 'sp³d', 'forma de T'],
+      ['XeF4', 6, 'sp³d²', 'cuadrada plana'],
+      ['BrF5', 6, 'sp³d²', 'piramidal cuadrada'],
+      ['I3^-', 5, 'sp³d', 'lineal'],
+    ];
+    for (const [formula, steric, hybrid, shape] of cases) {
+      const central = geom(formula).central;
+      assert.ok(central, `${formula}: no se identifico atomo central`);
+      assert.equal(central.stericNumber, steric, `${formula}: numero esterico`);
+      assert.equal(central.hybridization, hybrid, `${formula}: hibridacion`);
+      assert.equal(central.vsepr?.geometry, shape, `${formula}: geometria molecular`);
+    }
+  });
+
+  test('un enlace multiple cuenta como UNA region', () => {
+    // Es lo que hace lineal al CO2 pese a tener cuatro pares enlazantes.
+    const co2 = geom('CO2').central;
+    assert.equal(co2?.stericNumber, 2);
+    assert.equal(co2?.vsepr?.idealAngle, 180);
+  });
+
+  test('el recuento sigma/pi coincide con los ordenes de enlace', () => {
+    const n2 = geom('N2');
+    assert.equal(n2.sigmaBonds, 1);
+    assert.equal(n2.piBonds, 2, 'el triple enlace es un sigma y dos pi');
+
+    const co2 = geom('CO2');
+    assert.equal(co2.sigmaBonds, 2);
+    assert.equal(co2.piBonds, 2);
+  });
+
+  test('los orbitales p sin hibridar cuadran con los enlaces pi que hacen falta', () => {
+    assert.equal(geom('CO2').central?.unhybridizedP, 2, 'sp deja dos p para los dos pi');
+    assert.equal(geom('SO2').central?.unhybridizedP, 1, 'sp² deja un p');
+    assert.equal(geom('CH4').central?.unhybridizedP, 0, 'sp³ no deja ninguno');
+  });
+
+  test('con dos atomos la geometria no depende de nada', () => {
+    assert.match(geom('N2').shape, /^Lineal por definicion/);
+    assert.match(geom('HF').shape, /^Lineal por definicion/);
+  });
+
+  test('se declara que la hibridacion es un modelo, no un suceso', () => {
+    const caution = geom('CH4').caution;
+    assert.ok(caution.includes('MODELO'));
+    assert.ok(caution.includes('no describe un proceso fisico'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('polaridad', () => {
+  const pol = (formula: string) => {
+    const lewis = deriveLewis(formula);
+    assert.ok(lewis, `no se pudo derivar ${formula}`);
+    return analyzePolarity(lewis.best, analyzeGeometry(lewis.best));
+  };
+
+  test('moleculas con enlaces polares que son APOLARES por simetria', () => {
+    // Es la pregunta que mas se falla, y la respuesta sale de una suma
+    // vectorial, no de una lista de moleculas simetricas.
+    for (const formula of ['CO2', 'CCl4', 'BF3', 'SO3', 'PCl5', 'SF6', 'XeF4', 'XeF2', 'BeCl2']) {
+      const p = pol(formula);
+      assert.equal(p.isPolar, false, `${formula} deberia salir apolar`);
+      assert.equal(p.symmetric, true, `${formula}: tiene enlaces polares que se cancelan`);
+      assert.ok(p.bonds.some((b) => b.kind !== 'apolar'), `${formula}: los enlaces si son polares`);
+    }
+  });
+
+  test('moleculas polares', () => {
+    for (const formula of ['H2O', 'NH3', 'SO2', 'CHCl3', 'HCl', 'HF', 'SF4', 'BrF5', 'H2S']) {
+      assert.equal(pol(formula).isPolar, true, `${formula} deberia salir polar`);
+    }
+  });
+
+  test('la fosfina es polar aunque sus enlaces no lo sean', () => {
+    // P y H tienen casi la misma electronegatividad: los dipolos de enlace son
+    // nulos. Lo que hace polar al PH3 es el par libre, y el motor lo dice.
+    const ph3 = pol('PH3');
+    assert.equal(ph3.isPolar, true);
+    assert.equal(ph3.decidedByLonePairs, true);
+    assert.ok(ph3.bonds.every((b) => b.kind === 'apolar'));
+    assert.ok(ph3.reason.includes('par'));
+  });
+
+  test('la regla del Δχ > 1,7 no se aplica a ciegas', () => {
+    // HF (Δχ = 1,78) y B–F (1,94) la superan y son covalentes: no hay ningun
+    // metal que pueda ceder el electron.
+    assert.equal(pol('HF').bonds[0]?.kind, 'polar');
+    assert.equal(pol('BF3').bonds[0]?.kind, 'polar');
+    // Con un metal de por medio si es ionico.
+    assert.equal(pol('NaCl').bonds[0]?.kind, 'ionico');
+    assert.equal(pol('LiF').bonds[0]?.kind, 'ionico');
+  });
+
+  test('un enlace entre atomos iguales es perfectamente apolar', () => {
+    for (const formula of ['O2', 'N2', 'Cl2', 'H2']) {
+      const p = pol(formula);
+      assert.equal(p.isPolar, false);
+      assert.equal(p.bonds[0]?.deltaEN, 0);
+    }
+  });
+
+  test('no se da un momento dipolar en debyes que el motor no puede calcular', () => {
+    assert.ok(pol('H2O').caution.includes('NO en'));
+    assert.ok(pol('H2O').caution.includes('debyes'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('fuerzas intermoleculares', () => {
+  const forces = (formula: string) => {
+    const lewis = deriveLewis(formula);
+    assert.ok(lewis, `no se pudo derivar ${formula}`);
+    const geometry = analyzeGeometry(lewis.best);
+    const polarity = analyzePolarity(lewis.best, geometry);
+    return { imf: analyzeIntermolecularForces(lewis.best, polarity), polar: polarity.isPolar, name: formula };
+  };
+
+  test('el puente de hidrogeno exige H unido a N, O o F', () => {
+    for (const formula of ['H2O', 'NH3', 'HF']) {
+      assert.equal(forces(formula).imf.dominant?.kind, 'puente-hidrogeno', formula);
+    }
+    // El CH4 tiene cuatro hidrogenos y no forma ni uno.
+    assert.equal(forces('CH4').imf.hydrogenBondDonors, 0);
+    // El H2S tiene hidrogenos pero el azufre no sirve: es demasiado grande.
+    assert.equal(forces('H2S').imf.hydrogenBondDonors, 0);
+    assert.equal(forces('H2S').imf.dominant?.kind, 'dipolo-dipolo');
+  });
+
+  test('las fuerzas de dispersion estan siempre', () => {
+    for (const formula of ['H2O', 'CH4', 'N2', 'CO2']) {
+      const dispersion = forces(formula).imf.forces.find((f) => f.kind === 'dispersion');
+      assert.equal(dispersion?.present, true, formula);
+    }
+  });
+
+  test('el orden de puntos de ebullicion se predice sin conocer las cifras', () => {
+    const higher = (a: string, b: string): string | undefined =>
+      compareBoilingPoint(forces(a), forces(b))?.higher;
+
+    // La anomalia del agua: mas ligera que el H2S y hierve 160 °C mas alto.
+    assert.equal(higher('H2O', 'H2S'), 'H2O');
+    assert.equal(higher('NH3', 'PH3'), 'NH3');
+    // Entre apolares de la misma familia decide el numero de electrones.
+    assert.equal(higher('I2', 'F2'), 'I2');
+    assert.equal(higher('Br2', 'Cl2'), 'Br2');
+  });
+
+  test('se declara que las fuerzas intermoleculares NO son enlaces', () => {
+    const caution = forces('H2O').imf.caution;
+    assert.ok(caution.includes('NO son enlaces'));
+    assert.ok(caution.includes('no se rompe ningun enlace'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('perfil completo', () => {
+  test('el analisis conecta la formula con una propiedad observable', () => {
+    // Es el §66 en una prueba: se parte de "el agua hierve muy alto" y se
+    // desciende, paso a paso, hasta la formula. Cada eslabon es un calculo.
+    const profile = analyzeSpecies('H2O');
+    assert.ok(profile);
+
+    const boiling = profile.graph.section('propiedades')[0];
+    assert.ok(boiling, 'deberia haber una prediccion de punto de ebullicion');
+
+    const chain = profile.graph.explain(boiling.id).map((c) => c.finding.id);
+    for (const link of [
+      'imf.dominant',
+      'imf.forces',
+      'polarity.molecular',
+      'geometry.molecular',
+      'lewis.structure',
+      'lewis.valenceCount',
+      'electrons.valence.O',
+      'electrons.config.O',
+      'atom.O',
+      'composition.atoms',
+      'identity.formula',
+    ]) {
+      assert.ok(chain.includes(link), `la cadena de razonamiento deberia pasar por ${link}`);
+    }
+  });
+
+  test('ningun hallazgo depende de otro que no exista', () => {
+    // Una dependencia rota convertiria el boton «¿por que?» en un callejon
+    // sin salida, y es el tipo de fallo que solo se ve cuando alguien lo pulsa.
+    for (const formula of ['H2O', 'CO2', 'NH3', 'NO3-', 'SO4-2', 'CH4', 'BF3', 'NaCl', 'SF6', 'O3']) {
+      const profile = analyzeSpecies(formula);
+      assert.ok(profile, formula);
+      assert.deepEqual(profile.graph.problems(), [], `${formula}: dependencias rotas`);
+    }
+  });
+
+  test('un compuesto ionico no se analiza como si fuera una molecula', () => {
+    const profile = analyzeSpecies('NaCl');
+    assert.ok(profile);
+    assert.equal(profile.lewis, null);
+    assert.equal(profile.geometry, null);
+    const note = profile.graph.get('lewis.notApplicable');
+    assert.ok(note, 'deberia declararse que no aplica');
+    assert.ok(note.because.includes('No existe "una molecula"'));
+    assert.ok(profile.limitations.some((l) => l.includes('ionico')));
+  });
+
+  test('un radical se declara fuera del modelo en lugar de forzarlo', () => {
+    for (const formula of ['NO', 'NO2']) {
+      const profile = analyzeSpecies(formula);
+      assert.ok(profile, formula);
+      assert.equal(profile.lewis, null);
+      const note = profile.graph.get('lewis.unavailable');
+      assert.ok(note, `${formula}: deberia explicarse por que no se puede`);
+      assert.equal(note.confidence, 'unknown');
+      assert.ok(note.because.includes('radical'), `${formula}: deberia decir que es un radical`);
+    }
+  });
+
+  test('la hibridacion se etiqueta como modelo educativo, no como calculo', () => {
+    // §59: no presentar un modelo didactico como si fuera la realidad cuantica.
+    const profile = analyzeSpecies('CH4');
+    assert.equal(profile?.graph.get('hybridization.central')?.confidence, 'educational');
+  });
+
+  test('la formula se muestra con los subindices y la carga en superindice', () => {
+    assert.equal(analyzeSpecies('SO4-2')?.pretty, 'SO₄²⁻');
+    assert.equal(analyzeSpecies('Al2(SO4)3')?.pretty, 'Al₂(SO₄)₃');
+    assert.equal(analyzeSpecies('NH4+')?.pretty, 'NH₄⁺');
   });
 });
