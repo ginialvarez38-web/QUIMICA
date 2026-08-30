@@ -1353,3 +1353,216 @@ button { cursor: pointer; border: none; background: none; }
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
+
+/* ==========================================================================
+   Correcciones de disposicion y ayuda contextual
+   ========================================================================== */
+
+/*
+ * Barra de herramientas y etiqueta del visor en una UNICA fila.
+ *
+ * Antes eran dos cajas absolutas ancladas a esquinas opuestas. En cuanto el
+ * escenario se estrechaba —a partir de unos 1100 px, y siempre en movil— se
+ * solapaban, porque nada las obligaba a repartirse el espacio. Ahora comparten
+ * una fila flexible: si no caben, la etiqueta baja de linea en lugar de
+ * montarse encima de los botones.
+ */
+.viewport-chrome {
+  position: absolute;
+  /* Abarca TODO el visor, no solo la franja superior. Con una franja, un hijo
+     posicionado con `bottom` se anclaba al pie de la franja —es decir, otra
+     vez arriba— en lugar de al pie del visor. */
+  inset: 12px;
+  display: flex;
+  align-items: flex-start;
+  align-content: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  pointer-events: none;
+  z-index: 3;
+}
+.viewport-chrome > * { pointer-events: auto; }
+
+/* Se anulan las posiciones absolutas anteriores: ahora las coloca el flex. */
+.viewport-toolbar,
+.viewport-badge {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  max-width: 100%;
+}
+
+.viewport-hint {
+  z-index: 1;
+  max-width: 60%;
+}
+
+/* --- Franja "que hacer ahora" -------------------------------------------- */
+
+.mode-hint {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.mode-hint b { color: var(--text); font-weight: 620; }
+
+.mode-hint-step {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.mode-hint.done { background: rgba(63, 191, 127, 0.09); color: var(--text-muted); }
+.mode-hint.done .mode-hint-step { background: var(--hazard-safe); color: #05130c; }
+
+/* --- Pestanas de modo con icono ------------------------------------------ */
+
+.mode-icon {
+  margin-right: 6px;
+  opacity: 0.75;
+  font-size: 12px;
+}
+.mode-tab[aria-selected='true'] .mode-icon { opacity: 1; color: var(--accent); }
+
+/*
+ * En pantallas estrechas la cabecera pasa a DOS FILAS.
+ *
+ * Con una sola fila y desplazamiento horizontal, a 360 px solo se veia
+ * "Construir" y no habia nada que sugiriese que existian tres modos mas: los
+ * otros tres eran, a efectos practicos, inaccesibles.
+ */
+@media (max-width: 720px) {
+  .app { grid-template-rows: auto minmax(0, 1fr) minmax(0, 44vh); }
+
+  .header {
+    flex-wrap: wrap;
+    padding: 7px 10px;
+    gap: 8px;
+    height: auto;
+    min-height: 52px;
+  }
+
+  .brand { flex: 1; }
+
+  .mode-tabs {
+    order: 3;
+    /* `flex: 1 0 100%` y no `width: 100%`: la regla de 1000px deja
+       `flex-basis: 0%`, que en un contenedor flexible gana sobre el ancho
+       declarado. Con base 0 las pestanas no forzaban el salto de linea y la
+       cabecera desbordaba la pantalla. */
+    flex: 1 0 100%;
+    min-width: 0;
+    overflow: visible;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 5px 4px;
+    font-size: 11.5px;
+    text-align: center;
+  }
+  .mode-icon { display: block; margin: 0 auto 1px; font-size: 13px; }
+
+  .viewport-hint { display: none; }
+}
+
+@media (max-width: 400px) {
+  .mode-tab { font-size: 10.5px; }
+}
+
+/* --------------------------------------------------------------------------
+   Ajustes finos para pantallas pequenas
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  /*
+   * En movil la barra del visor y la etiqueta ya no compiten por la fila
+   * superior: la barra se queda arriba en UNA linea desplazable, y la etiqueta
+   * baja al pie. Antes se envolvian en tres filas y tapaban precisamente lo
+   * que hay que mirar, que es la molecula.
+   */
+  .viewport-chrome {
+    inset: 8px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .viewport-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 100%;
+  }
+  .viewport-toolbar::-webkit-scrollbar { display: none; }
+  .toolbar-group { flex-shrink: 0; }
+
+  /* Enlaces y etiquetas vienen activados por defecto: son secundarios y en
+     una pantalla estrecha no merecen quitarle sitio a la molecula. */
+  .toolbar-group[aria-label='Elementos visibles'] { display: none; }
+
+  /* En columna, `margin-top: auto` empuja la etiqueta al pie del visor sin
+     sacarla del flujo, asi que no puede volver a montarse sobre la barra. */
+  .viewport-badge {
+    margin-top: auto;
+    font-size: 11px;
+    padding: 4px 9px;
+  }
+
+  /* El visor necesita una altura minima util: por debajo de esto la molecula
+     no se distingue y el modo 3D deja de aportar nada. */
+  .viewport { min-height: 190px; }
+
+  /*
+   * La zona inferior se desplaza como un todo. Antes solo se desplazaban los
+   * resultados, asi que el constructor —que es mas alto que el banco— quedaba
+   * cortado por abajo sin forma de alcanzarlo.
+   */
+  .bench {
+    max-height: 58%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .bench-results { overflow: visible; }
+  .bench-bar, .mode-hint { flex-shrink: 0; }
+
+  .build-row { flex: 1 1 100%; }
+  .build-slot { flex: 1 1 42%; min-width: 112px; }
+  .build-actions { flex: 1 1 100%; }
+  .build-actions .button { flex: 1; }
+
+  /*
+   * En vertical, el RESULTADO va primero.
+   *
+   * Apilados en el orden natural (cation, anion, resultado), la formula
+   * quedaba por debajo del pliegue: habia que desplazarse para ver
+   * precisamente lo que se acaba de construir. Arriba, se ve siempre, y los
+   * dos ingredientes quedan justo debajo como lo que son, el detalle.
+   */
+  .build-result {
+    order: -1;
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .build-equals { display: none; }
+  .build-plus { display: none; }
+
+  .mode-hint { padding: 7px 10px; font-size: 12px; }
+}

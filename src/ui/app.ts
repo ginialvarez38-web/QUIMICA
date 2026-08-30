@@ -154,7 +154,20 @@ function renderLibrary(): void {
   const list = $('#substance-list');
 
   if (results.length === 0) {
-    list.innerHTML = `<div class="empty-state">Sin resultados para «${escapeHtml(state.query)}».<br><br>Prueba con el nombre, el simbolo, la formula o un nombre comun: «calcio», «Ca», «CaO», «cal viva».</div>`;
+    // Si el filtro actual no da nada pero SI lo hay en el resto de la
+    // biblioteca, se dice y se ofrece el salto. En modo Construir la lista
+    // esta filtrada a iones, asi que buscar "HCl" no devolvia nada y el
+    // mensaje generico no explicaba por que.
+    const elsewhere = state.category === 'all' ? 0 : search(state.query, { limit: 5 }).length;
+
+    list.innerHTML = elsewhere > 0
+      ? `<div class="empty-state">
+           Ningun resultado en <b>${escapeHtml(category?.label ?? '')}</b> para «${escapeHtml(state.query)}»,
+           pero hay ${elsewhere === 5 ? '5 o mas' : elsewhere} en el resto de la biblioteca.
+           ${state.mode === 'build' ? '<br><br>El constructor combina <b>iones</b>; las demas sustancias se pueden abrir para consultarlas.' : ''}
+           <br><br><button class="button" data-category="all">Buscar en toda la biblioteca</button>
+         </div>`
+      : `<div class="empty-state">Sin resultados para «${escapeHtml(state.query)}».<br><br>Prueba con el nombre, el simbolo, la formula o un nombre comun: «calcio», «Ca», «CaO», «cal viva».</div>`;
     return;
   }
 
@@ -269,6 +282,74 @@ function renderConstructor(): void {
   }
 }
 
+/**
+ * Franja de "que hacer ahora".
+ *
+ * No es un texto de ayuda fijo: cambia con el estado real. En el constructor
+ * dice si falta el cation o el anion; en el banco, cuantas sustancias llevas.
+ * Un cartel que siempre dice lo mismo se vuelve invisible en dos minutos; uno
+ * que responde a lo que acabas de hacer, no.
+ */
+function renderModeHint(): void {
+  const hint = $('#mode-hint');
+  let icon = '';
+  let text = '';
+  let done = false;
+
+  switch (state.mode) {
+    case 'build': {
+      const { cation, anion } = state.builder;
+      if (!cation && !anion) {
+        icon = '1';
+        text = 'Elige un <b>cation</b> (marcado +) y un <b>anion</b> (marcado −) en la lista de la izquierda.';
+      } else if (!cation) {
+        icon = '2';
+        text = 'Falta el <b>cation</b>: busca uno con la marca <b>+</b> en la lista.';
+      } else if (!anion) {
+        icon = '2';
+        text = 'Falta el <b>anion</b>: busca uno con la marca <b>−</b> en la lista.';
+      } else {
+        icon = '✓';
+        done = true;
+        text = `Compuesto construido. El panel derecho explica <b>como se llega a la formula</b>, paso a paso.`;
+      }
+      break;
+    }
+
+    case 'react': {
+      const n = state.bench.length;
+      if (n === 0) {
+        icon = '1';
+        text = 'Pulsa el boton <b>+</b> de dos sustancias de la lista para llevarlas al banco.';
+      } else if (n === 1) {
+        icon = '2';
+        text = 'Ya hay una. Anade <b>otra sustancia</b> con el boton <b>+</b>.';
+      } else if (state.predictions.length === 0) {
+        icon = '3';
+        text = 'Listo. Pulsa <b>Predecir</b> para ver que se forma y por que.';
+      } else {
+        icon = '✓';
+        done = true;
+        text = 'Usa <b>Explicame</b> en cualquier resultado para el analisis completo, o <b>Simular</b> para verlo en 3D.';
+      }
+      break;
+    }
+
+    case 'routes':
+      icon = '⇢';
+      text = 'Escribe una sustancia de partida y otra de destino en el panel derecho. Prueba <b>S</b> → <b>H2SO4</b>.';
+      break;
+
+    case 'lab':
+      icon = '⚗';
+      text = 'El motor de cantidades esta operativo y probado; su interfaz es lo siguiente en la hoja de ruta.';
+      break;
+  }
+
+  hint.className = done ? 'mode-hint done' : 'mode-hint';
+  hint.innerHTML = `<span class="mode-hint-step">${icon}</span><span>${text}</span>`;
+}
+
 /** Coloca un ion en el hueco que le corresponde por su carga. */
 function placeIon(ion: Ion): void {
   if (ion.charge > 0) state.builder.cation = ion;
@@ -276,6 +357,7 @@ function placeIon(ion: Ion): void {
 
   renderConstructor();
   renderLibrary();
+  renderModeHint();
 
   if (builtFormula()) {
     state.tab = 'ficha';
@@ -306,6 +388,7 @@ function renderBench(): void {
   }
 
   ($('#predict-button') as HTMLButtonElement).disabled = state.bench.length === 0;
+  renderModeHint();
 }
 
 function renderPredictions(): void {
@@ -335,6 +418,8 @@ function runPrediction(): void {
 
   container.innerHTML =
     notice + state.predictions.map((p) => renderReactionCard(p, state.activePrediction?.id === p.id)).join('');
+
+  renderModeHint();
 
   if (state.activePrediction) {
     // Se muestra el primer producto en el visor: es lo que el usuario acaba
@@ -578,6 +663,7 @@ function setMode(mode: Mode): void {
   }
 
   renderLibrary();
+  renderModeHint();
   renderInspector();
 }
 
@@ -695,6 +781,13 @@ function wireEvents(): void {
     selectSubstance(formula);
   });
 
+  // Salto a "Todo" desde el estado vacio de la lista.
+  delegate($('#substance-list'), 'click', '[data-category]', (_e, target) => {
+    state.category = target.dataset['category']!;
+    renderCategories();
+    renderLibrary();
+  });
+
   // Boton "+" explicito: anadir al banco sin teclas modificadoras.
   delegate($('#substance-list'), 'click', '[data-add]', (event, target) => {
     event.stopPropagation();
@@ -708,6 +801,7 @@ function wireEvents(): void {
     else state.builder.anion = null;
     renderConstructor();
     renderLibrary();
+    renderModeHint();
     renderInspector();
   });
 
@@ -715,6 +809,7 @@ function wireEvents(): void {
     state.builder = { cation: null, anion: null };
     renderConstructor();
     renderLibrary();
+    renderModeHint();
     renderInspector();
   });
 

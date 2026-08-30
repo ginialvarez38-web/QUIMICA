@@ -24,10 +24,10 @@
       <div class="header-spacer"></div>
 
       <nav class="mode-tabs" id="mode-tabs" role="tablist" aria-label="Modo de trabajo">
-        <button class="mode-tab" role="tab" data-mode="build" aria-selected="true">Construir</button>
-        <button class="mode-tab" role="tab" data-mode="react" aria-selected="false">Reaccionar</button>
-        <button class="mode-tab" role="tab" data-mode="routes" aria-selected="false">Rutas</button>
-        <button class="mode-tab" role="tab" data-mode="lab" aria-selected="false">Laboratorio</button>
+        <button class="mode-tab" role="tab" data-mode="build" aria-selected="true"><span class="mode-icon">⬡</span>Construir</button>
+        <button class="mode-tab" role="tab" data-mode="react" aria-selected="false"><span class="mode-icon">⇄</span>Reaccionar</button>
+        <button class="mode-tab" role="tab" data-mode="routes" aria-selected="false"><span class="mode-icon">⇢</span>Rutas</button>
+        <button class="mode-tab" role="tab" data-mode="lab" aria-selected="false"><span class="mode-icon">⚗</span>Laboratorio</button>
       </nav>
 
       <button class="button mobile-switch" id="mobile-switch">Analisis</button>
@@ -64,20 +64,25 @@
         <canvas id="gl-canvas" aria-label="Vista tridimensional de la estructura"></canvas>
         <div class="viewport-overlay" id="overlay"></div>
 
-        <div class="viewport-toolbar">
-          <div class="toolbar-group" role="group" aria-label="Representacion">
-            <button class="toolbar-button" data-repr="ball-and-stick" aria-pressed="true">Bolas y varillas</button>
-            <button class="toolbar-button" data-repr="space-filling" aria-pressed="false">Compacto</button>
-            <button class="toolbar-button" data-repr="wireframe" aria-pressed="false">Alambre</button>
+        <!-- Barra y etiqueta comparten una fila flexible. Antes eran dos
+             cajas absolutas en esquinas opuestas y se pisaban en cuanto el
+             escenario se estrechaba; ahora, cuando no caben, se envuelven. -->
+        <div class="viewport-chrome">
+          <div class="viewport-toolbar">
+            <div class="toolbar-group" role="group" aria-label="Representacion">
+              <button class="toolbar-button" data-repr="ball-and-stick" aria-pressed="true">Bolas y varillas</button>
+              <button class="toolbar-button" data-repr="space-filling" aria-pressed="false">Compacto</button>
+              <button class="toolbar-button" data-repr="wireframe" aria-pressed="false">Alambre</button>
+            </div>
+            <div class="toolbar-group" role="group" aria-label="Elementos visibles">
+              <button class="toolbar-button" data-toggle="bonds" aria-pressed="true">Enlaces</button>
+              <button class="toolbar-button" data-toggle="labels" aria-pressed="true">Etiquetas</button>
+            </div>
           </div>
-          <div class="toolbar-group" role="group" aria-label="Elementos visibles">
-            <button class="toolbar-button" data-toggle="bonds" aria-pressed="true">Enlaces</button>
-            <button class="toolbar-button" data-toggle="labels" aria-pressed="true">Etiquetas</button>
-          </div>
+          <div class="viewport-badge" id="viewport-badge" hidden></div>
         </div>
 
-        <div class="viewport-badge" id="viewport-badge" hidden></div>
-        <div class="viewport-hint">Arrastra para rotar · rueda para acercar · Mayus+arrastre para desplazar · clic en un atomo para seguirlo</div>
+        <div class="viewport-hint">Arrastra para rotar · rueda para acercar</div>
 
         <div class="viewport-empty" id="viewport-empty">
           <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.45">
@@ -91,6 +96,9 @@
 
       <!-- Banco de reaccion -->
       <section class="bench" aria-label="Banco de reaccion">
+        <!-- Que hacer ahora mismo, segun el modo y lo que ya se ha elegido. -->
+        <div class="mode-hint" id="mode-hint"></div>
+
         <!-- Constructor de compuestos: visible en el modo Construir. -->
         <div class="bench-bar build-bar" id="build-bar" hidden></div>
 
