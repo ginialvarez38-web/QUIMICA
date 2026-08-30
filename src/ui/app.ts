@@ -311,7 +311,7 @@ function renderModeHint(): void {
       } else {
         icon = '✓';
         done = true;
-        text = `Compuesto construido. El panel derecho explica <b>como se llega a la formula</b>, paso a paso.`;
+        text = `Compuesto construido. Mira <b>como se llega a la formula</b>, paso a paso, en el analisis.`;
       }
       break;
     }
@@ -337,7 +337,7 @@ function renderModeHint(): void {
 
     case 'routes':
       icon = '⇢';
-      text = 'Escribe una sustancia de partida y otra de destino en el panel derecho. Prueba <b>S</b> → <b>H2SO4</b>.';
+      text = 'Abre el <b>analisis</b> y escribe de donde partes y a donde quieres llegar. Prueba <b>S</b> → <b>H2SO4</b>.';
       break;
 
     case 'lab':
@@ -972,10 +972,27 @@ function wireEvents(): void {
   });
 
   // --- Panel movil -------------------------------------------------------
-  $('#mobile-switch').addEventListener('click', () => {
+  const toggleSheet = (open: boolean): void => {
     const app = $('#app');
-    app.dataset['mobilePanel'] = app.dataset['mobilePanel'] === 'inspector' ? 'library' : 'inspector';
+    if (open) app.dataset['sheet'] = 'open';
+    else delete app.dataset['sheet'];
+    $('#mobile-switch').textContent = open ? 'Cerrar' : 'Analisis';
+  };
+
+  $('#mobile-switch').addEventListener('click', () => {
+    toggleSheet($('#app').dataset['sheet'] !== 'open');
   });
+  $('#sheet-backdrop').addEventListener('click', () => toggleSheet(false));
+  $('#sheet-close').addEventListener('click', () => toggleSheet(false));
+
+  // Escape cierra la hoja, como cualquier capa modal.
+  document.addEventListener('keydown', (event) => {
+    if ((event as KeyboardEvent).key === 'Escape') toggleSheet(false);
+  });
+
+  // --- Zoom con botones ---------------------------------------------------
+  $('#zoom-in').addEventListener('click', () => renderer?.zoom('in'));
+  $('#zoom-out').addEventListener('click', () => renderer?.zoom('out'));
 }
 
 function renderLabNotice(): string {

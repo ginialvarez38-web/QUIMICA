@@ -632,60 +632,150 @@ export class MoleculeRenderer {
     };
   }
 
+  /** Desplaza el punto de mira en el plano de la camara. */
+  private panBy(dx: number, dy: number): void {
+    const eye = this.eyePosition();
+    const forward = normalize(subtract(this.target, eye));
+    const right = normalize(cross(forward, { x: 0, y: 1, z: 0 }));
+    const up = cross(right, forward);
+    const scale = this.distance * 0.0016;
+    this.target = {
+      x: this.target.x - right.x * dx * scale + up.x * dy * scale,
+      y: this.target.y - right.y * dx * scale + up.y * dy * scale,
+      z: this.target.z - right.z * dx * scale + up.z * dy * scale,
+    };
+  }
+
+  private zoomBy(factor: number): void {
+    this.distance = Math.max(1.5, Math.min(80, this.distance * factor));
+  }
+
+  /**
+   * Control de camara con raton Y con dedos.
+   *
+   * En un movil no hay rueda de raton: sin gestos tactiles el visor 3D era
+   * literalmente inmanejable, porque no habia forma de acercarse. Se lleva un
+   * registro de los punteros activos:
+   *
+   *   1 dedo   rotar
+   *   2 dedos  pellizcar para acercar y arrastrar para desplazar, a la vez
+   *
+   * Es el mismo gesto que usa cualquier mapa, asi que no hay que explicarlo.
+   */
   private attachControls(): void {
     const canvas = this.canvas;
-    let dragging: 'rotate' | 'pan' | null = null;
+    const pointers = new Map<number, { x: number; y: number }>();
+    let mode: 'rotate' | 'pan' | null = null;
     let lastX = 0;
     let lastY = 0;
+    /** Distancia y centro entre los dos dedos en el fotograma anterior. */
+    let lastPinch: { distance: number; cx: number; cy: number } | null = null;
+
+    const pinchState = (): { distance: number; cx: number; cy: number } | null => {
+      if (pointers.size < 2) return null;
+      const [a, b] = [...pointers.values()];
+      if (!a || !b) return null;
+      return {
+        distance: Math.hypot(a.x - b.x, a.y - b.y),
+        cx: (a.x + b.x) / 2,
+        cy: (a.y + b.y) / 2,
+      };
+    };
 
     canvas.addEventListener('pointerdown', (e: PointerEvent) => {
-      dragging = e.button === 2 || e.shiftKey ? 'pan' : 'rotate';
-      lastX = e.clientX;
-      lastY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      // La captura es una comodidad, no un requisito: permite seguir
+      // arrastrando fuera del lienzo. Puede lanzar si el puntero ya no esta
+      // activo, y sin proteger la llamada esa excepcion abortaba el resto del
+      // manejador y dejaba el control de camara muerto.
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        // sin captura, el arrastre solo funciona dentro del lienzo
+      }
+
+      if (pointers.size === 1) {
+        mode = e.button === 2 || e.shiftKey ? 'pan' : 'rotate';
+        lastX = e.clientX;
+        lastY = e.clientY;
+      } else {
+        // Al aparecer el segundo dedo se abandona la rotacion y se pasa a
+        // pellizcar; si no, el primer dedo seguiria girando la escena.
+        mode = null;
+        lastPinch = pinchState();
+      }
     });
 
     canvas.addEventListener('pointermove', (e: PointerEvent) => {
-      if (!dragging) return;
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      // --- Dos dedos: pellizco y desplazamiento simultaneos ----------------
+      if (pointers.size >= 2) {
+        const now = pinchState();
+        if (now && lastPinch) {
+          if (lastPinch.distance > 0 && now.distance > 0) {
+            this.zoomBy(lastPinch.distance / now.distance);
+          }
+          this.panBy(now.cx - lastPinch.cx, now.cy - lastPinch.cy);
+        }
+        lastPinch = now;
+        return;
+      }
+
+      // --- Un dedo o el raton ---------------------------------------------
+      if (!mode) return;
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
       lastX = e.clientX;
       lastY = e.clientY;
 
-      if (dragging === 'rotate') {
+      if (mode === 'rotate') {
         this.yaw -= dx * 0.008;
         this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + dy * 0.008));
       } else {
-        // Desplazamiento en el plano de la camara.
-        const eye = this.eyePosition();
-        const forward = normalize(subtract(this.target, eye));
-        const right = normalize(cross(forward, { x: 0, y: 1, z: 0 }));
-        const up = cross(right, forward);
-        const scale = this.distance * 0.0016;
-        this.target = {
-          x: this.target.x - right.x * dx * scale + up.x * dy * scale,
-          y: this.target.y - right.y * dx * scale + up.y * dy * scale,
-          z: this.target.z - right.z * dx * scale + up.z * dy * scale,
-        };
+        this.panBy(dx, dy);
       }
     });
 
-    const endDrag = (e: PointerEvent): void => {
-      dragging = null;
-      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    const endPointer = (e: PointerEvent): void => {
+      pointers.delete(e.pointerId);
+      try {
+        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        // el puntero ya se habia liberado
+      }
+
+      if (pointers.size < 2) lastPinch = null;
+      if (pointers.size === 0) {
+        mode = null;
+      } else if (pointers.size === 1) {
+        // Queda un dedo tras soltar el otro: se retoma la rotacion desde su
+        // posicion actual, sin el salto que daria conservar la anterior.
+        const remaining = [...pointers.values()][0]!;
+        lastX = remaining.x;
+        lastY = remaining.y;
+        mode = 'rotate';
+      }
     };
-    canvas.addEventListener('pointerup', endDrag);
-    canvas.addEventListener('pointercancel', endDrag);
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
     canvas.addEventListener('contextmenu', (e: Event) => e.preventDefault());
 
     canvas.addEventListener(
       'wheel',
       (e: WheelEvent) => {
         e.preventDefault();
-        this.distance = Math.max(1.5, Math.min(80, this.distance * (1 + Math.sign(e.deltaY) * 0.12)));
+        this.zoomBy(1 + Math.sign(e.deltaY) * 0.12);
       },
       { passive: false },
     );
+  }
+
+  /** Acerca o aleja un paso; lo usan los botones de zoom de la interfaz. */
+  zoom(direction: 'in' | 'out'): void {
+    this.zoomBy(direction === 'in' ? 0.82 : 1.22);
   }
 
   /**

@@ -1110,54 +1110,7 @@ button { cursor: pointer; border: none; background: none; }
    regla que aparece despues en el archivo. */
 .mobile-switch { display: none; }
 
-@media (max-width: 1000px) {
-  .app {
-    grid-template-columns: minmax(0, 1fr);
-    /* Filas explicitas con minmax(0, …): sin el minimo 0, un panel cuyo
-       contenido es un flex con overflow no reserva altura y se colapsa. */
-    grid-template-rows: 52px minmax(0, 1fr) minmax(0, 44vh);
-    grid-template-areas:
-      'header'
-      'stage'
-      'library';
-  }
 
-  .library, .inspector {
-    border: none;
-    border-top: 1px solid var(--border);
-    min-height: 0;
-  }
-
-  /* Solo uno de los dos paneles ocupa la fila inferior en movil. */
-  .inspector { display: none; }
-  .app[data-mobile-panel='inspector'] .library { display: none; }
-  .app[data-mobile-panel='inspector'] .inspector { display: flex; grid-area: library; }
-
-  .mobile-switch { display: block; }
-
-  /* La cabecera no debe desbordar: las pestanas se desplazan si no caben y
-     el resto de controles conservan su sitio. */
-  .header { gap: 10px; padding: 0 10px; }
-  .brand-sub { display: none; }
-  .header-spacer { display: none; }
-  .mode-tabs {
-    flex: 1;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .mode-tabs::-webkit-scrollbar { display: none; }
-  .mobile-switch, .icon-button { flex-shrink: 0; }
-
-  .bench { max-height: 50%; }
-}
-
-@media (max-width: 620px) {
-  .brand-sub { display: none; }
-  .mode-tab { padding: 5px 9px; font-size: 12px; }
-  .viewport-toolbar { top: 8px; left: 8px; }
-  .toolbar-button { padding: 4px 8px; font-size: 11px; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1448,55 +1401,126 @@ button { cursor: pointer; border: none; background: none; }
  * "Construir" y no habia nada que sugiriese que existian tres modos mas: los
  * otros tres eran, a efectos practicos, inaccesibles.
  */
-@media (max-width: 720px) {
-  .app { grid-template-rows: auto minmax(0, 1fr) minmax(0, 44vh); }
 
-  .header {
-    flex-wrap: wrap;
-    padding: 7px 10px;
-    gap: 8px;
-    height: auto;
-    min-height: 52px;
-  }
-
-  .brand { flex: 1; }
-
-  .mode-tabs {
-    order: 3;
-    /* `flex: 1 0 100%` y no `width: 100%`: la regla de 1000px deja
-       `flex-basis: 0%`, que en un contenedor flexible gana sobre el ancho
-       declarado. Con base 0 las pestanas no forzaban el salto de linea y la
-       cabecera desbordaba la pantalla. */
-    flex: 1 0 100%;
-    min-width: 0;
-    overflow: visible;
-  }
-  .mode-tab {
-    flex: 1;
-    padding: 5px 4px;
-    font-size: 11.5px;
-    text-align: center;
-  }
-  .mode-icon { display: block; margin: 0 auto 1px; font-size: 13px; }
-
-  .viewport-hint { display: none; }
-}
-
-@media (max-width: 400px) {
-  .mode-tab { font-size: 10.5px; }
-}
 
 /* --------------------------------------------------------------------------
    Ajustes finos para pantallas pequenas
    -------------------------------------------------------------------------- */
 
-@media (max-width: 720px) {
+
+/* ==========================================================================
+   MOVIL — un diseno propio, no el de escritorio encogido
+   ==========================================================================
+
+   Lo que fallaba al reducir el diseno de escritorio: tres zonas (visor, banco,
+   biblioteca) peleandose por 568 px de alto. El resultado era que ninguna
+   servia — el constructor quedaba cortado por la mitad, de la biblioteca solo
+   se veia una fila, y los chips de categoria ocupaban cuatro lineas.
+
+   El movil pide otra cosa:
+     - Una COLUMNA que se desplaza, en vez de tres cajas que no caben.
+     - Los modos en una barra INFERIOR, al alcance del pulgar.
+     - El analisis como hoja que sube cuando se pide, no robando sitio siempre.
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  html, body { height: auto; }
+
+  body {
+    /* La pagina se desplaza como una pagina normal. Con `overflow: hidden` el
+       contenido que no cabia era sencillamente inalcanzable. */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    /* Hueco para la barra de modos fija, mas el area segura del dispositivo. */
+    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+  }
+
   /*
-   * En movil la barra del visor y la etiqueta ya no compiten por la fila
-   * superior: la barra se queda arriba en UNA linea desplazable, y la etiqueta
-   * baja al pie. Antes se envolvian en tres filas y tapaban precisamente lo
-   * que hay que mirar, que es la molecula.
+   * ORDEN de la columna.
+   *
+   * En el escritorio la posicion la fija `grid-template-areas`, asi que el
+   * orden del DOM da igual. Al pasar a una columna flexible vuelve a mandar el
+   * DOM — y ahi la biblioteca va ANTES que el escenario, de modo que al abrir
+   * en el movil lo primero que se veia era la lista de sustancias, con el
+   * visor 3D y el constructor empujados fuera de la pantalla.
    */
+  .header { order: 0; }
+  .stage { order: 1; }
+  .library { order: 2; }
+
+  /* --- Cabecera: una sola fila -------------------------------------------- */
+
+  .header {
+    position: sticky;
+    top: 0;
+    padding: 0 12px;
+    height: 50px;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .brand-sub { display: none; }
+  .header-spacer { display: block; flex: 1; }
+
+  /* --- Modos: barra inferior fija ----------------------------------------- */
+
+  .mode-tabs {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    gap: 0;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.16);
+  }
+
+  .mode-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    /* 58 px de alto: el minimo comodo para un objetivo tactil. */
+    height: 58px;
+    padding: 0 2px;
+    border-radius: 0;
+    font-size: 10.5px;
+    font-weight: 560;
+  }
+  .mode-tab[aria-selected='true'] {
+    background: transparent;
+    color: var(--accent);
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+  .mode-icon { margin: 0; font-size: 17px; opacity: 0.9; }
+
+  /* --- Visor --------------------------------------------------------------- */
+
+  .stage { flex-shrink: 0; overflow: visible; }
+
+  .viewport {
+    /* Altura fija y generosa: es el elemento que hay que poder mirar. */
+    height: 40vh;
+    min-height: 230px;
+    max-height: 380px;
+    flex: none;
+  }
+
   .viewport-chrome {
     inset: 8px;
     flex-direction: column;
@@ -1513,56 +1537,183 @@ button { cursor: pointer; border: none; background: none; }
   }
   .viewport-toolbar::-webkit-scrollbar { display: none; }
   .toolbar-group { flex-shrink: 0; }
-
-  /* Enlaces y etiquetas vienen activados por defecto: son secundarios y en
-     una pantalla estrecha no merecen quitarle sitio a la molecula. */
+  /* Enlaces y etiquetas vienen activados y son secundarios: en una pantalla
+     estrecha no merecen quitarle sitio a la molecula. */
   .toolbar-group[aria-label='Elementos visibles'] { display: none; }
 
-  /* En columna, `margin-top: auto` empuja la etiqueta al pie del visor sin
-     sacarla del flujo, asi que no puede volver a montarse sobre la barra. */
-  .viewport-badge {
-    margin-top: auto;
-    font-size: 11px;
-    padding: 4px 9px;
-  }
+  .viewport-badge { margin-top: auto; font-size: 11px; padding: 4px 9px; }
+  .viewport-hint { display: none; }
+  .viewport-empty p { font-size: 12px; }
 
-  /* El visor necesita una altura minima util: por debajo de esto la molecula
-     no se distingue y el modo 3D deja de aportar nada. */
-  .viewport { min-height: 190px; }
+  /* --- Banco y constructor -------------------------------------------------- */
 
-  /*
-   * La zona inferior se desplaza como un todo. Antes solo se desplazaban los
-   * resultados, asi que el constructor —que es mas alto que el banco— quedaba
-   * cortado por abajo sin forma de alcanzarlo.
-   */
   .bench {
-    max-height: 58%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    max-height: none;
+    overflow: visible;
+    flex: none;
   }
-  .bench-results { overflow: visible; }
-  .bench-bar, .mode-hint { flex-shrink: 0; }
+  .bench-results { overflow: visible; padding: 10px 12px 4px; }
+  .mode-hint { padding: 9px 12px; font-size: 12.5px; }
+  .bench-bar { padding: 10px 12px; }
 
-  .build-row { flex: 1 1 100%; }
-  .build-slot { flex: 1 1 42%; min-width: 112px; }
+  .build-row { flex: 1 1 100%; gap: 7px; }
+  .build-slot { flex: 1 1 42%; min-width: 0; padding: 8px 24px 8px 11px; }
+  .build-slot-name { max-width: none; }
   .build-actions { flex: 1 1 100%; }
   .build-actions .button { flex: 1; }
 
-  /*
-   * En vertical, el RESULTADO va primero.
-   *
-   * Apilados en el orden natural (cation, anion, resultado), la formula
-   * quedaba por debajo del pliegue: habia que desplazarse para ver
-   * precisamente lo que se acaba de construir. Arriba, se ve siempre, y los
-   * dos ingredientes quedan justo debajo como lo que son, el detalle.
-   */
-  .build-result {
-    order: -1;
-    flex: 1 1 100%;
-    justify-content: center;
-  }
-  .build-equals { display: none; }
-  .build-plus { display: none; }
+  /* El RESULTADO primero: apilado en orden natural, la formula recien
+     construida quedaba por debajo del pliegue. */
+  .build-result { order: -1; flex: 1 1 100%; justify-content: center; }
+  .build-equals, .build-plus { display: none; }
 
-  .mode-hint { padding: 7px 10px; font-size: 12px; }
+  /* --- Biblioteca ---------------------------------------------------------- */
+
+  .library {
+    flex: 1 0 auto;
+    max-height: none;
+    border: none;
+    border-top: 1px solid var(--border);
+    overflow: visible;
+  }
+  .library .panel-body { overflow: visible; }
+  .panel-header { position: sticky; top: 50px; z-index: 5; background: var(--surface); }
+
+  /* Los chips en UNA fila desplazable. Envueltos ocupaban cuatro lineas, mas
+     alto que la propia lista de sustancias que debian filtrar. */
+  .chip-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip { flex-shrink: 0; padding: 5px 11px; }
+
+  /* Objetivos tactiles comodos en la lista. */
+  .substance { padding: 10px 9px; }
+  .substance-add, .substance-action { width: 32px; height: 32px; margin-right: 4px; }
+
+  /* --- Inspector como hoja inferior ---------------------------------------- */
+
+  .inspector {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    max-height: 88dvh;
+    border: none;
+    border-top: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(101%);
+    transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex;
+  }
+  .app[data-sheet='open'] .inspector { transform: translateY(0); }
+
+  .inspector .panel-header { position: static; padding-top: 8px; }
+  .inspector .panel-body { overflow-y: auto; overscroll-behavior: contain; }
+
+  /* Asidero, para que se lea como una hoja arrastrable y no como un panel
+     pegado por accidente. */
+  .inspector::before {
+    content: '';
+    position: absolute;
+    top: 6px; left: 50%;
+    transform: translateX(-50%);
+    width: 34px; height: 4px;
+    border-radius: 2px;
+    background: var(--border-strong);
+  }
+
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(4, 8, 14, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s;
+  }
+  .app[data-sheet='open'] .sheet-backdrop { opacity: 1; pointer-events: auto; }
+
+  .mobile-switch { display: block; }
+  .app[data-sheet='open'] .mobile-switch {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+}
+
+@media (max-width: 380px) {
+  .mode-tab { font-size: 9.5px; }
+  .brand { font-size: 13px; }
+}
+
+/* Controles de zoom del visor: el pellizco funciona, pero un control visible
+   ahorra tener que descubrirlo, y sirve en equipos sin rueda de raton. */
+.zoom-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: auto;
+  align-self: flex-end;
+  padding: 3px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  backdrop-filter: blur(12px);
+}
+
+.zoom-button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 1;
+  transition: background 0.13s, color 0.13s;
+}
+.zoom-button:hover { background: var(--surface-2); color: var(--text); }
+
+@media (max-width: 900px) {
+  .zoom-controls { align-self: flex-end; margin-top: auto; }
+  .zoom-button { width: 36px; height: 36px; font-size: 19px; }
+  /* La etiqueta y el zoom comparten la fila del pie del visor. */
+  .viewport-chrome { flex-direction: column; }
+  .viewport-badge { margin-top: auto; }
+}
+
+/* Cierre de la hoja: solo existe en movil, donde el inspector es una hoja. */
+.sheet-close { display: none; }
+
+@media (max-width: 900px) {
+  .inspector .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 14px;
+  }
+  .inspector .inspector-tabs { flex: 1; min-width: 0; }
+
+  .sheet-close {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 19px;
+    line-height: 1;
+  }
+  .sheet-close:hover { color: var(--text); }
+
+  /* Algo menos alta, para que la franja del fondo sea alcanzable de verdad. */
+  .inspector { max-height: 82dvh; }
 }

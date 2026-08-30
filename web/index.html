@@ -80,6 +80,11 @@
             </div>
           </div>
           <div class="viewport-badge" id="viewport-badge" hidden></div>
+
+          <div class="zoom-controls" role="group" aria-label="Zoom">
+            <button class="zoom-button" id="zoom-in" aria-label="Acercar">+</button>
+            <button class="zoom-button" id="zoom-out" aria-label="Alejar">−</button>
+          </div>
         </div>
 
         <div class="viewport-hint">Arrastra para rotar · rueda para acercar</div>
@@ -133,6 +138,10 @@
     <!-- ================= Inspector ================= -->
     <aside class="panel inspector" aria-label="Inspector">
       <div class="panel-header">
+        <!-- Cierre explicito de la hoja en movil: tocar el fondo funciona,
+             pero con la hoja ocupando casi toda la pantalla esa franja es
+             estrecha y poco evidente. -->
+        <button class="sheet-close" id="sheet-close" aria-label="Cerrar analisis">×</button>
         <div class="inspector-tabs" id="inspector-tabs" role="tablist">
           <button class="inspector-tab" role="tab" data-tab="ficha" aria-selected="true">Ficha</button>
           <button class="inspector-tab" role="tab" data-tab="estructura" aria-selected="false">Lewis</button>
@@ -144,6 +153,9 @@
         <div class="inspector-content" id="inspector-content"></div>
       </div>
     </aside>
+
+    <!-- Fondo oscurecido de la hoja de analisis en movil. -->
+    <div class="sheet-backdrop" id="sheet-backdrop"></div>
   </div>
 
   <script type="module" src="../dist/src/ui/app.js"></script>
