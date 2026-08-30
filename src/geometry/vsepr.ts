@@ -604,10 +604,23 @@ export function buildStructure(
     return buildRing(symbol, count);
   }
 
-  // 4. Compuesto ionico: red cristalina.
+  // 4. Compuesto ionico.
   if (options.ionic && options.cation && options.anion) {
-    const anionSymbol = options.anion.length <= 2 ? options.anion : options.anion[0]!;
-    return buildIonicLattice(options.cation, anionSymbol);
+    const anionSpec = SPECS[options.anion];
+
+    // Anion POLIATOMICO: no se puede dibujar una red cation/anion tratando al
+    // sulfato como si fuera un atomo de azufre. Se construye un agregado con
+    // los iones reales: los cationes como esferas sueltas y cada anion con su
+    // geometria propia (el sulfato como tetraedro, el nitrato como triangulo).
+    if (anionSpec) {
+      const cluster = buildIonicCluster(options.cation, options.anion, composition);
+      if (cluster) return cluster;
+    }
+
+    // Anion monoatomico: red cristalina extendida.
+    if (options.anion.length <= 2 && getElement(options.anion)) {
+      return buildIonicLattice(options.cation, options.anion);
+    }
   }
 
   // 5. Binario A + B donde uno actua de central.
@@ -627,6 +640,68 @@ export function buildStructure(
   }
 
   return null;
+}
+
+/**
+ * Agregado ionico con anion poliatomico: Al₂(SO₄)₃, Ca₃(PO₄)₂, Ca(NO₃)₂.
+ *
+ * No es una red cristalina completa —eso serian miles de iones— sino una
+ * unidad formula: tantos cationes y tantos aniones como diga la formula,
+ * repartidos en un anillo. Cada anion conserva su geometria real, asi que el
+ * sulfato se ve como el tetraedro que es, y no como una bola generica.
+ *
+ * Los cationes NO se enlazan a los aniones con varillas: en un compuesto
+ * ionico la union es electrostatica y no direccional, y dibujar palos
+ * sugeriria enlaces covalentes que no existen.
+ */
+function buildIonicCluster(
+  cation: string,
+  anionFormula: string,
+  composition: ReadonlyMap<string, number>,
+): Structure | null {
+  const spec = SPECS[anionFormula];
+  if (!spec) return null;
+
+  const cationCount = composition.get(cation) ?? 1;
+  // Numero de aniones = atomos del elemento central del anion.
+  const central = spec.central;
+  if (!central) return null;
+  const anionCount = central === cation ? 1 : composition.get(central) ?? 1;
+
+  const atoms: StructureAtom[] = [];
+  const bonds: Bond[] = [];
+
+  const units = cationCount + anionCount;
+  const radius = Math.max(2.2, units * 0.75);
+
+  let placed = 0;
+  const place = (): Vec3 => {
+    const angle = (placed / units) * Math.PI * 2;
+    // Ligera elevacion alterna para que no queden todos en un plano.
+    const y = placed % 2 === 0 ? 0.35 : -0.35;
+    placed++;
+    return v(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+  };
+
+  // Cationes: esferas sueltas.
+  for (let i = 0; i < cationCount; i++) {
+    atoms.push({ id: nextId(), symbol: cation, position: place() });
+  }
+
+  // Aniones: cada uno con su geometria propia, trasladada a su posicion.
+  for (let i = 0; i < anionCount; i++) {
+    const unit = buildFromSpec(spec);
+    const origin = place();
+    const offset = atoms.length;
+    for (const a of unit.atoms) {
+      atoms.push({ ...a, id: nextId(), position: add(a.position, origin) });
+    }
+    for (const b of unit.bonds) {
+      bonds.push({ ...b, a: b.a + offset, b: b.b + offset });
+    }
+  }
+
+  return { motif: 'ionic-lattice', atoms, bonds };
 }
 
 /** Anillo plano, para S8 y P4. */

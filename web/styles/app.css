@@ -1165,3 +1165,191 @@ button { cursor: pointer; border: none; background: none; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   Constructor de compuestos (§5, §7)
+   ========================================================================== */
+
+.build-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.build-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.build-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 128px;
+  padding: 7px 26px 7px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.build-slot.empty {
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: transparent;
+  padding-right: 12px;
+}
+
+.build-slot-role {
+  font-size: 9.5px;
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.build-slot-formula {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.build-slot-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.build-slot-hint { font-size: 11.5px; color: var(--text-faint); }
+
+.build-slot-clear {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 17px; height: 17px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  color: var(--text-faint);
+  font-size: 15px;
+  line-height: 1;
+  transition: all 0.12s;
+}
+.build-slot-clear:hover { background: var(--hazard-forbidden); color: #fff; }
+
+.build-plus, .build-equals {
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  color: var(--text-faint);
+  padding: 0 2px;
+}
+
+.build-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+.build-result.pending { background: transparent; border-style: dashed; border-color: var(--border); }
+
+.build-formula {
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.build-check {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--teal);
+  margin-top: 1px;
+}
+
+.build-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Encabezado de la derivacion en el inspector */
+.derivation-headline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 11px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-family: var(--mono);
+}
+.derivation-ion { font-size: 15px; font-weight: 580; }
+.derivation-op { color: var(--text-faint); }
+.derivation-outcome { font-size: 18px; font-weight: 660; color: var(--accent); }
+
+/* Fila de la biblioteca con su boton de accion */
+.substance-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+}
+.substance-row:hover { background: var(--surface-2); }
+.substance-row .substance { flex: 1; min-width: 0; }
+.substance-row .substance:hover { background: transparent; }
+
+.substance-add {
+  width: 24px; height: 24px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  margin-right: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0;
+  transition: all 0.13s;
+}
+.substance-row:hover .substance-add { opacity: 1; }
+.substance-add:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.substance-add:focus-visible { opacity: 1; }
+
+/* En pantallas tactiles no hay hover: el boton se ve siempre. */
+@media (hover: none) {
+  .substance-add { opacity: 1; }
+}
+
+.substance-action {
+  width: 24px; height: 24px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  margin-right: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 660;
+}
+
+/* Foco visible para navegacion con teclado */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

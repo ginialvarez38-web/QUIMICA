@@ -29,6 +29,7 @@ import { buildLewis } from '../render/lewis.js';
 import { describeGeometry } from '../geometry/vsepr.js';
 import { explain, explainSubstance } from '../teach/explain.js';
 import type { Prediction } from '../engine/predict.js';
+import type { BuiltFormula } from '../core/build/ionicFormula.js';
 
 const UNAVAILABLE = '<span class="prop-unavailable">Dato no disponible</span>';
 
@@ -451,6 +452,51 @@ export function renderProfesor(prediction: Prediction | null, formula: string | 
   }
 
   return `<div class="empty-state">Elige una sustancia o ejecuta una reaccion, y el sistema la explicara paso a paso: que tenemos, que puede reaccionar, que productos se esperan, por que, como se balancea, que ocurre con los atomos y con los electrones, y que concepto hay detras.</div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Derivacion del constructor (§5, §7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Los seis pasos que llevan de dos iones a una formula.
+ *
+ * El brief es explicito: «No simplemente mostrar el resultado». Este bloque es
+ * la razon de ser del modo Construir, y va ARRIBA del todo en el inspector,
+ * por delante de la ficha del compuesto: primero el razonamiento, despues el
+ * dato.
+ */
+export function renderDerivation(built: BuiltFormula): string {
+  const steps = built.derivation
+    .map(
+      (s) => `<div class="derivation-step">
+        <span class="derivation-number">${s.n}</span>
+        <div>
+          <div class="derivation-title">${escapeHtml(s.title)}</div>
+          <div class="derivation-detail">${escapeHtml(s.detail)}</div>
+          ${s.math ? `<div class="derivation-math">${escapeHtml(s.math)}</div>` : ''}
+        </div>
+      </div>`,
+    )
+    .join('');
+
+  return `<div class="section">
+    <h3 class="section-title">Como se llega a esta formula</h3>
+    <div class="derivation-headline">
+      <span class="derivation-ion">${escapeHtml(formatPlainUnicode(built.cation.formula))}${chargeSup(built.cation.charge)}</span>
+      <span class="derivation-op">+</span>
+      <span class="derivation-ion">${escapeHtml(formatPlainUnicode(built.anion.formula))}${chargeSup(built.anion.charge)}</span>
+      <span class="derivation-op">→</span>
+      <span class="derivation-outcome">${escapeHtml(built.display)}</span>
+    </div>
+    ${steps}
+  </div>`;
+}
+
+function chargeSup(charge: number): string {
+  const magnitude = Math.abs(charge);
+  const digits = magnitude === 1 ? '' : String(magnitude).replace(/\d/g, (d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[Number(d)]!);
+  return `${digits}${charge > 0 ? '⁺' : '⁻'}`;
 }
 
 // ---------------------------------------------------------------------------

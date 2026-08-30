@@ -17,8 +17,10 @@ import { buildStructure } from '../geometry/vsepr.js';
 import { MoleculeRenderer, DEFAULT_RENDER_OPTIONS, type Representation } from '../render/webgl/renderer.js';
 import { predict, reactionsAvailableFor, type Prediction } from '../engine/predict.js';
 import { findAllRoutes, compareRoutes, outgoingFrom, incomingTo } from '../engine/graph.js';
-import { renderFicha, renderEstructura, renderBalance, renderProfesor, renderReactionCard } from './inspector.js';
-import type { Structure } from '../core/types.js';
+import { renderFicha, renderEstructura, renderBalance, renderProfesor, renderReactionCard, renderDerivation } from './inspector.js';
+import { buildIonicFormula, type BuiltFormula } from '../core/build/ionicFormula.js';
+import { getIon } from '../data/ions.js';
+import type { Ion, Structure } from '../core/types.js';
 
 type Mode = 'build' | 'react' | 'routes' | 'lab';
 type Tab = 'ficha' | 'estructura' | 'balance' | 'profesor';
@@ -39,6 +41,8 @@ interface State {
   /** Ruta: origen y destino. */
   routeFrom: string;
   routeTo: string;
+  /** Constructor de compuestos (§5, §7): los dos iones que se combinan. */
+  builder: { cation: Ion | null; anion: Ion | null };
 }
 
 const state: State = {
@@ -53,6 +57,7 @@ const state: State = {
   followed: new Set(),
   routeFrom: 'Ca',
   routeTo: 'CaCO3',
+  builder: { cation: null, anion: null },
 };
 
 let renderer: MoleculeRenderer | null = null;
@@ -154,17 +159,30 @@ function renderLibrary(): void {
   }
 
   list.innerHTML = results
-    .map(
-      (r) => `<button class="substance" data-formula="${escapeHtml(r.formula)}" data-kind="${r.kind}"
+    .map((r) => {
+      // En modo Construir, los iones van al constructor; el resto se abre.
+      const ionAttrs =
+        r.ion !== undefined
+          ? ` data-ion-formula="${escapeHtml(r.ion.formula)}" data-ion-charge="${r.ion.charge}"`
+          : '';
+      const action =
+        state.mode === 'build' && r.ion
+          ? `<span class="substance-action" title="${r.ion.charge > 0 ? 'Usar como cation' : 'Usar como anion'}">${r.ion.charge > 0 ? '+' : '−'}</span>`
+          : `<button class="substance-add" data-add="${escapeHtml(r.formula)}" title="Anadir al banco de reaccion" aria-label="Anadir ${escapeHtml(r.formula)} al banco">+</button>`;
+
+      return `<div class="substance-row">
+        <button class="substance" data-formula="${escapeHtml(r.formula)}" data-kind="${r.kind}"${ionAttrs}
                  aria-current="${state.selected === r.formula}">
-        <span class="substance-dot ${dotClass(r)}"></span>
-        <span class="substance-formula">${escapeHtml(formatPlainUnicode(r.formula))}</span>
-        <span class="substance-meta">
-          <span class="substance-name">${escapeHtml(r.label)}</span>
-          <span class="substance-class">${escapeHtml(r.sublabel)}</span>
-        </span>
-      </button>`,
-    )
+          <span class="substance-dot ${dotClass(r)}"></span>
+          <span class="substance-formula">${escapeHtml(formatPlainUnicode(r.formula))}</span>
+          <span class="substance-meta">
+            <span class="substance-name">${escapeHtml(r.label)}</span>
+            <span class="substance-class">${escapeHtml(r.sublabel)}</span>
+          </span>
+        </button>
+        ${action}
+      </div>`;
+    })
     .join('');
 }
 
@@ -172,6 +190,98 @@ function renderCategories(): void {
   $('#categories').innerHTML = LIBRARY_CATEGORIES.map(
     (c) => `<button class="chip" data-category="${c.id}" aria-pressed="${state.category === c.id}">${escapeHtml(c.label)}</button>`,
   ).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Constructor de compuestos (§5, §7)
+// ---------------------------------------------------------------------------
+
+/** Fórmula construida a partir de los dos iones elegidos, si ya hay ambos. */
+function builtFormula(): BuiltFormula | null {
+  const { cation, anion } = state.builder;
+  if (!cation || !anion) return null;
+  const result = buildIonicFormula(cation, anion);
+  return result.ok ? result.value : null;
+}
+
+function chargeLabel(charge: number): string {
+  const magnitude = Math.abs(charge);
+  const digits = magnitude === 1 ? '' : String(magnitude);
+  return `${digits}${charge > 0 ? '⁺' : '⁻'}`;
+}
+
+/**
+ * Renderiza el constructor en la zona del banco.
+ *
+ * La interaccion es la mas directa posible: dos huecos, uno para el cation y
+ * otro para el anion. Se rellenan haciendo clic en un ion de la biblioteca, y
+ * en cuanto hay los dos aparece la formula. Sin teclas modificadoras ni
+ * gestos ocultos.
+ */
+function renderConstructor(): void {
+  const { cation, anion } = state.builder;
+  const built = builtFormula();
+
+  const slot = (role: 'cation' | 'anion', ion: Ion | null): string => {
+    const isCation = role === 'cation';
+    if (!ion) {
+      return `<div class="build-slot empty" data-slot="${role}">
+        <span class="build-slot-role">${isCation ? 'Cation (+)' : 'Anion (−)'}</span>
+        <span class="build-slot-hint">Elige uno en la lista</span>
+      </div>`;
+    }
+    return `<div class="build-slot" data-slot="${role}">
+      <span class="build-slot-role">${isCation ? 'Cation' : 'Anion'}</span>
+      <span class="build-slot-formula">${escapeHtml(formatPlainUnicode(ion.formula))}${chargeLabel(ion.charge)}</span>
+      <span class="build-slot-name">${escapeHtml(ion.name)}</span>
+      <button class="build-slot-clear" data-clear="${role}" aria-label="Quitar">×</button>
+    </div>`;
+  };
+
+  const result = built
+    ? `<div class="build-result">
+         <span class="build-equals">=</span>
+         <div>
+           <div class="build-formula">${escapeHtml(built.display)}</div>
+           <div class="build-check">${escapeHtml(built.neutralityCheck)}</div>
+         </div>
+       </div>`
+    : `<div class="build-result pending"><span class="build-equals">=</span>
+         <span class="build-slot-hint">${cation || anion ? 'Falta el otro ion' : 'Elige un cation y un anion'}</span>
+       </div>`;
+
+  $('#build-bar').innerHTML = `
+    <div class="build-row">
+      ${slot('cation', cation)}
+      <span class="build-plus">+</span>
+      ${slot('anion', anion)}
+      ${result}
+    </div>
+    <div class="build-actions">
+      <button class="button button-primary" id="build-open" ${built ? '' : 'disabled'}>Ver derivacion</button>
+      <button class="button" id="build-bench" ${built ? '' : 'disabled'}>Al banco</button>
+      <button class="button button-ghost" id="build-clear">Vaciar</button>
+    </div>`;
+
+  if (built) {
+    showStructure(built.formula);
+    state.selected = built.formula;
+  }
+}
+
+/** Coloca un ion en el hueco que le corresponde por su carga. */
+function placeIon(ion: Ion): void {
+  if (ion.charge > 0) state.builder.cation = ion;
+  else state.builder.anion = ion;
+
+  renderConstructor();
+  renderLibrary();
+
+  if (builtFormula()) {
+    state.tab = 'ficha';
+    renderTabs();
+  }
+  renderInspector();
 }
 
 // ---------------------------------------------------------------------------
@@ -256,11 +366,22 @@ function renderInspector(): void {
   }
 
   switch (state.tab) {
-    case 'ficha':
-      content.innerHTML = state.selected
-        ? renderFicha(state.selected)
-        : '<div class="empty-state">Selecciona una sustancia en la biblioteca para ver su ficha completa: propiedades, nomenclatura en los tres sistemas y estados de oxidacion con su justificacion.</div>';
+    case 'ficha': {
+      // En el constructor, lo primero que debe ver el estudiante es COMO se
+      // ha llegado a la formula; la ficha del compuesto va justo debajo.
+      const built = state.mode === 'build' ? builtFormula() : null;
+      if (built) {
+        content.innerHTML = renderDerivation(built) + renderFicha(built.formula);
+      } else if (state.mode === 'build') {
+        content.innerHTML =
+          '<div class="empty-state">Elige un cation y un anion abajo, y aqui apareceran los seis pasos del razonamiento que llevan a la formula: los iones, la exigencia de neutralidad, el minimo comun multiplo, cuantos iones hacen falta, la comprobacion de cargas y la formula final.</div>';
+      } else {
+        content.innerHTML = state.selected
+          ? renderFicha(state.selected)
+          : '<div class="empty-state">Selecciona una sustancia en la biblioteca para ver su ficha completa: propiedades, nomenclatura en los tres sistemas y estados de oxidacion con su justificacion.</div>';
+      }
       break;
+    }
     case 'estructura':
       content.innerHTML = state.selected
         ? renderEstructura(state.selected, currentStructure)
@@ -409,6 +530,57 @@ function updateAtomLabels(): void {
 // Acciones
 // ---------------------------------------------------------------------------
 
+/**
+ * Cambia de modo y, sobre todo, hace que el cambio SE NOTE.
+ *
+ * Antes las pestanas apenas alteraban nada visible, asi que parecian rotas.
+ * Ahora cada modo reconfigura la biblioteca, la zona inferior y el inspector:
+ *
+ *   Construir   iones en la lista, constructor abajo
+ *   Reaccionar  sustancias en la lista, banco de reaccion abajo
+ *   Rutas       buscador de rutas en el inspector
+ *   Laboratorio estado del modulo de cantidades
+ */
+function setMode(mode: Mode): void {
+  state.mode = mode;
+  setPressed($$('.mode-tab'), (b) => b.dataset['mode'] === mode, 'aria-selected');
+
+  $('#build-bar').hidden = mode !== 'build';
+  $('#bench-bar').hidden = mode === 'build';
+
+  switch (mode) {
+    case 'build':
+      // La lista pasa a mostrar iones: son las piezas del constructor.
+      state.category = 'ions';
+      renderCategories();
+      renderConstructor();
+      $('#bench-results').innerHTML = builtFormula()
+        ? ''
+        : `<div class="notice info"><strong>Construye un compuesto.</strong> Elige un <strong>cation</strong> (carga +) y un <strong>anion</strong> (carga −) de la lista de la izquierda. El sistema calculara la formula neutra y te ensenara los seis pasos del razonamiento, incluida la comprobacion de cargas.</div>`;
+      break;
+
+    case 'react':
+      if (state.category === 'ions') state.category = 'all';
+      renderCategories();
+      renderBench();
+      if (state.predictions.length === 0) {
+        $('#bench-results').innerHTML = `<div class="notice info"><strong>Haz reaccionar dos sustancias.</strong> Pulsa el boton <strong>+</strong> de cualquier sustancia de la lista para anadirla al banco, y despues <strong>Predecir</strong>. El motor te dira que se forma y por que — o por que no ocurre nada.</div>`;
+      }
+      break;
+
+    case 'routes':
+      if (state.selected) state.routeTo = state.selected;
+      break;
+
+    case 'lab':
+      $('#bench-results').innerHTML = renderLabNotice();
+      break;
+  }
+
+  renderLibrary();
+  renderInspector();
+}
+
 function selectSubstance(formula: string): void {
   state.selected = formula;
   state.followed.clear();
@@ -417,7 +589,7 @@ function selectSubstance(formula: string): void {
   if (state.tab === 'balance' && !state.activePrediction) state.tab = 'ficha';
   renderTabs();
   renderInspector();
-  if (state.mode === 'build') renderAvailableReactions(formula);
+  if (state.mode === 'react') renderAvailableReactions(formula);
 }
 
 function addToBench(formula: string): void {
@@ -504,15 +676,58 @@ function wireEvents(): void {
     renderLibrary();
   });
 
-  delegate($('#substance-list'), 'click', '.substance', (event, target) => {
-    const formula = target.dataset['formula']!;
-    // Con Alt o en modo Reaccionar, se anade al banco en lugar de abrirlo.
-    const mouse = event as MouseEvent;
-    if (mouse.altKey || state.mode === 'react') {
-      addToBench(formula);
-      if (mouse.altKey) return;
+  delegate($('#substance-list'), 'click', '.substance', (_e, target) => {
+    // En modo Construir, un ion va directo al constructor.
+    const ionFormula = target.dataset['ionFormula'];
+    const ionCharge = target.dataset['ionCharge'];
+    if (state.mode === 'build' && ionFormula && ionCharge) {
+      const ion = getIon(ionFormula, Number(ionCharge));
+      if (ion) {
+        placeIon(ion);
+        return;
+      }
     }
+
+    const formula = target.dataset['formula']!;
+    // En modo Reaccionar, elegir una sustancia la anade al banco: es lo que
+    // se espera de ese modo, y ademas se abre su ficha.
+    if (state.mode === 'react') addToBench(formula);
     selectSubstance(formula);
+  });
+
+  // Boton "+" explicito: anadir al banco sin teclas modificadoras.
+  delegate($('#substance-list'), 'click', '[data-add]', (event, target) => {
+    event.stopPropagation();
+    addToBench(target.dataset['add']!);
+    if (state.mode !== 'react') setMode('react');
+  });
+
+  // --- Constructor -------------------------------------------------------
+  delegate($('#build-bar'), 'click', '[data-clear]', (_e, target) => {
+    if (target.dataset['clear'] === 'cation') state.builder.cation = null;
+    else state.builder.anion = null;
+    renderConstructor();
+    renderLibrary();
+    renderInspector();
+  });
+
+  delegate($('#build-bar'), 'click', '#build-clear', () => {
+    state.builder = { cation: null, anion: null };
+    renderConstructor();
+    renderLibrary();
+    renderInspector();
+  });
+
+  delegate($('#build-bar'), 'click', '#build-open', () => {
+    const built = builtFormula();
+    if (built) selectSubstance(built.formula);
+  });
+
+  delegate($('#build-bar'), 'click', '#build-bench', () => {
+    const built = builtFormula();
+    if (!built) return;
+    addToBench(built.formula);
+    setMode('react');
   });
 
   // --- Banco -------------------------------------------------------------
@@ -587,21 +802,7 @@ function wireEvents(): void {
 
   // --- Modos -------------------------------------------------------------
   delegate($('#mode-tabs'), 'click', '[data-mode]', (_e, target) => {
-    state.mode = target.dataset['mode'] as Mode;
-    setPressed($$('.mode-tab'), (b) => b.dataset['mode'] === state.mode, 'aria-selected');
-
-    if (state.mode === 'routes') {
-      if (state.selected) state.routeTo = state.selected;
-      renderInspector();
-    } else if (state.mode === 'build' && state.selected) {
-      renderAvailableReactions(state.selected);
-      renderInspector();
-    } else if (state.mode === 'lab') {
-      $('#bench-results').innerHTML = renderLabNotice();
-      renderInspector();
-    } else {
-      renderInspector();
-    }
+    setMode(target.dataset['mode'] as Mode);
   });
 
   // --- Barra del visor ---------------------------------------------------
@@ -732,11 +933,14 @@ function boot(): void {
   renderLibrary();
   renderBench();
   renderTabs();
-  renderInspector();
   wireEvents();
 
-  // Sustancia de bienvenida: el CaO es el hilo conductor del brief.
-  selectSubstance('CaO');
+  // Se arranca en el constructor con un ejemplo ya montado: el calcio y el
+  // oxido, que dan la cal viva y abren la cadena del calcio. Ver algo
+  // construido explica el modo mejor que cualquier texto de ayuda.
+  state.builder.cation = getIon('Ca', 2) ?? null;
+  state.builder.anion = getIon('O', -2) ?? null;
+  setMode('build');
 }
 
 if (document.readyState === 'loading') {

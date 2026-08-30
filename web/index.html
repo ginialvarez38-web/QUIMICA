@@ -91,7 +91,11 @@
 
       <!-- Banco de reaccion -->
       <section class="bench" aria-label="Banco de reaccion">
-        <div class="bench-bar">
+        <!-- Constructor de compuestos: visible en el modo Construir. -->
+        <div class="bench-bar build-bar" id="build-bar" hidden></div>
+
+        <!-- Banco de reaccion: visible en el modo Reaccionar. -->
+        <div class="bench-bar" id="bench-bar" hidden>
           <div class="bench-slots" id="bench-slots">
             <span class="bench-placeholder">Anade sustancias desde la biblioteca…</span>
           </div>

@@ -18,6 +18,9 @@ import { SPECIES, getSpecies } from '../src/data/species.js';
 import { oxidationStatesOfFormula } from '../src/core/oxidation.js';
 import { explain, explainSubstance } from '../src/teach/explain.js';
 import { formatEquation } from '../src/core/formula/render.js';
+import { parseFormula } from '../src/core/formula/parse.js';
+import { classifyFormula } from '../src/core/classify.js';
+import { buildStructure } from '../src/geometry/vsepr.js';
 
 function unwrap<T>(r: { ok: true; value: T } | { ok: false; error: string; detail?: string }): T {
   if (!r.ok) throw new Error(`${r.error} ${r.detail ?? ''}`);
@@ -514,5 +517,51 @@ describe('modo profesor (§34)', () => {
     assert.ok(lesson.sections.length >= 4);
     const mass = lesson.sections.find((s) => s.question.includes('mol'))!;
     assert.match(mass.answer, /56\.077/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('geometria de compuestos ionicos', () => {
+  const structureOf = (formula: string) => {
+    const parsed = parseFormula(formula);
+    if (!parsed.ok) return null;
+    const c = classifyFormula(formula);
+    return buildStructure(formula, parsed.value.composition, {
+      ionic: c?.ionic ?? false,
+      ...(c?.cationSymbol ? { cation: c.cationSymbol } : {}),
+      ...(c?.anionFormula ? { anion: c.anionFormula } : {}),
+    });
+  };
+
+  test('un anion monoatomico da una red cristalina', () => {
+    const s = structureOf('NaCl')!;
+    assert.equal(s.motif, 'ionic-lattice');
+    assert.ok(s.atoms.length > 4, 'la red debe mostrar varios iones');
+    assert.ok(s.atoms.some((a) => a.symbol === 'Na'));
+    assert.ok(s.atoms.some((a) => a.symbol === 'Cl'));
+  });
+
+  test('un anion poliatomico conserva su geometria propia', () => {
+    // Al2(SO4)3 = 2 aluminios sueltos + 3 sulfatos, cada uno con sus 5 atomos.
+    const s = structureOf('Al2(SO4)3')!;
+    assert.equal(s.atoms.length, 2 + 3 * 5);
+    assert.equal(s.atoms.filter((a) => a.symbol === 'Al').length, 2);
+    assert.equal(s.atoms.filter((a) => a.symbol === 'S').length, 3);
+    assert.equal(s.atoms.filter((a) => a.symbol === 'O').length, 12);
+    // Cuatro enlaces S-O por sulfato, y ninguno entre el aluminio y el sulfato:
+    // la union ionica no es direccional y no debe dibujarse como varilla.
+    assert.equal(s.bonds.length, 12);
+    for (const b of s.bonds) {
+      assert.notEqual(s.atoms[b.a]!.symbol, 'Al');
+      assert.notEqual(s.atoms[b.b]!.symbol, 'Al');
+    }
+  });
+
+  test('Ca3(PO4)2 sale con las proporciones correctas', () => {
+    const s = structureOf('Ca3(PO4)2')!;
+    assert.equal(s.atoms.filter((a) => a.symbol === 'Ca').length, 3);
+    assert.equal(s.atoms.filter((a) => a.symbol === 'P').length, 2);
+    assert.equal(s.atoms.filter((a) => a.symbol === 'O').length, 8);
   });
 });

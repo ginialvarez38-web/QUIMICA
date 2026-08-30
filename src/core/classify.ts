@@ -48,11 +48,48 @@ const POLYATOMIC_SORTED = [...ANION_LIST]
 
 /**
  * Intenta partir una formula en cation + anion poliatomico.
- * `CaCO3` -> { cation: 'Ca', anion: 'CO3' }
- * `Na2SO4` -> { cation: 'Na', anion: 'SO4' }
+ *
+ *   CaCO3       -> { cation: 'Ca', anion: 'CO3' }
+ *   Na2SO4      -> { cation: 'Na', anion: 'SO4' }
+ *   Al2(SO4)3   -> { cation: 'Al', anion: 'SO4' }
+ *
+ * DOS CAMINOS, y el primero importa.
+ *
+ * Comparar cadenas sobre la formula "aplanada" falla en cuanto el anion lleva
+ * parentesis y subindice: Al2(SO4)3 aplanado es "Al2SO43", que NO termina en
+ * "SO4", asi que el sulfato se volvia invisible y el compuesto acababa
+ * clasificado como "otro". Con el se perdian la nomenclatura, las reglas de
+ * prediccion y la estructura 3D de todos los sulfatos, fosfatos y nitratos
+ * escritos con parentesis.
+ *
+ * El analizador ya conserva la agrupacion en el arbol sintactico, asi que la
+ * via fiable es mirar el arbol: si el ultimo nodo es un GRUPO, ese grupo es el
+ * anion poliatomico, sin ambiguedad posible. La comparacion de cadenas queda
+ * como respaldo para los casos sin parentesis (Na2SO4, CaCO3).
  */
 function splitIonic(formula: string): { cationPart: string; anionFormula: string } | null {
-  const compact = formula.replace(/[()\[\]]/g, '').replace(/·.*$/, '');
+  const base = formula.replace(/·.*$/, '');
+
+  // --- Via 1: el arbol sintactico -----------------------------------------
+  const parsed = parseFormula(base);
+  if (parsed.ok && parsed.value.nodes.length >= 2) {
+    const last = parsed.value.nodes[parsed.value.nodes.length - 1];
+    if (last && last.kind === 'group') {
+      const anionFormula = last.children
+        .map((n) => (n.kind === 'atom' ? `${n.symbol}${n.count > 1 ? n.count : ''}` : ''))
+        .join('');
+      if (anionFormula && anionFormula !== 'OH' && POLYATOMIC_SORTED.some((i) => i.formula === anionFormula)) {
+        const head = parsed.value.nodes
+          .slice(0, -1)
+          .map((n) => (n.kind === 'atom' ? `${n.symbol}${n.count > 1 ? n.count : ''}` : ''))
+          .join('');
+        if (head && /^[A-Z]/.test(head)) return { cationPart: head, anionFormula };
+      }
+    }
+  }
+
+  // --- Via 2: respaldo por comparacion de cadenas -------------------------
+  const compact = base.replace(/[()\[\]]/g, '');
   for (const anion of POLYATOMIC_SORTED) {
     if (anion.formula === 'OH') continue; // los hidroxidos se tratan aparte
     if (compact.endsWith(anion.formula)) {

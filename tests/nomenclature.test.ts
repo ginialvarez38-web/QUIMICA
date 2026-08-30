@@ -65,6 +65,25 @@ describe('clasificacion de compuestos', () => {
     assert.equal(cls('NaHSO4'), 'acid-salt');
   });
 
+  test('aniones poliatomicos ENTRE PARENTESIS, con subindice', () => {
+    // Regresion: la separacion cation/anion comparaba cadenas sobre la formula
+    // aplanada, y "Al2(SO4)3" aplanado es "Al2SO43", que no termina en "SO4".
+    // Todos estos acababan clasificados como "other", perdiendo de golpe la
+    // nomenclatura, las reglas de prediccion y la estructura 3D.
+    assert.equal(cls('Al2(SO4)3'), 'oxosalt');
+    assert.equal(cls('Ca3(PO4)2'), 'oxosalt');
+    assert.equal(cls('Fe2(SO4)3'), 'oxosalt');
+    assert.equal(cls('Ca(NO3)2'), 'oxosalt');
+    assert.equal(cls('Pb(NO3)2'), 'oxosalt');
+    assert.equal(cls('Ca(HCO3)2'), 'acid-salt');
+
+    // Y se identifican bien los dos iones, no solo la familia.
+    const al = classifyFormula('Al2(SO4)3')!;
+    assert.equal(al.cationSymbol, 'Al');
+    assert.equal(al.anionFormula, 'SO4');
+    assert.equal(al.ionic, true);
+  });
+
   test('hidruros', () => {
     assert.equal(cls('NaH'), 'metal-hydride');
     assert.equal(cls('CaH2'), 'metal-hydride');
@@ -164,6 +183,15 @@ describe('nomenclatura (§28)', () => {
 
   test('sales de amonio, cuyo cation no es un elemento', () => {
     assert.equal(nameFormula('NH4NO3')!.stock, 'nitrato de amonio');
+  });
+
+  test('oxosales con el anion entre parentesis', () => {
+    assert.equal(nameFormula('Al2(SO4)3')!.stock, 'sulfato de aluminio');
+    assert.equal(nameFormula('Ca3(PO4)2')!.stock, 'fosfato de calcio');
+    assert.equal(nameFormula('Ca(NO3)2')!.stock, 'nitrato de calcio');
+    // El estado de oxidacion del metal se despeja bien pese al parentesis.
+    assert.equal(nameFormula('Fe2(SO4)3')!.stock, 'sulfato de hierro(III)');
+    assert.equal(nameFormula('Pb(NO3)2')!.stock, 'nitrato de plomo(II)');
   });
 
   test('acidos binarios en nomenclatura tradicional', () => {
