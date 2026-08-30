@@ -297,7 +297,7 @@ const SPECS: Record<string, MoleculeSpec> = {
  *
  * de donde se despeja θ. Para n = 2 se reduce a θ = φ/2.
  */
-function ligandDirections(
+export function ligandDirections(
   bondedAtoms: number,
   lonePairs: number,
   targetAngle: number,

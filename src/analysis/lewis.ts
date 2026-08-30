@@ -69,7 +69,13 @@ export interface LewisStructure {
 export interface LewisResult {
   /** La estructura preferida. */
   readonly best: LewisStructure;
-  /** Alternativas consideradas, ordenadas de mejor a peor. */
+  /**
+   * TODAS las estructuras validas que se encontraron, de mejor a peor.
+   *
+   * No se recortan: el motor de resonancia necesita el conjunto completo de
+   * las que empatan con la mejor, y ese numero depende de la especie (tres
+   * para el nitrato, dos para el ozono, seis para el sulfato).
+   */
   readonly alternatives: readonly LewisStructure[];
   /** Pasos del razonamiento, para mostrar. */
   readonly steps: readonly { readonly n: number; readonly text: string; readonly math?: string }[];
@@ -255,7 +261,7 @@ function assemble(
  *
  * Menor puntuacion es mejor.
  */
-function score(structure: LewisStructure): number {
+export function structureScore(structure: LewisStructure): number {
   let value = structure.formalChargeSpread * 10;
 
   for (const atom of structure.atoms) {
@@ -436,7 +442,7 @@ export function deriveLewis(formula: string): LewisResult | null {
     return null;
   }
 
-  candidates.sort((a, b) => score(a) - score(b));
+  candidates.sort((a, b) => structureScore(a) - structureScore(b));
   const best = candidates[0]!;
 
   const bondElectrons = best.bonds.reduce((sum, b) => sum + b.order * 2, 0);
@@ -471,10 +477,68 @@ export function deriveLewis(formula: string): LewisResult | null {
 
   return {
     best,
-    alternatives: candidates.slice(0, 6),
+    alternatives: candidates,
     steps,
     warnings,
   };
+}
+
+/**
+ * Por que NO se ha podido derivar la estructura (§32, §58).
+ *
+ * `deriveLewis` devuelve null cuando la especie queda fuera del modelo. Un
+ * null a secas obligaria a la interfaz a decir "error", que no es cierto ni es
+ * util: el motor sabe perfectamente por que no puede, y decirlo ensena mas que
+ * dibujar una estructura inventada.
+ */
+export function diagnoseLewis(formula: string): string | null {
+  const parsed = parseFormula(formula);
+  if (!parsed.ok) return `No se ha podido interpretar la formula "${formula}".`;
+  if (deriveLewis(formula)) return null;
+
+  const composition = parsed.value.composition;
+  const symbols: string[] = [];
+  for (const [symbol, count] of composition) {
+    if (!getElement(symbol)) return `El elemento ${symbol} no esta en la base de datos.`;
+    for (let i = 0; i < count; i++) symbols.push(symbol);
+  }
+
+  let totalValence = -parsed.value.charge;
+  for (const [symbol, count] of composition) {
+    totalValence += lewisValenceElectrons(getElement(symbol)!) * count;
+  }
+
+  if (totalValence % 2 !== 0) {
+    return (
+      `Esta especie tiene ${totalValence} electrones de valencia, un numero IMPAR: es un radical ` +
+      'libre. El modelo de Lewis reparte los electrones en PARES, asi que no puede describirla ' +
+      'sin dejar un electron desapareado que la notacion no sabe dibujar. Hacen falta orbitales ' +
+      'moleculares. (NO, NO2 y O2⁻ estan en este caso.)'
+    );
+  }
+
+  const heavy = symbols.filter((s) => s !== 'H');
+  if (heavy.length > 1 && heavy.filter((s) => s === 'C').length > 1) {
+    return (
+      'La especie tiene mas de un carbono. Con varios atomos capaces de ser centro, la ' +
+      'conectividad ya no se deduce de la formula: C2H6O puede ser etanol (C–C–O) o dimetil eter ' +
+      '(C–O–C), y ambas son formulas legitimas. Este motor solo construye esqueletos de un centro ' +
+      'con terminales alrededor, y prefiere decirlo antes que elegir una conectividad al azar.'
+    );
+  }
+
+  if (symbols.length - 1 > 6) {
+    return (
+      `Alrededor de un solo atomo central caben hasta 6 terminales, y esta formula pide ` +
+      `${symbols.length - 1}. La especie tiene una estructura que este modelo no describe.`
+    );
+  }
+
+  return (
+    'No existe ningun reparto de electrones que cierre a la vez el recuento de valencia, la carga ' +
+    'de la especie y las reglas del octeto sobre un esqueleto central-terminal. La especie tiene ' +
+    'una estructura que este modelo no sabe construir.'
+  );
 }
 
 // ---------------------------------------------------------------------------
