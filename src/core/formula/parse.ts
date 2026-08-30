@@ -188,6 +188,21 @@ function extractCharge(input: string): { body: string; charge: number } {
     return { body: s.slice(0, paren.index).trim(), charge: paren[2] === '+' ? magnitude : -magnitude };
   }
 
+  // Signo ANTES de la magnitud: SO4-2, PO4-3, Fe+3.
+  //
+  // Es la forma que mas se teclea y la unica de las cortas que NO es ambigua:
+  // el signo marca sin lugar a dudas donde termina la formula, asi que el
+  // digito que le sigue solo puede ser la carga. (En la forma contraria,
+  // `SO42-`, ese mismo digito podria pertenecer al oxigeno.)
+  const signFirst = /([+-])\s*(\d+)\s*$/.exec(s);
+  if (signFirst && signFirst.index > 0) {
+    const magnitude = Number.parseInt(signFirst[2]!, 10);
+    return {
+      body: s.slice(0, signFirst.index).trim(),
+      charge: signFirst[1] === '+' ? magnitude : -magnitude,
+    };
+  }
+
   // Racha de signos al final: Ca++, S--, Fe3+, NH4+
   const repeated = /(\++|-+)\s*$/.exec(s);
   if (repeated) {
