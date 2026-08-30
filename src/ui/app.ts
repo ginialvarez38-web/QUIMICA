@@ -58,6 +58,27 @@ const state: State = {
 let renderer: MoleculeRenderer | null = null;
 let currentStructure: Structure | null = null;
 
+/**
+ * Tema EFECTIVO, que no es lo mismo que el tema declarado.
+ *
+ * El atributo `data-theme` solo esta puesto cuando alguien ha elegido
+ * explicitamente. Sin el, el tema lo decide la preferencia del sistema. Leer
+ * unicamente el atributo produce un fallo concreto: un usuario con el sistema
+ * en claro pulsa el conmutador, el codigo ve que el atributo "no es light",
+ * deduce que estamos en oscuro y pone... claro. Nada cambia.
+ */
+function resolveTheme(): 'light' | 'dark' {
+  const stamped = document.documentElement.dataset['theme'];
+  if (stamped === 'light' || stamped === 'dark') return stamped;
+  return globalThis.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+/** Fondo del lienzo 3D por tema, en RGB normalizado. */
+const CANVAS_BACKGROUND: Record<'light' | 'dark', [number, number, number]> = {
+  light: [0.93, 0.945, 0.965],
+  dark: [0.043, 0.055, 0.078],
+};
+
 // ---------------------------------------------------------------------------
 // Estructura 3D
 // ---------------------------------------------------------------------------
@@ -378,7 +399,7 @@ function updateAtomLabels(): void {
     if (!p.visible) continue;
     const followed = state.followed.has(atom.id);
     parts.push(
-      `<div class="atom-label" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px${followed ? ';border-color:#f5b342;color:#f5b342' : ''}">${escapeHtml(atom.symbol)}${followed ? ' ◎' : ''}</div>`,
+      `<div class="atom-label" style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px${followed ? ';border-color:var(--hazard-special);color:var(--hazard-special)' : ''}">${escapeHtml(atom.symbol)}${followed ? ' ◎' : ''}</div>`,
     );
   }
   overlay.innerHTML = parts.join('');
@@ -643,18 +664,15 @@ function wireEvents(): void {
 
   // --- Tema --------------------------------------------------------------
   $('#theme-toggle').addEventListener('click', () => {
-    const root = document.documentElement;
-    const next = root.dataset['theme'] === 'light' ? 'dark' : 'light';
-    root.dataset['theme'] = next;
+    const next = resolveTheme() === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset['theme'] = next;
     try {
       localStorage.setItem('sandbox-theme', next);
     } catch {
       // El almacenamiento puede estar bloqueado; el tema simplemente no
       // persistira entre sesiones. No es motivo para romper nada.
     }
-    renderer?.setOptions({
-      background: next === 'light' ? [0.93, 0.945, 0.965] : [0.043, 0.055, 0.078],
-    });
+    renderer?.setOptions({ background: CANVAS_BACKGROUND[next] });
   });
 
   // --- Panel movil -------------------------------------------------------
@@ -688,10 +706,16 @@ function boot(): void {
     renderer = new MoleculeRenderer($<HTMLCanvasElement>('#gl-canvas'));
     renderer.setOptions({
       ...DEFAULT_RENDER_OPTIONS,
-      background:
-        document.documentElement.dataset['theme'] === 'light'
-          ? [0.93, 0.945, 0.965]
-          : [0.043, 0.055, 0.078],
+      background: CANVAS_BACKGROUND[resolveTheme()],
+    });
+
+    // Si el usuario no ha elegido tema, el lienzo debe seguir al sistema
+    // cuando este cambie: el CSS lo hace solo, pero el color de fondo de
+    // WebGL se fija por codigo y hay que actualizarlo a mano.
+    globalThis.matchMedia?.('(prefers-color-scheme: light)').addEventListener('change', () => {
+      if (!document.documentElement.dataset['theme']) {
+        renderer?.setOptions({ background: CANVAS_BACKGROUND[resolveTheme()] });
+      }
     });
     renderer.start(() => {
       updateAtomLabels();

@@ -61,8 +61,69 @@
 
   --panel-left: 300px;
   --panel-right: 380px;
+
+  /* Paneles flotantes sobre el lienzo 3D. Son tokens y no colores fijos
+     porque, definidos solo bajo [data-theme='light'], no se aplicaban en el
+     estado SIN MARCAR: un usuario con el sistema en claro veia la barra de
+     herramientas oscura sobre fondo claro, ilegible. */
+  --glass: rgba(11, 15, 22, 0.82);
+  --glass-strong: rgba(8, 12, 20, 0.78);
+  --glass-text: #ffffff;
+  --glass-border: rgba(255, 255, 255, 0.16);
+
+  /* Texto sobre el color de acento. El acento del tema oscuro es claro y
+     admite texto oscuro; el del tema claro es mas saturado y pide blanco. */
+  --on-accent: #04101f;
 }
 
+/*
+ * TRES ESTADOS DE TEMA, no dos.
+ *
+ * El visor puede marcar la raiz con data-theme="dark" o data-theme="light",
+ * pero por defecto NO marca nada y el tema lo decide la preferencia del
+ * sistema. Un diseno que solo contemple `:root` y `[data-theme="light"]` deja
+ * al usuario de sistema-claro sin marcar viendo la paleta oscura.
+ *
+ * Este sandbox es OSCURO POR DEFECTO a proposito: el visor molecular gana
+ * muchisimo sobre fondo oscuro, igual que en cualquier visor cientifico. Asi
+ * que el bloque base define el tema oscuro y la paleta clara se aplica en dos
+ * sitios: cuando el sistema la pide y no hay eleccion contraria, y cuando se
+ * elige explicitamente.
+ *
+ * Los dos bloques claros son identicos a proposito: una consulta de medios no
+ * se puede fusionar con un selector normal, y duplicar diecisiete lineas es
+ * preferible a una indireccion que oculte cual gana.
+ */
+
+/* El sistema pide claro y nadie ha elegido oscuro. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --bg-deep: #eef1f6;
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --surface-2: #f2f5f9;
+    --surface-3: #e8edf4;
+    --border: #dde3ec;
+    --border-strong: #c3cddb;
+    --text: #10151f;
+    --text-muted: #56637a;
+    --text-faint: #8a95a8;
+    --accent: #1f6fd0;
+    --accent-soft: rgba(31, 111, 208, 0.1);
+    --accent-line: rgba(31, 111, 208, 0.35);
+    --metal: #4a5568;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.08);
+    --shadow-lg: 0 24px 60px rgba(16, 24, 40, 0.14);
+    --glass: rgba(255, 255, 255, 0.88);
+    --glass-strong: rgba(255, 255, 255, 0.92);
+    --glass-text: #10151f;
+    --glass-border: rgba(16, 21, 31, 0.14);
+    --on-accent: #ffffff;
+  }
+}
+
+/* Eleccion explicita del usuario, que gana sobre la preferencia del sistema. */
 :root[data-theme='light'] {
   color-scheme: light;
   --bg-deep: #eef1f6;
@@ -81,6 +142,11 @@
   --metal: #4a5568;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.08);
   --shadow-lg: 0 24px 60px rgba(16, 24, 40, 0.14);
+  --glass: rgba(255, 255, 255, 0.88);
+  --glass-strong: rgba(255, 255, 255, 0.92);
+  --glass-text: #10151f;
+  --glass-border: rgba(16, 21, 31, 0.14);
+  --on-accent: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -422,18 +488,12 @@ button { cursor: pointer; border: none; background: none; }
   font-weight: 600;
   padding: 1px 5px;
   border-radius: 5px;
-  background: rgba(8, 12, 20, 0.78);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--glass-strong);
+  color: var(--glass-text);
+  border: 1px solid var(--glass-border);
   backdrop-filter: blur(6px);
   white-space: nowrap;
 }
-:root[data-theme='light'] .atom-label {
-  background: rgba(255, 255, 255, 0.9);
-  color: #10151f;
-  border-color: rgba(16, 21, 31, 0.14);
-}
-
 /* Barra de herramientas del visor */
 .viewport-toolbar {
   position: absolute;
@@ -449,12 +509,11 @@ button { cursor: pointer; border: none; background: none; }
   display: flex;
   gap: 1px;
   padding: 3px;
-  background: rgba(11, 15, 22, 0.82);
+  background: var(--glass);
   border: 1px solid var(--border);
   border-radius: 9px;
   backdrop-filter: blur(12px);
 }
-:root[data-theme='light'] .toolbar-group { background: rgba(255, 255, 255, 0.88); }
 
 .toolbar-button {
   padding: 4px 10px;
@@ -472,7 +531,7 @@ button { cursor: pointer; border: none; background: none; }
   position: absolute;
   top: 12px; right: 12px;
   padding: 5px 11px;
-  background: rgba(11, 15, 22, 0.82);
+  background: var(--glass);
   border: 1px solid var(--border);
   border-radius: 9px;
   backdrop-filter: blur(12px);
@@ -481,7 +540,6 @@ button { cursor: pointer; border: none; background: none; }
   font-weight: 560;
   pointer-events: none;
 }
-:root[data-theme='light'] .viewport-badge { background: rgba(255, 255, 255, 0.88); }
 
 .viewport-hint {
   position: absolute;
@@ -596,7 +654,7 @@ button { cursor: pointer; border: none; background: none; }
 .button-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #04101f;
+  color: var(--on-accent);
   font-weight: 620;
 }
 .button-primary:hover:not(:disabled) { filter: brightness(1.1); }
