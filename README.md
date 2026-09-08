@@ -128,6 +128,31 @@ Escribir «la masa se conserva» es una afirmacion que hay que creerse. Ensenar
 la tabla de atomos cuadrando es la ley ocurriendo delante. Y si manana cambiara
 una masa atomica, cambiarian los numeros de la pagina.
 
+### El contrato didactico
+
+Cada apartado se construye con las mismas piezas, y hay pruebas que las
+vigilan:
+
+| Pieza | Regla que se comprueba |
+|---|---|
+| **La idea** | La frase que hay que llevarse. |
+| **Ojo** | El error que casi todo el mundo comete ahi. |
+| **Imaginalo asi** | Toda analogia declara **donde deja de valer**. Sin el limite, no se admite. |
+| **Ejercicio resuelto** | Al menos tres pasos, y alguno ensena la operacion, no solo la describe. |
+| **Comprueba que lo has entendido** | La respuesta llega tapada, y tiene que razonar — una de dos palabras no pasa la prueba. |
+| **Se conecta con** | Los enlaces apuntan a apartados que existen. |
+
+La regla de las analogias es la que mas importa. Son la herramienta mas
+potente y mas peligrosa de la ensenanza: explican rapido y dejan una idea
+falsa pegada. «El atomo es como un sistema solar» hace entender la idea de
+nucleo y corteza, y a cambio deja creyendo que los electrones giran en
+orbitas, que es justo lo que la mecanica cuantica niega. Por eso el tipo
+`Analogy` tiene dos campos obligatorios.
+
+Y las respuestas de autocomprobacion llegan ocultas por un motivo: leer la
+pregunta y la respuesta a la vez da sensacion de haber entendido sin haber
+recuperado nada de memoria.
+
 El guia **no sabe quimica**. Ninguna de sus frases afirma nada que no venga de
 un motor, y cada pista muestra su procedencia. Cuando el motor no sabe algo, el
 guia lo dice.
@@ -276,7 +301,7 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**275 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+**281 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
 motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
 ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
 de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los

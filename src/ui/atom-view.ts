@@ -247,6 +247,54 @@ function renderDemo(demo: AtomDemo): string {
         </div>`;
     }
 
+    /*
+     * Los modelos atomicos como CADENA, no como galeria.
+     *
+     * Lo que se destaca de cada uno es lo que NO pudo explicar, porque es la
+     * razon de que exista el siguiente. Estudiarlos como cinco dibujos
+     * sueltos pierde lo unico que ensenan.
+     */
+    case 'models':
+      return `
+        <div class="demo">
+          <div class="demo-title">Cada modelo cayo por un experimento concreto</div>
+          <ol class="models">
+            ${demo.models
+              .map(
+                (m) => `
+                <li class="model">
+                  <div class="model-head">
+                    <span class="model-year">${escapeHtml(m.year)}</span>
+                    <strong class="model-name">${escapeHtml(m.name)}</strong>
+                    <span class="model-author">${escapeHtml(m.author)}</span>
+                  </div>
+                  <p class="model-proposal">${escapeHtml(m.proposal)}</p>
+                  <div class="model-grid">
+                    <div class="model-cell model-evidence">
+                      <span class="model-label">En que se apoya</span>${escapeHtml(m.evidence)}
+                    </div>
+                    <div class="model-cell model-explains">
+                      <span class="model-label">Explica</span>${escapeHtml(m.explains)}
+                    </div>
+                    <div class="model-cell model-fails">
+                      <span class="model-label">No puede explicar</span>${escapeHtml(m.fails)}
+                    </div>
+                    <div class="model-cell model-survives">
+                      <span class="model-label">Que sobrevive hoy</span>${escapeHtml(m.survives)}
+                    </div>
+                  </div>
+                </li>`,
+              )
+              .join('')}
+          </ol>
+          <p class="demo-note">
+            Lee la columna «No puede explicar» de arriba abajo: es el guion de la historia. Cada
+            modelo se abandono el dia que aparecio un experimento que no encajaba, no por ser «falso».
+            Y fijate en la ultima columna: de todos ellos sobrevive algo, y el de Dalton — de 1803 —
+            sigue siendo el que se usa para ajustar una ecuacion.
+          </p>
+        </div>`;
+
     /* La tabla periodica, contada. */
     case 'periodic-stats':
       return `

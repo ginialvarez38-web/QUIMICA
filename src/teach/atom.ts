@@ -96,7 +96,154 @@ export interface PeriodicStatsDemo {
   readonly metalloids: number;
 }
 
-export type AtomDemo = CompositionDemo | AbundanceDemo | NuclideGroupDemo | PeriodicStatsDemo;
+/**
+ * Un modelo atomico, con lo unico que importa de el: que problema resolvio y
+ * que problema no pudo resolver.
+ */
+export interface AtomicModel {
+  readonly year: string;
+  readonly author: string;
+  readonly name: string;
+  /** Que propone. */
+  readonly proposal: string;
+  /** El experimento que lo sostiene. */
+  readonly evidence: string;
+  /** Lo que explica bien. */
+  readonly explains: string;
+  /** Lo que NO puede explicar: la razon de que apareciera el siguiente. */
+  readonly fails: string;
+  /** Que sigue valiendo hoy. */
+  readonly survives: string;
+}
+
+export interface ModelsDemo {
+  readonly kind: 'models';
+  readonly models: readonly AtomicModel[];
+}
+
+export type AtomDemo =
+  | CompositionDemo
+  | AbundanceDemo
+  | NuclideGroupDemo
+  | PeriodicStatsDemo
+  | ModelsDemo;
+
+/**
+ * LOS MODELOS ATOMICOS, como cadena de experimentos.
+ *
+ * Estudiarlos como cinco dibujos que memorizar es perder lo unico que
+ * ensenan. Un modelo no se abandona por «ser falso»: se abandona el dia que
+ * aparece un experimento que no puede explicar. Y el modelo viejo sigue
+ * sirviendo dentro de sus limites — el de Dalton basta para ajustar
+ * ecuaciones, y es de 1803.
+ *
+ * De ahi que cada entrada lleve las cuatro columnas que de verdad importan:
+ * que propone, que experimento lo sostiene, que NO puede explicar (que es la
+ * razon de que exista el siguiente) y que ha sobrevivido.
+ */
+export function modelsDemo(): ModelsDemo {
+  return {
+    kind: 'models',
+    models: [
+      {
+        year: '1803',
+        author: 'Dalton',
+        name: 'Esfera maciza',
+        proposal:
+          'La materia esta hecha de atomos indivisibles e indestructibles. Los de un mismo elemento ' +
+          'son identicos; los de elementos distintos, diferentes. Se combinan en proporciones de ' +
+          'numeros enteros sencillos.',
+        evidence:
+          'Las leyes ponderales de la unidad 1: conservacion de la masa, proporciones definidas y, ' +
+          'sobre todo, proporciones multiples. Que la razon salga 1:2 y no 1:1,87 obliga a que lo que ' +
+          'se combina sean unidades que se cuentan de una en una.',
+        explains: 'Por que las ecuaciones se ajustan con numeros enteros y por que un compuesto tiene composicion fija.',
+        fails:
+          'No explica la electricidad. Si el atomo es una esfera maciza e indivisible, ¿de donde salen ' +
+          'los rayos catodicos, que aparecen sea cual sea el metal?',
+        survives:
+          'Casi todo, para la quimica de reacciones. Ajustar una ecuacion es aplicar a Dalton, y se ' +
+          'hace igual hoy.',
+      },
+      {
+        year: '1904',
+        author: 'Thomson',
+        name: 'Pudin de pasas',
+        proposal:
+          'El atomo es una esfera de carga positiva difusa con los electrones incrustados, como las ' +
+          'pasas en un bizcocho. El conjunto es neutro.',
+        evidence:
+          'Los rayos catodicos: particulas negativas que salen de CUALQUIER metal, con la misma ' +
+          'relacion carga/masa. Si de todos los materiales sale la misma particula, esa particula esta ' +
+          'en todos los atomos.',
+        explains: 'Que el atomo tenga partes con carga y siga siendo neutro. Y que sea divisible.',
+        fails:
+          'No sobrevive al experimento de la lamina de oro. Si la carga positiva estuviera repartida, ' +
+          'ninguna particula alfa podria rebotar hacia atras.',
+        survives: 'La idea de que el atomo contiene electrones y de que es divisible.',
+      },
+      {
+        year: '1911',
+        author: 'Rutherford',
+        name: 'Modelo nuclear',
+        proposal:
+          'Casi toda la masa y toda la carga positiva estan concentradas en un NUCLEO diminuto. Los ' +
+          'electrones estan fuera, y entre medias no hay practicamente nada.',
+        evidence:
+          'La lamina de oro (Geiger y Marsden). Casi todas las particulas alfa atravesaban la lamina ' +
+          'sin desviarse, pero una de cada 8000 rebotaba. Rutherford lo describio como disparar a un ' +
+          'papel de seda y que la bala volviera.',
+        explains: 'Que el atomo sea sobre todo espacio vacio, y que exista un nucleo denso y positivo.',
+        fails:
+          'Es INESTABLE segun la propia fisica de la epoca: una carga que gira emite radiacion, pierde ' +
+          'energia y deberia caer al nucleo en una fraccion de segundo. Tampoco explica los espectros ' +
+          'de rayas.',
+        survives: 'El nucleo. Toda la fisica nuclear parte de aqui.',
+      },
+      {
+        year: '1913',
+        author: 'Bohr',
+        name: 'Orbitas cuantizadas',
+        proposal:
+          'Los electrones solo pueden estar en ciertas orbitas de energia definida. Girando en una ' +
+          'orbita permitida NO radian. Al saltar de una a otra absorben o emiten un foton de energia ' +
+          'exactamente igual a la diferencia.',
+        evidence:
+          'Los ESPECTROS DE RAYAS. Un gas caliente no emite todos los colores: emite unas rayas ' +
+          'concretas y siempre las mismas. Bohr calculo las del hidrogeno y le salieron exactas.',
+        explains:
+          'Por que el atomo es estable y por que cada elemento tiene su espectro, que es su huella ' +
+          'dactilar. Es la base de la idea de NIVEL de energia.',
+        fails:
+          'Solo funciona para el hidrogeno. Con dos electrones ya falla, y no explica por que unas ' +
+          'rayas son mas intensas que otras ni el efecto de un campo magnetico.',
+        survives:
+          'La cuantizacion: la energia del electron solo toma valores concretos. Y el numero cuantico ' +
+          'n, que es el numero de periodo de la tabla.',
+      },
+      {
+        year: '1926',
+        author: 'Schrodinger y Heisenberg',
+        name: 'Modelo cuantico',
+        proposal:
+          'El electron no tiene trayectoria. Lo que hay es una funcion de onda cuyo cuadrado da la ' +
+          'PROBABILIDAD de encontrarlo en cada punto. Un orbital es la region donde esa probabilidad ' +
+          'es alta, no un camino.',
+        evidence:
+          'La dualidad onda-particula (De Broglie, confirmada por difraccion de electrones) y el ' +
+          'principio de incertidumbre: posicion y velocidad no se pueden conocer a la vez con ' +
+          'precision arbitraria, asi que hablar de orbita carece de sentido.',
+        explains:
+          'Los espectros de todos los elementos, la forma de los enlaces, la geometria molecular y la ' +
+          'estructura de la tabla periodica.',
+        fails:
+          'Nada de la quimica ordinaria, pero deja de ser dibujable. El precio de la exactitud es ' +
+          'perder la imagen intuitiva.',
+        survives: 'Es el modelo vigente. Toda la unidad de estructura electronica de este programa lo usa.',
+      },
+    ],
+  };
+}
 
 /**
  * COMPOSICION DE UN NUCLEIDO.
@@ -305,11 +452,40 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
           'CORTEZA donde estan los electrones (carga −1). El nucleo concentra casi toda la masa; la ' +
           'corteza, casi todo el volumen.',
         keyIdea:
-          'Las escalas no se parecen en nada. Si el nucleo fuera una canica en el centro de un campo de ' +
-          'futbol, los electrones andarian por las gradas. Un atomo es, sobre todo, espacio vacio.',
+          'Un atomo es, sobre todo, ESPACIO VACIO. El nucleo ocupa una billonesima parte del volumen y ' +
+          'concentra el 99,97 % de la masa.',
+        analogy: {
+          image:
+            'Si el nucleo fuera una canica de 1 cm en el centro del circulo central de un campo de ' +
+            'futbol, los electrones andarian por las gradas y entre medias no habria nada.',
+          limit:
+            'La comparacion sirve para las ESCALAS y solo para eso. Los electrones no son bolitas ni ' +
+            'estan en un sitio concreto de las gradas: forman una nube de probabilidad. Y no hay nada ' +
+            'que los sujete «girando», como se vera en el apartado 2.2.1.2.',
+        },
         pitfall:
-          'El proton y el neutron pesan casi lo mismo (≈1 u), pero el electron pesa 1836 veces menos que ' +
-          'el proton. Por eso la masa se cuenta con A = protones + neutrones y los electrones no entran.',
+          'El proton y el neutron pesan casi lo mismo (≈1 u), pero el electron pesa 1836 veces menos. Por ' +
+          'eso la masa se cuenta con A = protones + neutrones y los electrones no entran en esa suma.',
+        check: [
+          {
+            question: 'Si un atomo es casi todo vacio, ¿por que no atraviesas una mesa con la mano?',
+            answer:
+              'Porque lo que te detiene no es la materia, es la REPULSION entre las nubes electronicas ' +
+              'de tus atomos y las de la mesa. Nunca llegas a tocar nada: las cargas negativas se ' +
+              'rechazan mucho antes. La solidez es un efecto electrico, no una cuestion de que este ' +
+              'lleno.',
+          },
+          {
+            question: '¿Que pesa mas, un proton o 1000 electrones?',
+            answer:
+              'El proton, y por bastante. Pesa 1836 veces mas que un electron, asi que sigue ganando a ' +
+              '1000 electrones (1836 frente a 1000).',
+          },
+        ],
+        connects: [
+          { label: '2.3 Constitucion del nucleo', topic: '2.3' },
+          { label: '1.1 Materia: masa y volumen', mode: 'teoria' },
+        ],
         demo: null,
       },
       {
@@ -343,6 +519,22 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
                   'La clave del experimento de los rayos catodicos es que el resultado NO dependia del ' +
                   'metal del catodo. Si de cualquier material sale la misma particula, esa particula ' +
                   'esta en todos: el atomo no es indivisible.',
+                pitfall:
+                  'Thomson no midio la masa del electron ni su carga por separado: midio el COCIENTE ' +
+                  'carga/masa desviando el haz con campos electricos y magneticos. La carga la midio ' +
+                  'Millikan catorce anos despues, con las gotas de aceite, y solo entonces se pudo ' +
+                  'despejar la masa.',
+                check: [
+                  {
+                    question:
+                      '¿Por que fue tan importante que los rayos catodicos salieran iguales de cualquier metal?',
+                    answer:
+                      'Porque significa que el electron no es una peculiaridad de un material: es un ' +
+                      'componente COMUN de toda la materia. Si de un catodo de cobre y de otro de ' +
+                      'aluminio sale exactamente la misma particula, esa particula tiene que estar dentro ' +
+                      'de los dos. Y eso tumba la indivisibilidad de Dalton.',
+                  },
+                ],
               },
               {
                 id: '2.2.1.2',
@@ -353,7 +545,39 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
                   'cadena de experimentos que obligo a cambiarlos.',
                 keyIdea:
                   'Un modelo no se abandona por ser «falso»: se abandona cuando aparece un experimento ' +
-                  'que no puede explicar. Y el modelo viejo sigue sirviendo dentro de sus limites.',
+                  'que no puede explicar. Y el modelo viejo sigue sirviendo dentro de sus limites — el ' +
+                  'de Dalton, de 1803, es el que usas para ajustar una ecuacion.',
+                demo: modelsDemo(),
+                check: [
+                  {
+                    question:
+                      '¿Que vio Rutherford en la lamina de oro que no encajaba con el modelo de Thomson?',
+                    answer:
+                      'Que una de cada 8000 particulas alfa REBOTABA hacia atras. Con la carga positiva ' +
+                      'repartida por toda la esfera, como proponia Thomson, ninguna podria rebotar: no ' +
+                      'habria nada lo bastante concentrado para frenarla. Hacia falta un nucleo diminuto ' +
+                      'y masivo.',
+                  },
+                  {
+                    question: '¿Por que el modelo de Rutherford era INESTABLE segun la fisica de su epoca?',
+                    answer:
+                      'Porque una carga acelerada emite radiacion, y un electron girando esta acelerado. ' +
+                      'Perderia energia continuamente y caeria al nucleo en una fraccion de segundo. Que ' +
+                      'la materia exista contradecia el modelo, y de ahi la cuantizacion de Bohr.',
+                  },
+                  {
+                    question: '¿Que experimento obligo a inventar los niveles de energia de Bohr?',
+                    answer:
+                      'Los ESPECTROS DE RAYAS. Un gas caliente no emite todos los colores, sino unas ' +
+                      'rayas concretas y siempre las mismas. Si el electron pudiera tener cualquier ' +
+                      'energia, el espectro seria continuo. Que sea discreto significa que las energias ' +
+                      'permitidas tambien lo son.',
+                  },
+                ],
+                connects: [
+                  { label: '2.10 La tabla periodica sale de aqui', topic: '2.10' },
+                  { label: 'Analizar una especie de verdad', mode: 'react' },
+                ],
               },
             ],
           },
@@ -388,6 +612,24 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         pitfall:
           'Z no cambia nunca en una reaccion quimica. Un ion Na⁺ tiene 11 protones, igual que el atomo ' +
           'neutro; lo que ha perdido es un electron.',
+        analogy: {
+          image:
+            'Z es como el numero del DNI: identifica y no se puede cambiar. Los electrones son mas bien ' +
+            'el dinero que llevas encima — puedes ganarlo o perderlo sin dejar de ser tu.',
+          limit:
+            'La comparacion falla en un punto importante: Z SI puede cambiar, pero no en quimica. En una ' +
+            'reaccion NUCLEAR un elemento se transforma en otro, y eso es exactamente lo que buscaban ' +
+            'los alquimistas.',
+        },
+        check: [
+          {
+            question: 'Un atomo tiene 17 protones, 18 neutrones y 18 electrones. ¿Que es?',
+            answer:
+              'Es un ion CLORURO, Cl⁻. El elemento lo dan los 17 protones (Z = 17 → cloro). Como tiene ' +
+              '18 electrones, uno mas que protones, la carga es −1. Y A = 17 + 18 = 35, asi que es ' +
+              'concretamente ³⁵Cl⁻.',
+          },
+        ],
       },
       {
         id: '2.5',
@@ -402,6 +644,32 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         pitfall:
           'Notacion: el numero masico va arriba y el atomico abajo, ambos a la IZQUIERDA del simbolo. ' +
           'Escribirlos al reves es el error mas repetido.',
+        worked: {
+          question:
+            'El ion ⁵⁶Fe³⁺ del hierro. ¿Cuantos protones, neutrones y electrones tiene?',
+          steps: [
+            { text: 'El simbolo da el elemento: hierro. En la tabla, Z = 26.', math: 'Z = 26 → 26 protones' },
+            { text: 'El numero masico esta escrito: A = 56. Los neutrones son la diferencia.', math: 'N = A − Z = 56 − 26 = 30' },
+            {
+              text: 'La carga 3+ significa que ha PERDIDO tres electrones. Se restan a los 26 del atomo neutro.',
+              math: 'e⁻ = Z − carga = 26 − 3 = 23',
+            },
+            {
+              text: 'Comprobacion: 26 cargas positivas y 23 negativas dejan un saldo de +3, que es la carga escrita.',
+              math: '(+26) + (−23) = +3 ✓',
+            },
+          ],
+          answer: '26 protones, 30 neutrones y 23 electrones.',
+        },
+        check: [
+          {
+            question: '¿Por que la masa atomica del cloro (35,45) no puede ser un numero masico?',
+            answer:
+              'Porque A cuenta PARTICULAS y tiene que ser entero: no existen 0,45 nucleones. El 35,45 es ' +
+              'una media ponderada de las masas de sus isotopos, que es otra cosa. Se ve en el apartado 2.9.',
+          },
+        ],
+        connects: [{ label: '2.9 De donde sale el 35,45', topic: '2.9' }],
       },
       {
         id: '2.6',
@@ -417,6 +685,24 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
           'Los isotopos del hidrogeno son los unicos con nombre propio — protio, deuterio y tritio — ' +
           'porque en el hidrogeno anadir un neutron DUPLICA la masa. En los demas elementos el cambio ' +
           'relativo es tan pequeno que no compensa distinguirlos con nombres.',
+        analogy: {
+          image:
+            'Dos monedas del mismo valor, una de cobre y otra de acero: en la maquina expendedora valen ' +
+            'igual (misma quimica) pero pesan distinto (distinta masa).',
+          limit:
+            'La diferencia de masa entre isotopos SI tiene efectos medibles cuando es grande. El agua ' +
+            'pesada (D₂O) hierve a 101,4 °C en lugar de a 100, y los procesos biologicos van mas lentos ' +
+            'con ella. En los elementos pesados el efecto es despreciable; en el hidrogeno, no.',
+        },
+        check: [
+          {
+            question: '¿En que se diferencian quimicamente el ³⁵Cl y el ³⁷Cl?',
+            answer:
+              'En nada apreciable. La quimica la hacen los ELECTRONES, y los dos tienen 17. Cambian dos ' +
+              'neutrones, que no participan en los enlaces. Por eso ocupan la misma casilla de la tabla ' +
+              'periodica: son el mismo elemento.',
+          },
+        ],
         demo: abundanceDemo('H'),
       },
       {
@@ -454,6 +740,46 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         pitfall:
           'Ningun atomo de cloro pesa 35,45 u. La masa atomica es una media, y ninguna particula real ' +
           'tiene el valor medio — igual que ninguna familia tiene 1,3 hijos.',
+        worked: {
+          question:
+            'El cobre tiene dos isotopos: ⁶³Cu (62,930 u, 69,15 %) y ⁶⁵Cu (64,928 u, 30,85 %). ' +
+            '¿Cual es su masa atomica?',
+          steps: [
+            {
+              text: 'La abundancia en tanto por ciento se pasa a fraccion dividiendo entre 100.',
+              math: '69,15 % → 0,6915   ·   30,85 % → 0,3085',
+            },
+            {
+              text: 'Cada isotopo aporta su masa multiplicada por lo abundante que es.',
+              math: '62,930 × 0,6915 = 43,516     64,928 × 0,3085 = 20,030',
+            },
+            { text: 'La masa atomica es la suma de esas aportaciones.', math: '43,516 + 20,030 = 63,546 u' },
+            {
+              text: 'Comprobacion de sentido: el resultado tiene que caer ENTRE 62,93 y 64,93, y mas cerca del mas abundante. 63,55 esta mas cerca de 62,93. ✓',
+            },
+          ],
+          answer: '63,55 u, que es exactamente lo que figura en la tabla periodica.',
+        },
+        check: [
+          {
+            question:
+              'El bromo tiene dos isotopos, ⁷⁹Br y ⁸¹Br, y su masa atomica es 79,90. ¿Que te dice ese valor sobre sus abundancias?',
+            answer:
+              'Que estan casi al 50 % cada uno. El 79,90 cae practicamente en el punto medio entre 79 y ' +
+              '81, y la media solo se queda en el centro cuando los dos pesan lo mismo en el reparto. ' +
+              'Las abundancias reales son 50,69 % y 49,31 %.',
+          },
+          {
+            question: '¿Cuanto pesa un atomo concreto de cloro?',
+            answer:
+              'O 34,97 u (si es ³⁵Cl) o 36,97 u (si es ³⁷Cl). NINGUNO pesa 35,45: ese es el valor medio, ' +
+              'y ninguna particula real tiene la media, igual que ninguna familia tiene 1,3 hijos.',
+          },
+        ],
+        connects: [
+          { label: '2.6 Isotopos', topic: '2.6' },
+          { label: '1.11 Peso atomico', mode: 'teoria' },
+        ],
         demo: abundanceDemo('Cl'),
       },
       {
@@ -478,6 +804,27 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
             keyIdea:
               'La frontera entre metales y no metales es una escalera diagonal que baja desde el boro ' +
               'hasta el astato. Los metaloides son justo los que la tocan.',
+            analogy: {
+              image:
+                'Un metal es como una multitud con el dinero en un fondo comun: los electrones de ' +
+                'valencia no pertenecen a ningun atomo concreto y se mueven por todo el material. De ahi ' +
+                'que conduzcan, brillen y se puedan estirar sin romperse.',
+              limit:
+                'La comparacion explica bien la conduccion y la maleabilidad, pero no que unos metales ' +
+                'sean duros y otros blandos, ni que el mercurio sea liquido. Eso depende de la fuerza ' +
+                'del enlace metalico concreto, y la imagen del fondo comun no lo distingue.',
+            },
+            check: [
+              {
+                question: '¿Por que los metaloides sirven para hacer semiconductores y los metales no?',
+                answer:
+                  'Porque un metal conduce SIEMPRE y un aislante NUNCA, y ninguno de los dos es util para ' +
+                  'controlar una senal. El metaloide conduce solo en ciertas condiciones — segun la ' +
+                  'temperatura, la luz o las impurezas que se le anadan — y esa conduccion gobernable es ' +
+                  'exactamente lo que hace falta para un transistor. Toda la electronica se apoya en el ' +
+                  'silicio por eso.',
+              },
+            ],
           },
           {
             id: '2.10.2',
@@ -493,6 +840,46 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
             pitfall:
               'Los lantanidos y actinidos se dibujan aparte solo para que la tabla quepa en una hoja. ' +
               'Su sitio real esta intercalado en los periodos 6 y 7, entre los grupos 3 y 4.',
+            worked: {
+              question: 'Sin mirar la tabla: ¿en que grupo y periodo esta el azufre (Z = 16)?',
+              steps: [
+                {
+                  text: 'Se escribe la configuracion electronica llenando por orden de energia.',
+                  math: '1s² 2s² 2p⁶ 3s² 3p⁴',
+                },
+                {
+                  text: 'El PERIODO es el numero cuantico n mas alto que aparece. Aqui es el 3.',
+                  math: 'n maximo = 3 → periodo 3',
+                },
+                {
+                  text: 'Los electrones de valencia son los de esa ultima capa: 2 en el 3s y 4 en el 3p.',
+                  math: '3s² 3p⁴ → 6 electrones de valencia',
+                },
+                {
+                  text: 'En los grupos principales del bloque p, el grupo es los electrones de valencia mas 10.',
+                  math: '6 + 10 = grupo 16',
+                },
+              ],
+              answer: 'Grupo 16, periodo 3. Y por tener 6 electrones de valencia se comporta como el oxigeno, que esta justo encima.',
+            },
+            check: [
+              {
+                question: '¿Por que el sodio y el potasio reaccionan de forma tan parecida?',
+                answer:
+                  'Porque los dos tienen UN solo electron de valencia (3s¹ el sodio, 4s¹ el potasio), y ' +
+                  'la quimica la hacen los electrones externos. Estan en el mismo grupo precisamente por ' +
+                  'eso. El potasio reacciona mas violentamente porque su electron esta mas lejos del ' +
+                  'nucleo y se suelta con mas facilidad.',
+              },
+              {
+                question: '¿Que tienen en comun todos los elementos del periodo 3?',
+                answer:
+                  'Que llenan la misma capa, la n = 3. No se parecen en sus propiedades — el sodio es un ' +
+                  'metal reactivisimo y el argon un gas inerte — porque el numero de electrones de esa ' +
+                  'capa va cambiando. El parecido va por COLUMNAS, no por filas.',
+              },
+            ],
+            connects: [{ label: '2.10 La tabla completa', topic: '2.10' }],
           },
         ],
       },

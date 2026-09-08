@@ -178,6 +178,18 @@ dos filas de abajo. Cada celda abre su elemento.
 conocidos y aqui estan los que se estudian. Un elemento sin datos devuelve
 lista vacia en lugar de aparentar que no tiene isotopos.
 
+## Los modelos atomicos (2.2.1.2)
+
+Los cinco modelos como CADENA, no como galeria: cada uno con que propone, en
+que experimento se apoya, que explica, **que NO puede explicar** — que es la
+razon de que exista el siguiente — y que sobrevive hoy.
+
+Leida en vertical, la columna «no puede explicar» es el guion de la historia:
+Dalton no explica la electricidad → Thomson no sobrevive a la lamina de oro →
+Rutherford es inestable segun su propia fisica → Bohr solo vale para el
+hidrogeno → modelo cuantico. Y de todos sobrevive algo: el de Dalton, de 1803,
+sigue siendo el que se usa para ajustar una ecuacion.
+
 ## El guia
 
 `teach/guide.ts` decide que decir en cada momento; `ui/guide-view.ts` le pone

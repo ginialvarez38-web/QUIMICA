@@ -466,6 +466,45 @@ export const SEPARATION_METHODS: readonly SeparationMethod[] = [
  * unidad declara los suyos, y su vista los recorre con comprobacion
  * exhaustiva.
  */
+/**
+ * Una comparacion, CON SU LIMITE.
+ *
+ * Las analogias son la herramienta mas potente y mas peligrosa de la
+ * ensenanza: explican rapido y dejan una idea falsa pegada. «El atomo es como
+ * un sistema solar» hace entender la idea de nucleo y corteza, y a cambio deja
+ * creyendo que los electrones giran en orbitas, que es justo lo que la
+ * mecanica cuantica niega.
+ *
+ * Por eso aqui toda analogia va obligada a declarar donde deja de valer. Sin
+ * el limite, la comparacion no se admite.
+ */
+export interface Analogy {
+  readonly image: string;
+  /** Donde la comparacion deja de ser cierta. Obligatorio. */
+  readonly limit: string;
+}
+
+/** Un ejercicio resuelto, con el desarrollo a la vista. */
+export interface WorkedExample {
+  readonly question: string;
+  readonly steps: readonly { readonly text: string; readonly math?: string }[];
+  readonly answer: string;
+}
+
+/**
+ * Pregunta de autocomprobacion.
+ *
+ * La respuesta llega oculta y se descubre al pulsar. El motivo no es el
+ * suspense: leer la pregunta y la respuesta a la vez da sensacion de haber
+ * entendido sin haber recuperado nada de memoria, que es la ilusion de
+ * competencia mejor documentada que existe. Obligar a intentarlo antes es lo
+ * unico que convierte la lectura en aprendizaje.
+ */
+export interface SelfCheck {
+  readonly question: string;
+  readonly answer: string;
+}
+
 export interface TheoryTopic<D = TheoryDemo> {
   readonly id: string;
   readonly title: string;
@@ -475,6 +514,14 @@ export interface TheoryTopic<D = TheoryDemo> {
   readonly keyIdea?: string;
   /** El error que casi todo el mundo comete aqui. */
   readonly pitfall?: string;
+  /** Comparacion util, con su limite declarado. */
+  readonly analogy?: Analogy;
+  /** Ejercicio resuelto paso a paso. */
+  readonly worked?: WorkedExample;
+  /** Preguntas para recuperar de memoria antes de seguir. */
+  readonly check?: readonly SelfCheck[];
+  /** Con que otros apartados se conecta esto. */
+  readonly connects?: readonly { readonly label: string; readonly topic?: string; readonly mode?: string }[];
   /** Demostracion calculada, cuando la hay. */
   readonly demo?: D | null;
   /** Lo que este motor NO cubre de este apartado (§32). */
@@ -525,6 +572,42 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         pitfall:
           'Otra division que conviene no mezclar: propiedades FISICAS (se miden sin cambiar la sustancia) ' +
           'frente a QUIMICAS (describen como reacciona, y comprobarlas la transforma).',
+        analogy: {
+          image:
+            'Extensivo es «cuanto hay» e intensivo es «de que es». Si partes un ladrillo por la mitad, ' +
+            'cada trozo pesa la mitad (extensivo) pero sigue siendo igual de duro y de denso (intensivo).',
+          limit:
+            'La comparacion se rompe cuando el trozo se hace muy pequeno. Unas pocas decenas de atomos ' +
+            'de oro no son amarillos ni conducen: las propiedades intensivas EMERGEN del conjunto y en ' +
+            'la escala nanometrica cambian. En eso se basa toda la nanotecnologia.',
+        },
+        worked: {
+          question:
+            'Tienes dos liquidos incoloros. Uno pesa 25 g y ocupa 25 mL; el otro pesa 40 g y ocupa 50 mL. ' +
+            '¿Son la misma sustancia?',
+          steps: [
+            { text: 'Las masas y los volumenes son extensivos: no sirven para identificar. Hay que pasar a una propiedad intensiva.' },
+            { text: 'Se calcula la densidad de cada uno.', math: 'd₁ = 25 g / 25 mL = 1,00 g/mL     d₂ = 40 g / 50 mL = 0,80 g/mL' },
+            { text: 'Las densidades son distintas, luego las sustancias son distintas, por mucho que las dos sean incoloras.' },
+            { text: 'De hecho 1,00 g/mL apunta a agua y 0,80 g/mL a un alcohol.' },
+          ],
+          answer: 'No. Distinta densidad, distinta sustancia — y la densidad lo dice aunque el aspecto no.',
+        },
+        check: [
+          {
+            question: 'La temperatura, ¿es extensiva o intensiva?',
+            answer:
+              'INTENSIVA. Si juntas dos vasos de agua a 20 °C no obtienes agua a 40 °C: sigue a 20 °C. ' +
+              'Lo que si se suma es el CALOR, que es extensivo. Confundir temperatura con calor es el ' +
+              'error clasico de este apartado.',
+          },
+          {
+            question: '¿Por que el punto de fusion sirve para identificar una sustancia y la masa no?',
+            answer:
+              'Porque el punto de fusion es intensivo: el hielo funde a 0 °C sea un cubito o un iceberg. ' +
+              'La masa depende de cuanto tengas, asi que no dice nada sobre QUE es.',
+          },
+        ],
         tryIt: { label: 'Ver las propiedades del agua', formula: 'H2O' },
       },
       {
@@ -538,6 +621,23 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           'Lo que define a un elemento es el numero de PROTONES, no el de neutrones ni el de electrones. ' +
           'Cambiar los neutrones da un isotopo; cambiar los electrones, un ion; y sigue siendo el mismo ' +
           'elemento.',
+        pitfall:
+          'No confundas ELEMENTO con SUSTANCIA SIMPLE. El oxigeno es un elemento, pero forma dos ' +
+          'sustancias simples distintas: el O₂ que respiramos y el ozono O₃, que es toxico. Mismo ' +
+          'elemento, sustancias con propiedades opuestas. A eso se le llama alotropia — como el ' +
+          'diamante y el grafito, que son los dos carbono puro.',
+        check: [
+          {
+            question:
+              '¿Puede un elemento «convertirse» en otro? ¿Y en que se diferencia eso de una reaccion quimica?',
+            answer:
+              'En una reaccion QUIMICA, nunca: los nucleos no se tocan y Z no cambia. Solo se reorganizan ' +
+              'los electrones. En una reaccion NUCLEAR si — es lo que ocurre en el Sol y en una central — ' +
+              'porque ahi cambia el numero de protones. Los alquimistas fracasaron durante siglos ' +
+              'buscando con quimica algo que solo la fisica nuclear puede hacer.',
+          },
+        ],
+        connects: [{ label: '2.4 Numero atomico', mode: 'atomo' }],
         tryIt: { label: 'Explorar los elementos', mode: 'react' },
       },
       {
@@ -549,6 +649,25 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         keyIdea:
           'El sodio es un metal que arde con el agua y el cloro es un gas toxico. Unidos dan sal de ' +
           'mesa. Un compuesto no es la suma de sus partes: es algo distinto.',
+        analogy: {
+          image:
+            'Un compuesto es a sus elementos lo que una palabra es a sus letras. «Casa» no se parece a ' +
+            'una C, una A y una S sueltas, y cambiar el orden da otra cosa.',
+          limit:
+            'La comparacion sugiere que basta con reordenar, y no es asi: para separar un compuesto hace ' +
+            'falta una REACCION QUIMICA con su energia, no un simple reordenamiento. Descomponer agua ' +
+            'exige electricidad.',
+        },
+        check: [
+          {
+            question:
+              'El agua es H₂O y el agua oxigenada H₂O₂. Los mismos dos elementos. ¿Por que una se bebe y la otra desinfecta?',
+            answer:
+              'Porque la PROPORCION es distinta, y en un compuesto la proporcion lo es todo. Un atomo mas ' +
+              'de oxigeno cambia la sustancia por completo: el enlace O–O del peroxido es debil y se ' +
+              'rompe con facilidad liberando oxigeno, y eso es lo que mata a las bacterias.',
+          },
+        ],
         tryIt: { label: 'Construir compuestos', mode: 'tabla' },
       },
       {
@@ -560,7 +679,24 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           'sustancia pura funde y hierve a una temperatura definida, no en un intervalo.',
         keyIdea:
           'El criterio practico: el agua pura hierve a 100 °C exactos. El agua salada empieza a hervir ' +
-          'por encima y la temperatura va subiendo mientras hierve. Ese intervalo delata la mezcla.',
+          'por encima y la temperatura va SUBIENDO mientras hierve. Ese intervalo delata la mezcla.',
+        pitfall:
+          '«Puro» en quimica no significa lo mismo que en el supermercado. Un «zumo puro» es una mezcla ' +
+          'compleja de agua, azucares, acidos y vitaminas. En quimica, puro quiere decir UNA sola ' +
+          'sustancia — y en ese sentido el agua destilada es pura y el agua mineral no.',
+        check: [
+          {
+            question:
+              'Te dan un solido blanco y una placa calefactora. ¿Como averiguas si es una sustancia pura?',
+            answer:
+              'Lo calientas midiendo la temperatura mientras funde. Si es PURA, la temperatura se queda ' +
+              'clavada en un valor mientras dura la fusion — toda la energia va a romper la red, no a ' +
+              'calentar. Si es una mezcla, la temperatura sube durante todo el proceso y funde en un ' +
+              'INTERVALO. Esa meseta plana es la firma de la pureza, y es como se comprueba en un ' +
+              'laboratorio de verdad.',
+          },
+        ],
+        connects: [{ label: '1.6 Mezclas', topic: '1.6' }],
       },
       {
         id: '1.6',
@@ -571,6 +707,35 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         keyIdea:
           'Compuesto o mezcla se decide por dos preguntas: ¿la proporcion es fija? ¿hace falta una ' +
           'reaccion quimica para separarlo? Dos sies, compuesto. Dos noes, mezcla.',
+        worked: {
+          question:
+            'Tienes agua con sal y agua con arena. ¿Como distingues cual es cual y como separas cada una?',
+          steps: [
+            { text: 'Se miran: la de arena tiene dos fases visibles (heterogenea) y la de sal se ve una sola (homogenea).' },
+            { text: 'La arena se separa por FILTRACION: la propiedad que las distingue es el tamano de particula, y la arena no pasa el filtro.' },
+            {
+              text: 'La sal NO se puede filtrar: esta disuelta a escala molecular y atraviesa cualquier filtro. Hace falta una propiedad distinta.',
+            },
+            {
+              text: 'Se aprovecha la volatilidad. La diferencia entre sus puntos de ebullicion es enorme, asi que evaporando el agua queda la sal sola.',
+              math: 'H₂O hierve a 100 °C   ·   NaCl hierve a 1465 °C   →   diferencia de 1365 °C',
+            },
+            { text: 'Y si lo que interesa es el agua, se DESTILA: se recoge el vapor y se condensa aparte.' },
+          ],
+          answer:
+            'Filtracion para la arena (tamano), evaporacion o destilacion para la sal (punto de ' +
+            'ebullicion). El metodo lo elige la propiedad en la que se diferencian.',
+        },
+        check: [
+          {
+            question: 'El aire, ¿es una sustancia pura o una mezcla? ¿Y por que no lo delata su aspecto?',
+            answer:
+              'Es una MEZCLA homogenea de gases (78 % N₂, 21 % O₂, 1 % Ar y otros). El aspecto no lo ' +
+              'delata porque los gases se mezclan a escala molecular. Lo delatan dos cosas: su ' +
+              'composicion varia con el lugar y la altura, y al licuarlo no hierve a temperatura fija ' +
+              'sino en un intervalo — de hecho asi se separa industrialmente el oxigeno del nitrogeno.',
+          },
+        ],
         gap:
           'Este sandbox trabaja con SUSTANCIAS PURAS. No tiene modelo de mezclas: no puede simular una ' +
           'disolucion al 30 % ni separar sus componentes. El temario se explica igual, pero aqui el ' +
@@ -586,6 +751,19 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
             keyIdea:
               'Homogeneo no significa liquido. El aire es una disolucion de gases y el bronce, una ' +
               'disolucion solida de cobre y estano.',
+            pitfall:
+              'Una disolucion puede tener CUALQUIER proporcion dentro de sus limites, y ahi esta la ' +
+              'diferencia con un compuesto. Puedes echar una cucharada de azucar o tres; el agua sigue ' +
+              'siendo agua azucarada. En el H₂O, en cambio, la proporcion 2:1 no es negociable.',
+            check: [
+              {
+                question: 'El agua del grifo, ¿es una sustancia pura o una disolucion?',
+                answer:
+                  'Una DISOLUCION. Lleva sales minerales, cloro y gases disueltos, y por eso deja cal al ' +
+                  'evaporarse — si fuera pura no dejaria nada. Tambien por eso su sabor cambia de una ' +
+                  'ciudad a otra: la composicion varia, cosa que en una sustancia pura no puede pasar.',
+              },
+            ],
           },
           {
             id: '1.6.2',
@@ -596,6 +774,26 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
             keyIdea:
               'Casos intermedios: en un COLOIDE (la leche, la niebla) las particulas no sedimentan y ' +
               'parecen homogeneas, pero dispersan la luz — es el efecto Tyndall, y es lo que las delata.',
+            analogy: {
+              image:
+                'La diferencia entre disolucion y coloide es la del azucar y la harina en agua. El ' +
+                'azucar desaparece; la harina enturbia, y si apuntas con una linterna ves el haz ' +
+                'atravesar el vaso.',
+              limit:
+                'La comparacion sugiere que basta con mirar, y no siempre: hay coloides transparentes ' +
+                'que solo el haz de luz delata. La prueba fiable es el efecto Tyndall, no el aspecto.',
+            },
+            check: [
+              {
+                question: '¿Por que el cielo es azul y las nubes blancas, si los dos son aire con agua?',
+                answer:
+                  'Por el tamano de las particulas. Las moleculas del aire son mucho mas pequenas que la ' +
+                  'longitud de onda de la luz y dispersan sobre todo el azul (dispersion de Rayleigh). En ' +
+                  'una nube las gotitas son mayores que esa longitud de onda y dispersan todos los ' +
+                  'colores por igual, y todos juntos dan blanco. La nube es un COLOIDE; el aire limpio, ' +
+                  'una disolucion.',
+              },
+            ],
           },
           {
             id: '1.6.3',
@@ -607,6 +805,25 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
             keyIdea:
               'La pregunta util no es «¿que metodos hay?» sino «¿en que se diferencian fisicamente estos ' +
               'dos componentes?». La respuesta senala el metodo.',
+            check: [
+              {
+                question:
+                  'Quieres separar limaduras de hierro, sal y arena, todo mezclado. ¿En que orden actuas?',
+                answer:
+                  'Primero el IMAN, que se lleva el hierro sin tocar lo demas — siempre conviene empezar ' +
+                  'por lo mas selectivo. Despues echas agua: la sal se disuelve y la arena no. FILTRAS y ' +
+                  'te queda la arena en el filtro. Y por ultimo EVAPORAS el agua para recuperar la sal. ' +
+                  'Tres metodos, tres propiedades: magnetismo, solubilidad y volatilidad.',
+              },
+              {
+                question: '¿Por que la evaporacion y la destilacion no son lo mismo?',
+                answer:
+                  'Porque en la evaporacion el vapor se pierde: solo te quedas con lo que NO se evapora. ' +
+                  'En la destilacion recoges y condensas ese vapor, asi que te quedas con los dos ' +
+                  'componentes. Si lo que quieres es agua potable a partir de agua de mar, evaporar no ' +
+                  'te sirve de nada.',
+              },
+            ],
           },
         ],
       },
@@ -623,6 +840,27 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         pitfall:
           'Hervir agua NO la descompone. Al hervir se separan las moleculas unas de otras, pero cada ' +
           'H₂O sigue entera: el vapor sigue siendo agua. Romper los enlaces O–H cuesta veinte veces mas.',
+        check: [
+          {
+            question: 'Disolver azucar en agua, ¿es cambio fisico o quimico?',
+            answer:
+              'FISICO. Las moleculas de sacarosa siguen enteras, solo se han separado unas de otras y ' +
+              'rodeado de agua. La prueba: evaporando el agua recuperas el azucar intacto. Si lo ' +
+              'CALIENTAS hasta caramelizarlo, eso ya es quimico, y no hay forma de volver atras.',
+          },
+          {
+            question: 'Cuatro senales de que ha ocurrido un cambio quimico. ¿Cuales?',
+            answer:
+              'Cambio de color inesperado, desprendimiento de gas (burbujas sin hervir), formacion de un ' +
+              'solido en una disolucion transparente (precipitado), y desprendimiento o absorcion de ' +
+              'calor o luz. Ninguna es concluyente por si sola — el agua hirviendo hace burbujas y es ' +
+              'fisico — pero juntas son buena pista.',
+          },
+        ],
+        connects: [
+          { label: '1.8 Las leyes que gobiernan esas transformaciones', topic: '1.8' },
+          { label: '2.2.1.2 Los modelos atomicos que las explican', mode: 'atomo' },
+        ],
         tryIt: { label: 'Hacer reaccionar sustancias', mode: 'react' },
       },
       {
@@ -649,6 +887,31 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
               '«pesa mas». No es asi: en el primer caso escapan gases y en el segundo entra oxigeno del ' +
               'aire. Contando el sistema cerrado, la masa cuadra.',
             demo: conservationDemo('caco3-hcl'),
+            worked: {
+              question:
+                'Quemas 12 g de carbon en un recipiente CERRADO con 32 g de oxigeno y se consume todo. ' +
+                '¿Cuanto pesa el CO₂ formado?',
+              steps: [
+                { text: 'La ecuacion es C + O₂ → CO₂. Todo lo que entra tiene que salir.' },
+                { text: 'Se suman las masas de los reactivos.', math: '12 g + 32 g = 44 g' },
+                { text: 'Como el recipiente esta cerrado, no se escapa nada: los productos pesan lo mismo.', math: 'masa de CO₂ = 44 g' },
+                {
+                  text: 'Comprobacion con las masas molares: 12,011 (C) + 31,998 (O₂) = 44,009 g/mol de CO₂. Cuadra.',
+                },
+              ],
+              answer: '44 g. Y si el recipiente estuviera ABIERTO pesarias menos al final, no porque se destruya masa, sino porque el CO₂ se ha ido volando.',
+            },
+            check: [
+              {
+                question:
+                  'Un clavo de hierro se oxida al aire libre y despues PESA MAS. ¿Se ha creado materia?',
+                answer:
+                  'No. El hierro se ha combinado con oxigeno del AIRE: 4 Fe + 3 O₂ → 2 Fe₂O₃. La masa ' +
+                  'extra es la del oxigeno que ha entrado. Si pesaras el clavo y el aire juntos, en un ' +
+                  'recipiente cerrado, la masa no cambiaria. La ley solo se cumple contando el sistema ' +
+                  'entero.',
+              },
+            ],
           },
           {
             id: '1.8.2',
@@ -674,6 +937,27 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
               'Es la ley que obligo a aceptar los atomos. Que la razon salga 1:2 y no 1:1,87 solo tiene ' +
               'sentido si lo que se combina son unidades indivisibles que se cuentan de una en una.',
             demo: multipleProportionsDemo(['CO', 'CO2']),
+            analogy: {
+              image:
+                'Es como comprar bicicletas: por cada cuadro puedes llevarte 2 ruedas o 4 (si es un ' +
+                'remolque), pero nunca 2,7. Las ruedas van de una en una, y por eso las razones salen ' +
+                'enteras.',
+              limit:
+                'La comparacion sugiere que los atomos son objetos macroscopicos que se cuentan a mano. ' +
+                'Lo que de verdad ocurre es que se combinan en razones fijas por como se comparten los ' +
+                'ELECTRONES, y eso no se supo hasta cien anos despues de Dalton.',
+            },
+            check: [
+              {
+                question:
+                  'Por que la ley de las proporciones multiples fue LA prueba de que existen los atomos?',
+                answer:
+                  'Porque una razon de 1:2 exacta no tiene explicacion si la materia es continua. Si ' +
+                  'pudieras coger cualquier cantidad de oxigeno, las razones saldrian numeros ' +
+                  'cualesquiera. Que salgan enteros pequenos solo se entiende si lo que se combina son ' +
+                  'unidades indivisibles que entran de una en una.',
+              },
+            ],
           },
           {
             id: '1.8.4',
@@ -731,6 +1015,36 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         pitfall:
           'La trampa clasica de los examenes: «¿cuantos atomos hay en 2 moles de H₂SO₄?». No son ' +
           '2·6,022·10²³, sino 7 veces eso, porque cada molecula tiene 7 atomos.',
+        analogy: {
+          image:
+            'El mol es una DOCENA muy grande. Igual que dices «una docena de huevos» sin contarlos uno a ' +
+            'uno, dices «un mol de moleculas» y son 6,022·10²³.',
+          limit:
+            'La comparacion falla en el tamano y eso importa: una docena la puedes contar, un mol no. Si ' +
+            'contaras mil millones de particulas por segundo desde el Big Bang, aun no habrias llegado ' +
+            'ni a la millonesima parte de un mol.',
+        },
+        worked: {
+          question: '¿Cuantos atomos de oxigeno hay en 2 moles de H₂SO₄?',
+          steps: [
+            { text: 'Primero, cuantos atomos de oxigeno tiene CADA molecula. La formula lo dice: 4.' },
+            { text: 'Dos moles de moleculas contienen, por tanto, ocho moles de atomos de oxigeno.', math: '2 mol H₂SO₄ × 4 = 8 mol de O' },
+            { text: 'Cada mol son 6,022·10²³ atomos.', math: '8 × 6,022·10²³ = 4,818·10²⁴ atomos de O' },
+            {
+              text: 'La trampa habitual es responder 2 × 6,022·10²³. Eso son las MOLECULAS, no los atomos — y ni siquiera todos los atomos, que serian 7 por molecula.',
+            },
+          ],
+          answer: '4,818·10²⁴ atomos de oxigeno.',
+        },
+        check: [
+          {
+            question: '¿Que tiene mas atomos: un mol de agua o un mol de oxigeno molecular (O₂)?',
+            answer:
+              'El agua. Un mol de H₂O son 3 moles de atomos (2 H + 1 O); un mol de O₂ son 2 moles de ' +
+              'atomos. Los dos tienen el mismo numero de MOLECULAS, pero no de atomos.',
+          },
+        ],
+        connects: [{ label: '1.9 El numero de Avogadro', topic: '1.9' }],
         demo: moleDemo('H2O'),
       },
       {
@@ -760,6 +1074,34 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         pitfall:
           'Para un compuesto ionico no existen moleculas, asi que se habla de masa FORMULA: la masa de ' +
           'la unidad minima que expresa la proporcion de iones, no de una particula real.',
+        worked: {
+          question: '¿Cuantos moles hay en 25 g de NaOH? ¿Y cuantas unidades formula?',
+          steps: [
+            {
+              text: 'Se calcula la masa molar sumando las masas atomicas de la formula.',
+              math: 'Na 22,990 + O 15,999 + H 1,008 = 39,997 ≈ 40,00 g/mol',
+            },
+            { text: 'Los moles salen de dividir los gramos entre la masa molar.', math: 'n = 25 g ÷ 40,00 g/mol = 0,625 mol' },
+            { text: 'Y las particulas, multiplicando por el numero de Avogadro.', math: '0,625 × 6,022·10²³ = 3,76·10²³ unidades formula' },
+            {
+              text: 'Se dice «unidades formula» y no «moleculas» porque el NaOH es ionico: no existen moleculas de NaOH, sino una red de iones Na⁺ y OH⁻.',
+            },
+          ],
+          answer: '0,625 mol, es decir 3,76·10²³ unidades formula.',
+        },
+        check: [
+          {
+            question: '¿Por que se habla de masa FORMULA y no molecular en el NaCl?',
+            answer:
+              'Porque no existen moleculas de NaCl. Lo que hay es una red donde cada Na⁺ esta rodeado de ' +
+              'seis Cl⁻ y viceversa. La formula da la PROPORCION 1:1, no el contenido de una particula. ' +
+              'La masa formula es la masa de esa proporcion minima.',
+          },
+        ],
+        connects: [
+          { label: '1.11 Peso atomico', topic: '1.11' },
+          { label: '2.9 De donde salen las masas atomicas', mode: 'atomo' },
+        ],
         demo: definiteProportionsDemo('H2SO4'),
         tryIt: { label: 'Calcular masas molares', mode: 'react' },
       },

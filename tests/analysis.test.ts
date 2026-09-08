@@ -28,8 +28,9 @@ import {
   gayLussacDemo, moleDemo, AVOGADRO, SEPARATION_METHODS,
 } from '../src/teach/theory.js';
 import {
-  unitAtomo, abundanceDemo, compositionDemo, isobarsDemo, isotonesDemo, periodicStatsDemo,
+  unitAtomo, abundanceDemo, compositionDemo, isobarsDemo, isotonesDemo, periodicStatsDemo, modelsDemo,
 } from '../src/teach/atom.js';
+import type { TheoryTopic } from '../src/teach/theory.js';
 import { isotopesOf, isobarsOf, elementsWithIsotopes } from '../src/data/isotopes.js';
 import { ELEMENTS } from '../src/data/elements.js';
 import { getElement } from '../src/data/elements.js';
@@ -1366,5 +1367,119 @@ describe('unidad 2: estructura atomica', () => {
     // Un elemento sin datos devuelve lista vacia en vez de inventarlos.
     assert.deepEqual(isotopesOf('Au'), [], 'sin datos curados: lista vacia');
     assert.equal(abundanceDemo('Au'), null, 'y la demostracion se declara no disponible');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('el contrato didactico de las dos unidades', () => {
+  const walk = <D>(t: TheoryTopic<D>, out: TheoryTopic<D>[] = []): TheoryTopic<D>[] => {
+    out.push(t);
+    for (const c of t.children ?? []) walk(c, out);
+    return out;
+  };
+
+  const materia = walk(unitMateria());
+  const atomo = walk(unitAtomo());
+  const todos = [...materia, ...atomo];
+
+  test('TODA analogia declara donde deja de valer', () => {
+    /*
+     * Es la regla que justifica que el tipo `Analogy` tenga dos campos
+     * obligatorios en vez de uno.
+     *
+     * Las analogias son la herramienta mas potente y mas peligrosa de la
+     * ensenanza: explican rapido y dejan una idea falsa pegada. «El atomo es
+     * como un sistema solar» hace entender la idea de nucleo y corteza, y a
+     * cambio deja creyendo que los electrones giran en orbitas — que es justo
+     * lo que la mecanica cuantica niega.
+     */
+    const conAnalogia = todos.filter((t) => t.analogy);
+    assert.ok(conAnalogia.length >= 6, `solo ${conAnalogia.length} analogias`);
+    for (const t of conAnalogia) {
+      assert.ok(t.analogy!.image.length > 40, `${t.id}: la imagen es demasiado escueta`);
+      assert.ok(t.analogy!.limit.length > 40, `${t.id}: el limite es demasiado escueto`);
+    }
+  });
+
+  test('los ejercicios resueltos ensenan el desarrollo, no solo el resultado', () => {
+    const conEjercicio = todos.filter((t) => t.worked);
+    assert.ok(conEjercicio.length >= 7, `solo ${conEjercicio.length} ejercicios`);
+    for (const t of conEjercicio) {
+      const w = t.worked!;
+      assert.ok(w.question.length > 25, `${t.id}: enunciado corto`);
+      assert.ok(w.steps.length >= 3, `${t.id}: ${w.steps.length} pasos, hacen falta al menos 3`);
+      assert.ok(w.answer.length > 5, `${t.id}: sin respuesta`);
+      // Al menos un paso tiene que ensenar la cuenta, no solo describirla.
+      assert.ok(w.steps.some((s) => s.math), `${t.id}: ningun paso muestra la operacion`);
+    }
+  });
+
+  test('las preguntas de autocomprobacion traen respuesta razonada', () => {
+    const preguntas = todos.flatMap((t) => (t.check ?? []).map((c) => ({ id: t.id, c })));
+    assert.ok(preguntas.length >= 18, `solo ${preguntas.length} preguntas`);
+    for (const { id, c } of preguntas) {
+      assert.ok(c.question.includes('?') || c.question.includes('¿'), `${id}: no es una pregunta`);
+      // Una respuesta de dos palabras no ensena: tiene que explicar por que.
+      assert.ok(c.answer.length > 60, `${id}: respuesta sin razonar — "${c.answer}"`);
+    }
+  });
+
+  test('las conexiones apuntan a apartados que existen', () => {
+    // Un enlace roto convierte la navegacion en un callejon sin salida, que es
+    // el tipo de fallo que solo se ve cuando alguien lo pulsa.
+    const idsMateria = new Set(materia.map((t) => t.id));
+    const idsAtomo = new Set(atomo.map((t) => t.id));
+
+    for (const [lista, propios] of [
+      [materia, idsMateria],
+      [atomo, idsAtomo],
+    ] as const) {
+      for (const t of lista) {
+        for (const c of t.connects ?? []) {
+          if (c.topic) {
+            assert.ok(propios.has(c.topic), `${t.id} enlaza a "${c.topic}", que no existe en su unidad`);
+          }
+          if (c.mode) {
+            assert.ok(
+              ['teoria', 'atomo', 'react', 'tabla', 'build', 'routes', 'lab'].includes(c.mode),
+              `${t.id}: modo desconocido "${c.mode}"`,
+            );
+          }
+        }
+      }
+    }
+  });
+
+  test('los modelos atomicos son una cadena, no una galeria', () => {
+    /*
+     * De cada modelo, lo que ensena es lo que NO pudo explicar: es la razon de
+     * que exista el siguiente. Sin esa columna serian cinco dibujos sueltos.
+     */
+    const demo = modelsDemo();
+    assert.equal(demo.models.length, 5);
+    for (const m of demo.models) {
+      assert.ok(m.fails.length > 50, `${m.name}: no dice que NO puede explicar`);
+      assert.ok(m.evidence.length > 50, `${m.name}: no dice en que se apoya`);
+      assert.ok(m.survives.length > 20, `${m.name}: no dice que sobrevive`);
+    }
+    // En orden cronologico.
+    const years = demo.models.map((m) => Number(m.year));
+    assert.deepEqual([...years].sort((a, b) => a - b), years, 'los modelos deben ir en orden');
+    // Y el ultimo no «falla» como los otros: es el vigente.
+    assert.match(demo.models[4]!.survives, /vigente/i);
+  });
+
+  test('cada apartado con contenido propio aporta algo mas que la definicion', () => {
+    // Un apartado que solo define es un diccionario. Los que agrupan a otros
+    // (2.2, 2.2.1, 1.6, 1.8) si pueden limitarse a presentar.
+    const agrupadores = new Set(['1', '2', '1.6', '1.8', '2.2', '2.2.1', '2.10']);
+    for (const t of todos) {
+      if (agrupadores.has(t.id)) continue;
+      const extras =
+        (t.keyIdea ? 1 : 0) + (t.pitfall ? 1 : 0) + (t.analogy ? 1 : 0) +
+        (t.worked ? 1 : 0) + (t.check ? 1 : 0) + (t.demo ? 1 : 0);
+      assert.ok(extras >= 2, `${t.id} «${t.title}» solo tiene definicion`);
+    }
   });
 });

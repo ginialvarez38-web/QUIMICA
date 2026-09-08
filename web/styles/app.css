@@ -3581,3 +3581,247 @@ button { cursor: pointer; border: none; background: none; }
   .pt-mass { display: none; }
   .nuclide-group { flex-direction: column; gap: 6px; }
 }
+
+/* ==========================================================================
+   BLOQUES DIDACTICOS
+   ==========================================================================
+
+   Cuatro piezas mas por apartado, cada una con un trabajo distinto:
+   la analogia (con su limite pegado), el ejercicio resuelto, la
+   autocomprobacion con la respuesta tapada, y las conexiones.
+   ========================================================================== */
+
+.topic-analogy,
+.topic-worked,
+.topic-check {
+  margin-top: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  border-radius: var(--radius);
+  border-left: 3px solid;
+}
+
+/* --- Analogia: la imagen y, obligatorio, donde deja de valer ------------ */
+
+.topic-analogy {
+  background: color-mix(in srgb, var(--violet) 8%, transparent);
+  border-left-color: var(--violet);
+}
+
+/* El limite va DENTRO de la misma caja y no en un bloque aparte: si se
+   pudiera saltar leyendo, la analogia haria mas dano que bien. */
+.analogy-limit {
+  display: block;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed color-mix(in srgb, var(--violet) 40%, transparent);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.analogy-limit strong { color: var(--text); }
+
+/* --- Ejercicio resuelto -------------------------------------------------- */
+
+.topic-worked {
+  background: var(--surface-2);
+  border-left-color: var(--accent);
+}
+
+.worked-question {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.worked-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: var(--text-muted);
+}
+
+.worked-steps li::marker { color: var(--accent); font-weight: 700; }
+
+.worked-answer {
+  margin: 11px 0 0;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--evidence-established) 12%, transparent);
+}
+
+.worked-answer strong { color: var(--text); }
+
+/* --- Autocomprobacion ---------------------------------------------------- */
+
+.topic-check {
+  background: color-mix(in srgb, var(--evidence-established) 7%, transparent);
+  border-left-color: var(--evidence-established);
+}
+
+.check-item {
+  margin-top: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.check-item summary {
+  padding: 9px 11px 9px 30px;
+  position: relative;
+  font-weight: 550;
+  cursor: pointer;
+  list-style: none;
+  transition: background 0.12s;
+}
+
+.check-item summary::-webkit-details-marker { display: none; }
+
+/* El triangulo se dibuja a mano para poder girarlo al abrir. */
+.check-item summary::before {
+  content: '▸';
+  position: absolute;
+  left: 12px;
+  color: var(--evidence-established);
+  transition: transform 0.15s;
+}
+
+.check-item[open] summary::before { transform: rotate(90deg); }
+.check-item summary:hover { background: var(--surface-2); }
+
+.check-answer {
+  padding: 0 11px 11px 30px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.check-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
+
+/* --- Conexiones ---------------------------------------------------------- */
+
+.topic-connects { margin-top: 12px; }
+
+.connect-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.connect-link {
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.connect-link:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+
+/* --- Los modelos atomicos ------------------------------------------------ */
+
+.models {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.model {
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  /* Una linea de tiempo implicita: el borde izquierdo encadena los modelos. */
+  border-left: 3px solid var(--accent);
+}
+
+.model-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.model-year {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+}
+
+.model-name { font-size: 14px; }
+.model-author { font-size: 11.5px; color: var(--text-faint); }
+
+.model-proposal {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
+  gap: 7px;
+}
+
+.model-cell {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  line-height: 1.55;
+  background: var(--surface);
+  border-left: 2px solid var(--border-strong);
+}
+
+.model-label {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* La columna que de verdad ensena es «no puede explicar»: es la razon de que
+   exista el modelo siguiente. Se marca para que se pueda leer en vertical. */
+.model-fails { border-left-color: var(--hazard-danger); }
+.model-explains { border-left-color: var(--evidence-established); }
+.model-survives { border-left-color: var(--accent); }
+.model-evidence { border-left-color: var(--violet); }
+
+@media (max-width: 900px) {
+  .topic-analogy, .topic-worked, .topic-check { padding: 10px 11px; }
+  .worked-steps { padding-left: 17px; }
+  .model-grid { grid-template-columns: 1fr; }
+}
+
+/* En un ejercicio resuelto la expresion es prosa, no codigo alineado: se deja
+   envolver conservando los espacios, en vez de desplazarse de lado y quedar
+   cortada sin que se note. */
+.topic-worked .why-math {
+  white-space: pre-wrap;
+  overflow-x: visible;
+  line-height: 1.7;
+}

@@ -12,7 +12,7 @@
  * mano.
  */
 
-import type { TheoryTopic, TheoryDemo } from '../teach/theory.js';
+import type { TheoryTopic, TheoryDemo, Analogy, WorkedExample, SelfCheck } from '../teach/theory.js';
 import { SEPARATION_METHODS, AVOGADRO } from '../teach/theory.js';
 import { escapeHtml } from './dom.js';
 
@@ -220,6 +220,81 @@ function renderSeparationMethods(): string {
 // El temario
 // ---------------------------------------------------------------------------
 
+/**
+ * Una analogia SIEMPRE con su limite pegado debajo.
+ *
+ * Van juntas en la misma caja y no en dos bloques separados a proposito: si el
+ * limite se pudiera saltar leyendo, la analogia haria mas dano que bien.
+ */
+function renderAnalogy(analogy: Analogy): string {
+  return `
+    <div class="topic-analogy">
+      <span class="topic-key-label">Imaginalo asi</span>
+      ${escapeHtml(analogy.image)}
+      <span class="analogy-limit"><strong>Donde falla la comparacion:</strong> ${escapeHtml(analogy.limit)}</span>
+    </div>`;
+}
+
+function renderWorked(worked: WorkedExample): string {
+  return `
+    <div class="topic-worked">
+      <span class="topic-key-label">Ejercicio resuelto</span>
+      <p class="worked-question">${escapeHtml(worked.question)}</p>
+      <ol class="worked-steps">
+        ${worked.steps
+          .map(
+            (s) =>
+              `<li>${escapeHtml(s.text)}${s.math ? `<code class="why-math">${escapeHtml(s.math)}</code>` : ''}</li>`,
+          )
+          .join('')}
+      </ol>
+      <p class="worked-answer"><strong>Respuesta:</strong> ${escapeHtml(worked.answer)}</p>
+    </div>`;
+}
+
+/**
+ * Autocomprobacion con la respuesta tapada.
+ *
+ * Se usa <details> del propio navegador en lugar de JavaScript: funciona sin
+ * guion, es accesible de serie y el navegador ya sabe abrirlo con el teclado.
+ */
+function renderCheck(checks: readonly SelfCheck[]): string {
+  return `
+    <div class="topic-check">
+      <span class="topic-key-label">Comprueba que lo has entendido</span>
+      ${checks
+        .map(
+          (c) => `
+          <details class="check-item">
+            <summary>${escapeHtml(c.question)}</summary>
+            <div class="check-answer">${escapeHtml(c.answer)}</div>
+          </details>`,
+        )
+        .join('')}
+      <p class="check-note">Intenta responder ANTES de abrir. Leer la respuesta sin haberlo intentado
+      da sensacion de haber entendido sin haber recuperado nada de memoria.</p>
+    </div>`;
+}
+
+function renderConnects(
+  connects: readonly { readonly label: string; readonly topic?: string; readonly mode?: string }[],
+): string {
+  return `
+    <div class="topic-connects">
+      <span class="topic-key-label">Esto se conecta con</span>
+      <div class="connect-row">
+        ${connects
+          .map(
+            (c) =>
+              `<button class="connect-link"${c.topic ? ` data-toc="${escapeHtml(c.topic)}"` : ''}${c.mode ? ` data-theory-mode="${escapeHtml(c.mode)}"` : ''}>
+                 ${escapeHtml(c.label)}
+               </button>`,
+          )
+          .join('')}
+      </div>
+    </div>`;
+}
+
 function renderTopic<D>(topic: TheoryTopic<D>, depth: number, demoRenderer: (d: D) => string): string {
   const heading = depth === 0 ? 'h2' : depth === 1 ? 'h3' : 'h4';
 
@@ -241,13 +316,17 @@ function renderTopic<D>(topic: TheoryTopic<D>, depth: number, demoRenderer: (d: 
           ? `<div class="topic-pitfall"><span class="topic-key-label">Ojo</span>${escapeHtml(topic.pitfall)}</div>`
           : ''
       }
+      ${topic.analogy ? renderAnalogy(topic.analogy) : ''}
       ${topic.demo ? demoRenderer(topic.demo) : ''}
       ${topic.id === '1.6.3' ? renderSeparationMethods() : ''}
+      ${topic.worked ? renderWorked(topic.worked) : ''}
+      ${topic.check && topic.check.length > 0 ? renderCheck(topic.check) : ''}
       ${
         topic.gap
           ? `<div class="topic-gap"><span class="topic-key-label">Lo que aqui no hay</span>${escapeHtml(topic.gap)}</div>`
           : ''
       }
+      ${topic.connects && topic.connects.length > 0 ? renderConnects(topic.connects) : ''}
       ${
         topic.tryIt
           ? `<button class="button topic-try" ${topic.tryIt.mode ? `data-theory-mode="${escapeHtml(topic.tryIt.mode)}"` : ''} ${topic.tryIt.formula ? `data-theory-formula="${escapeHtml(topic.tryIt.formula)}"` : ''}>
