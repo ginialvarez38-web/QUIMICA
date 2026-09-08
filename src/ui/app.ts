@@ -251,9 +251,15 @@ function builtFormula(): BuiltFormula | null {
   return result.ok ? result.value : null;
 }
 
+const SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+
 function chargeLabel(charge: number): string {
   const magnitude = Math.abs(charge);
-  const digits = magnitude === 1 ? '' : String(magnitude);
+  // La magnitud tambien va en superindice: "Ca²⁺", no "Ca2⁺". Con el 2 a
+  // tamano normal se lee como un subindice y parece que el calcio son dos
+  // atomos, que es justo la confusion que la notacion evita.
+  const digits =
+    magnitude === 1 ? '' : [...String(magnitude)].map((d) => SUPERSCRIPT_DIGITS[Number(d)]!).join('');
   return `${digits}${charge > 0 ? '⁺' : '⁻'}`;
 }
 
@@ -324,6 +330,27 @@ function renderConstructor(): void {
  * Un cartel que siempre dice lo mismo se vuelve invisible en dos minutos; uno
  * que responde a lo que acabas de hacer, no.
  */
+/**
+ * Que operacion es cada modo, y — cuando hace falta — que NO es.
+ *
+ * Construir y Reaccionar piden los dos «elige dos cosas», asi que se leian
+ * como el mismo. La aclaracion no es un adorno: nombra la operacion y niega
+ * explicitamente la confusion. Formular no es hacer reaccionar nada.
+ */
+const MODE_NATURE: Record<Mode, { verb: string; note: string } | null> = {
+  build: {
+    verb: 'Formular',
+    note: 'Escribes una formula. Los iones ya estan juntos: lo que averiguas es en que PROPORCION. Aqui no ocurre ninguna reaccion.',
+  },
+  react: {
+    verb: 'Transformar',
+    note: 'Unas sustancias se convierten en OTRAS. Aqui si ocurre algo: hay productos nuevos, energia y riesgos.',
+  },
+  tabla: { verb: 'Formular', note: 'Todas las combinaciones de iones a la vez, con lo que se sabe de cada una.' },
+  routes: { verb: 'Recorrer', note: 'Encadenar reacciones para llegar de una sustancia a otra.' },
+  lab: { verb: 'Medir', note: 'Cantidades: moles, gramos, reactivo limitante.' },
+};
+
 function renderModeHint(): void {
   const hint = $('#mode-hint');
   let icon = '';
@@ -380,8 +407,13 @@ function renderModeHint(): void {
       break;
   }
 
+  const nature = MODE_NATURE[state.mode];
   hint.className = done ? 'mode-hint done' : 'mode-hint';
-  hint.innerHTML = `<span class="mode-hint-step">${icon}</span><span>${text}</span>`;
+  hint.innerHTML =
+    (nature
+      ? `<span class="mode-nature" title="${escapeHtml(nature.note)}">${escapeHtml(nature.verb)}</span>`
+      : '') +
+    `<span class="mode-hint-step">${icon}</span><span>${text}</span>`;
 }
 
 /** Coloca un ion en el hueco que le corresponde por su carga. */
@@ -404,22 +436,56 @@ function placeIon(ion: Ion): void {
 // Banco de reaccion
 // ---------------------------------------------------------------------------
 
+/**
+ * Banco de reaccion.
+ *
+ * LA FORMA DE ESTA BARRA ES DELIBERADA y es lo que la distingue del
+ * constructor. Los dos modos pedian «elige dos cosas» y se leian como el
+ * mismo, cuando hacen operaciones opuestas:
+ *
+ *   Construir   cation + anion  =  formula      una ecuacion que CIERRA
+ *   Reaccionar  reactivos       →  productos    una ecuacion que AVANZA
+ *
+ * De ahi que aqui haya una flecha con un hueco de productos al otro lado,
+ * vacio hasta que se predice. La flecha no es decoracion: es el signo que en
+ * quimica separa «esto es lo mismo escrito de otra forma» de «esto se
+ * transforma en aquello».
+ */
 function renderBench(): void {
   const slots = $('#bench-slots');
 
   if (state.bench.length === 0) {
-    slots.innerHTML = '<span class="bench-placeholder">Anade sustancias desde la biblioteca…</span>';
+    slots.innerHTML =
+      '<span class="reagent-slot empty"><span class="slot-role">Reactivo 1</span>' +
+      '<span class="slot-hint">Pulsa + en la lista</span></span>' +
+      '<span class="bench-plus">+</span>' +
+      '<span class="reagent-slot empty"><span class="slot-role">Reactivo 2</span>' +
+      '<span class="slot-hint">Pulsa + en la lista</span></span>';
   } else {
-    slots.innerHTML = state.bench
+    const reagents = state.bench
       .map(
         (f, i) =>
           `${i > 0 ? '<span class="bench-plus">+</span>' : ''}
-           <span class="reagent">${escapeHtml(formatPlainUnicode(f))}
+           <span class="reagent"><span class="slot-role">Reactivo ${i + 1}</span>
+             <span class="reagent-formula">${escapeHtml(formatPlainUnicode(f))}</span>
              <button class="reagent-remove" data-remove="${i}" aria-label="Quitar ${escapeHtml(f)}">×</button>
            </span>`,
       )
       .join('');
+    const pending =
+      state.bench.length < 2
+        ? '<span class="reagent-slot empty"><span class="slot-role">Reactivo 2</span>' +
+          '<span class="slot-hint">Pulsa + en la lista</span></span>'
+        : '';
+    slots.innerHTML = reagents + (pending ? '<span class="bench-plus">+</span>' + pending : '');
   }
+
+  // El resultado de la transformacion, al otro lado de la flecha.
+  const products = state.activePrediction?.products.map(formatPlainUnicode).join(' + ');
+
+  $('#bench-products').innerHTML = products
+    ? `<span class="products-value">${escapeHtml(products)}</span>`
+    : `<span class="products-pending">${state.bench.length >= 2 ? '¿que se forma?' : 'productos'}</span>`;
 
   ($('#predict-button') as HTMLButtonElement).disabled = state.bench.length === 0;
   renderModeHint();
@@ -453,7 +519,10 @@ function runPrediction(): void {
   container.innerHTML =
     notice + state.predictions.map((p) => renderReactionCard(p, state.activePrediction?.id === p.id)).join('');
 
-  renderModeHint();
+  // El banco tiene que repintarse, no solo la pista: es donde vive la ranura
+  // de productos, que hasta ahora seguia diciendo «¿que se forma?» despues de
+  // haberlo averiguado. (renderBench ya llama a renderModeHint.)
+  renderBench();
 
   if (state.activePrediction) {
     // Se muestra el primer producto en el visor: es lo que el usuario acaba
@@ -690,8 +759,23 @@ function setMode(mode: Mode): void {
   state.mode = mode;
   setPressed($$('.mode-tab'), (b) => b.dataset['mode'] === mode, 'aria-selected');
 
+  /*
+   * El modo se marca en la raiz para que el CSS pueda darle a cada uno su
+   * color. Construir y Reaccionar se confundian porque compartian toda la
+   * carcasa; un acento distinto los separa antes de leer una sola palabra.
+   */
+  $('#app').dataset['activeMode'] = mode;
+
+  /*
+   * Cada barra pertenece a UN modo y solo aparece en el suyo.
+   *
+   * El banco se mostraba tambien en Rutas y en Laboratorio, que no lo usan.
+   * Cuando era una fila neutra de fichas apenas se notaba; ahora que lleva la
+   * flecha, el color y los rotulos de «reactivo», dejarlo puesto en otro modo
+   * dice que alli se hacen reacciones, y no es verdad.
+   */
   $('#build-bar').hidden = mode !== 'build';
-  $('#bench-bar').hidden = mode === 'build' || mode === 'tabla';
+  $('#bench-bar').hidden = mode !== 'react';
 
   // La tabla ocupa el sitio del visor 3D, no se superpone a el.
   $('#combos').hidden = mode !== 'tabla';
@@ -738,6 +822,10 @@ function setMode(mode: Mode): void {
       break;
 
     case 'routes':
+      // Rutas vive entera en el inspector. Sin esto, la zona de resultados se
+      // quedaba mostrando el aviso del Laboratorio o las predicciones de la
+      // ultima reaccion, que hablan de otra cosa.
+      $('#bench-results').innerHTML = '';
       if (state.selected) state.routeTo = state.selected;
       break;
 
@@ -847,6 +935,7 @@ function updateTimelineUI(): void {
 
 function startSimulation(prediction: Prediction): void {
   state.activePrediction = prediction;
+  renderBench();
   timelineProgress = 0;
   timelinePlaying = true;
   lastFrameTime = 0;
@@ -970,6 +1059,7 @@ function wireEvents(): void {
     if (!prediction) return;
 
     state.activePrediction = prediction;
+    renderBench(); // la ranura de productos sigue a la prediccion elegida
     switch (action) {
       case 'simulate':
         startSimulation(prediction);

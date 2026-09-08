@@ -1562,10 +1562,17 @@ button { cursor: pointer; border: none; background: none; }
   .build-actions { flex: 1 1 100%; }
   .build-actions .button { flex: 1; }
 
-  /* El RESULTADO primero: apilado en orden natural, la formula recien
-     construida quedaba por debajo del pliegue. */
-  .build-result { order: -1; flex: 1 1 100%; justify-content: center; }
-  .build-equals, .build-plus { display: none; }
+  /* El resultado va DONDE LE TOCA, al final: "cation + anion = formula" es
+     una ecuacion y se lee en ese orden.
+     
+     Antes se adelantaba con order:-1 y se ocultaban el "+" y el "=", porque
+     la fila se envolvia de forma imprevisible y la formula acababa por debajo
+     del pliegue. Ahora la ecuacion se apila en columna y se lee entera, asi
+     que adelantar el resultado solo la desordenaba. Y ocultar los signos era
+     lo peor de todo: el "=" frente a la "→" es lo que distingue Construir de
+     Reaccionar, de modo que en el movil los dos modos volvian a parecer el
+     mismo. */
+  .build-result { flex: 1 1 100%; }
 
   /* --- Biblioteca ---------------------------------------------------------- */
 
@@ -2483,4 +2490,273 @@ button { cursor: pointer; border: none; background: none; }
   border-style: dashed;
   border-color: var(--border-strong);
   background: var(--surface-2);
+}
+
+/* ==========================================================================
+   IDENTIDAD DE CADA MODO
+   ==========================================================================
+
+   Construir y Reaccionar se confundian, y con razon: pedian los dos «elige dos
+   cosas», caian en una barra en el mismo sitio y producian un resultado
+   debajo. Misma coreografia para dos operaciones opuestas.
+
+   Lo que de verdad las separa es quimico, y se puede ver:
+
+     Construir   cation + anion  =  formula      la ecuacion CIERRA
+     Reaccionar  reactivos       →  productos    la ecuacion AVANZA
+
+   Asi que la diferencia se comunica por tres canales a la vez — forma (el «=»
+   frente a la «→»), color, y una etiqueta que nombra la operacion — en lugar
+   de fiarlo todo a la palabra de la pestana.
+   ========================================================================== */
+
+.app { --mode-accent: var(--accent); }
+.app[data-active-mode='build']  { --mode-accent: var(--teal); }
+.app[data-active-mode='react']  { --mode-accent: var(--acid); }
+.app[data-active-mode='tabla']  { --mode-accent: var(--accent); }
+.app[data-active-mode='routes'] { --mode-accent: var(--violet); }
+.app[data-active-mode='lab']    { --mode-accent: var(--oxide); }
+
+/* La pestana activa se tine del color de su modo. */
+.mode-tab[aria-selected='true'] {
+  box-shadow: inset 0 -2px 0 var(--mode-accent);
+}
+
+/* --- La etiqueta que nombra la operacion -------------------------------- */
+
+.mode-nature {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--mode-accent);
+  border: 1px solid var(--mode-accent);
+  background: color-mix(in srgb, var(--mode-accent) 12%, transparent);
+  cursor: help;
+}
+
+/* --- La barra lleva el color de su modo en el canto --------------------- */
+
+.build-bar,
+.bench-bar {
+  border-left: 3px solid var(--mode-accent);
+  padding-left: 12px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--mode-accent) 4%, transparent);
+}
+
+/* --- El signo: «=» cierra, «→» avanza ----------------------------------- */
+
+.build-equals,
+.bench-arrow {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  min-width: 26px;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--mode-accent);
+}
+
+/* La flecha es el signo mas cargado de significado de toda la pantalla: es
+   lo que en quimica separa «lo mismo escrito de otra forma» de «esto se
+   convierte en aquello». Se le da tamano acorde. */
+.bench-arrow {
+  min-width: 34px;
+  font-size: 25px;
+}
+
+/* --- Huecos de reactivo, con el mismo lenguaje que los del constructor --- */
+
+.reagent-slot,
+.reagent {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 116px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.reagent {
+  position: relative;
+  padding-right: 26px;
+  border-radius: var(--radius);
+}
+
+.reagent-slot.empty {
+  border-style: dashed;
+  background: transparent;
+}
+
+.slot-role {
+  font-size: 9.5px;
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.slot-hint {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.reagent-formula {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.reagent-remove {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+}
+
+/* --- El hueco de productos: vacio hasta que se predice ------------------ */
+
+.bench-products {
+  display: flex;
+  align-items: center;
+  min-width: 132px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+}
+
+.bench-products:has(.products-value) {
+  border-style: solid;
+  border-color: var(--mode-accent);
+  background: color-mix(in srgb, var(--mode-accent) 10%, transparent);
+}
+
+.products-value {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.products-pending {
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+@media (max-width: 900px) {
+  /* En vertical la ecuacion se lee de arriba abajo, y la flecha gira para
+     seguir senalando el sentido de la transformacion. */
+  .bench-arrow { transform: rotate(90deg); min-width: 26px; }
+  .bench-products { width: 100%; }
+  .mode-nature { font-size: 9px; padding: 2px 7px; }
+}
+
+/* La ECUACION no se parte.
+   -------------------------------------------------------------------------
+   Tanto «cation + anion = formula» como «reactivos → productos» son una sola
+   frase: si se envuelve por la mitad deja de leerse como una ecuacion y
+   vuelve a parecer una lista de cosas elegidas — que es justo la confusion
+   entre los dos modos que esto viene a deshacer.
+
+   Asi que la fila de la ecuacion ocupa el ancho entero, no se envuelve, y si
+   no cabe se desplaza dentro de si misma. Los botones bajan a su propia
+   linea, que es donde estorban menos. */
+.build-row {
+  flex: 1 1 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.build-row::-webkit-scrollbar { display: none; }
+
+/* Los reactivos NO se estiran: si lo hicieran empujarian la flecha al otro
+   extremo de la pantalla y la ecuacion dejaria de leerse seguida. El ancho
+   completo lo gestiona .bench-equation, que es quien envuelve la frase. */
+.bench-slots {
+  /* Sin encoger: si el grupo de reactivos cede ancho, sus fichas — que si son
+     rigidas — se derraman por encima de la flecha. Quien debe desplazarse
+     cuando no cabe es la frase entera, .bench-equation, no sus partes. */
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+.build-slot,
+.reagent,
+.reagent-slot,
+.build-result,
+.bench-products {
+  flex-shrink: 0;
+}
+
+.build-actions,
+.bench-bar > .button {
+  margin-left: auto;
+}
+
+/* En el banco, la flecha y los productos forman parte de la misma frase que
+   los reactivos, asi que viajan con ellos en vez de quedarse sueltos. */
+.bench-bar {
+  flex-wrap: wrap;
+}
+.bench-equation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.bench-equation::-webkit-scrollbar { display: none; }
+
+@media (max-width: 900px) {
+  /* En vertical la ecuacion se apila y se lee de arriba abajo. Desplazarla de
+     lado obligaria a arrastrar para ver el resultado, que es justo la mitad
+     que importa. La flecha gira para seguir marcando el sentido. */
+  .build-row,
+  .bench-equation {
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: visible;
+  }
+
+  .bench-slots {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .build-slot,
+  .build-result,
+  .reagent,
+  .reagent-slot,
+  .bench-products {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .build-plus,
+  .bench-plus,
+  .build-equals {
+    align-self: center;
+  }
+
+  .build-actions,
+  .bench-bar > .button {
+    margin-left: 0;
+  }
+  .build-actions { width: 100%; }
 }

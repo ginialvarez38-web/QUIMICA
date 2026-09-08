@@ -132,8 +132,15 @@
 
         <!-- Banco de reaccion: visible en el modo Reaccionar. -->
         <div class="bench-bar" id="bench-bar" hidden>
-          <div class="bench-slots" id="bench-slots">
-            <span class="bench-placeholder">Anade sustancias desde la biblioteca…</span>
+          <!-- Reactivos, flecha y productos son UNA frase, y por eso viven en
+               el mismo contenedor: si se envuelven por la mitad dejan de
+               leerse como una ecuacion. La FLECHA es lo que distingue este
+               modo del constructor — alli la ecuacion cierra con un "=", aqui
+               avanza hacia unos productos que todavia no se saben. -->
+          <div class="bench-equation">
+            <div class="bench-slots" id="bench-slots"></div>
+            <span class="bench-arrow" aria-label="se transforma en">→</span>
+            <div class="bench-products" id="bench-products"></div>
           </div>
           <button class="button button-primary" id="predict-button" disabled>Predecir</button>
           <button class="button button-ghost" id="clear-button">Vaciar</button>
