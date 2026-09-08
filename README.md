@@ -104,6 +104,20 @@ cada una por lo que se sabe de ella, no por si la aritmetica cuadra:
 | **Derivada** (2413) | La formula se deduce de las cargas — es la respuesta correcta al ejercicio de formulacion — pero el motor NO afirma que el compuesto exista o sea estable. |
 | **No procede** (55) | El modelo ionico no se aplica, y se explica por que. |
 
+### `src/teach` — modo profesor y el guia
+
+`explain.ts` desarrolla una reaccion como una leccion. `guide.ts` es el cerebro
+del avatar: mira en que punto esta el usuario y decide que decirle.
+
+El guia **no sabe quimica**. Ninguna de sus frases afirma nada que no venga de
+un motor, y cada pista muestra su procedencia. Cuando el motor no sabe algo, el
+guia lo dice.
+
+Con dos reactivos en el banco y antes de predecir, pregunta que crees que va a
+pasar (§23) — nombrando solo las familias de los reactivos, nunca el resultado.
+Al responder muestra la explicacion del motor, se acierte o no, con la opcion
+correcta senalada.
+
 ### `src/data` — base de datos curada y versionada
 
 118 elementos, ~60 iones, 100 sustancias y 45 reacciones. La procedencia de
@@ -243,7 +257,7 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**241 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+**252 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
 motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
 ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
 de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los

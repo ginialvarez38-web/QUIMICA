@@ -185,6 +185,19 @@
       </div>
     </aside>
 
+    <!-- ================= El guia ================= -->
+    <!-- Vive fuera del escenario y de los paneles: acompana en todos los
+         modos, y en movil no puede quedar atrapado dentro de una columna que
+         se desplaza. -->
+    <div class="guide" id="guide" data-open="false">
+      <div class="guide-panel" id="guide-panel" role="status" aria-live="polite"></div>
+      <button class="guide-avatar" id="guide-avatar" aria-expanded="false"
+              aria-controls="guide-panel" aria-label="Abrir el guia">
+        <span class="guide-avatar-art" id="guide-avatar-art"></span>
+        <span class="guide-badge" id="guide-badge" hidden></span>
+      </button>
+    </div>
+
     <!-- Fondo oscurecido de la hoja de analisis en movil. -->
     <div class="sheet-backdrop" id="sheet-backdrop"></div>
   </div>

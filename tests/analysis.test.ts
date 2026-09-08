@@ -21,6 +21,8 @@ import { analyzeSpecies } from '../src/analysis/analyze.js';
 import { buildCombinationTable, comboKey } from '../src/engine/combinations.js';
 import { filterTable, ionLabel } from '../src/ui/combos-view.js';
 import { allSpecies } from '../src/data/species.js';
+import { guide } from '../src/teach/guide.js';
+import { predict } from '../src/engine/predict.js';
 import { getElement } from '../src/data/elements.js';
 
 // ---------------------------------------------------------------------------
@@ -923,5 +925,137 @@ describe('el motor de Lewis rehusa antes que mentir', () => {
       assert.ok(result, formula);
       assert.equal(lewisLine(result.best), line, formula);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('el guia', () => {
+  const base = {
+    mode: 'react',
+    builder: { cation: null, anion: null },
+    builtFormula: null,
+    bench: [] as string[],
+    predictions: [] as never[],
+    activePrediction: null,
+    selected: null,
+    answeredFor: null,
+  };
+
+  const ask = (bench: string[]) => guide({ ...base, bench });
+
+  test('cada pista declara de que motor sale', () => {
+    // Sin procedencia, el guia seria una voz sin respaldo, y el estudiante no
+    // podria distinguir lo que afirma un motor de lo que suena bien.
+    for (const mode of ['build', 'react', 'tabla', 'routes']) {
+      const message = guide({ ...base, mode });
+      for (const hint of message.hints) {
+        assert.ok(hint.from.length > 0, `${mode}: pista sin procedencia`);
+        assert.ok(hint.text.length > 0);
+      }
+    }
+  });
+
+  test('con dos reactivos pregunta antes de revelar nada (§23)', () => {
+    const message = ask(['CaO', 'H2O']);
+    assert.equal(message.mood, 'asking');
+    assert.ok(message.question, 'deberia haber pregunta');
+    // Lo que se muestra son FAMILIAS, que son un hecho, no el resultado.
+    assert.ok(message.hints.some((h) => h.text.includes('oxido basico')));
+    // Y en ninguna parte aparece el producto.
+    const visible = [message.headline, message.body, ...message.hints.map((h) => h.text)].join(' ');
+    assert.ok(!visible.includes('Ca(OH)'), 'no debe adelantar el producto');
+  });
+
+  test('la pregunta tiene exactamente una respuesta correcta', () => {
+    for (const pair of [['CaO', 'H2O'], ['HCl', 'NaOH'], ['AgNO3', 'NaCl'], ['NaCl', 'KI']]) {
+      const q = ask(pair).question;
+      assert.ok(q, pair.join('+'));
+      assert.equal(q.options.filter((o) => o.correct).length, 1, pair.join('+'));
+      assert.ok(q.options.length >= 3, `${pair.join('+')}: pocas opciones`);
+    }
+  });
+
+  test('cuando el motor dice que NO hay reaccion, esa es la respuesta correcta', () => {
+    /*
+     * Este es el fallo que motivo la prueba. El NaCl con el KI intercambiarian
+     * iones sobre el papel, pero los cuatro productos son solubles: sin
+     * precipitado, gas ni agua no hay fuerza motriz y no pasa nada. El motor
+     * lo marca con evidencia 'unknown' y lo explica.
+     *
+     * El guia miraba solo `types[0]`, veia «doble sustitucion» y la daba por
+     * buena — ensenando justo lo contrario de lo que el motor afirma.
+     */
+    const q = ask(['NaCl', 'KI']).question;
+    assert.ok(q);
+    const correct = q.options.find((o) => o.correct);
+    assert.equal(correct?.id, 'none', 'la respuesta correcta es que no reaccionan');
+    // Y la doble sustitucion se ofrece como senuelo: es el error que se comete.
+    assert.ok(q.options.some((o) => o.id === 'double-displacement' && !o.correct));
+    assert.match(q.reveal, /NO HAY REACCION/);
+  });
+
+  test('las opciones no bailan entre repintados', () => {
+    // Si cambiaran en cada render, el usuario creeria que el programa duda.
+    const a = ask(['CaO', 'H2O']).question!.options.map((o) => o.id);
+    const b = ask(['CaO', 'H2O']).question!.options.map((o) => o.id);
+    assert.deepEqual(a, b);
+  });
+
+  test('tras contestar sigue habiendo pregunta, para poder ver la explicacion', () => {
+    // Retirarla al responder se llevaba por delante el «por que», que es la
+    // parte que ensena.
+    const message = guide({ ...base, bench: ['CaO', 'H2O'], answeredFor: 'CaO+H2O' });
+    assert.ok(message.question, 'la pregunta resuelta debe seguir disponible');
+    assert.equal(message.mood, 'pointing');
+    assert.match(message.headline, /comprueba/i);
+  });
+
+  test('un riesgo quimico pone al guia en alerta', () => {
+    const result = predict(['CaO', 'H2O']);
+    const message = guide({
+      ...base,
+      bench: ['CaO', 'H2O'],
+      predictions: [...result.predictions] as never,
+      activePrediction: result.predictions[0] as never,
+      answeredFor: 'CaO+H2O',
+    });
+    assert.equal(message.mood, 'warning');
+    assert.match(message.headline, /riesgo|Cuidado|NO intentes/i);
+  });
+
+  test('avisa cuando una prediccion sale de reglas y no de una reaccion documentada', () => {
+    const result = predict(['ZnCl2', 'AgNO3']);
+    if (result.predictions.length === 0) return; // el motor no propone nada: nada que comprobar
+    const message = guide({
+      ...base,
+      bench: ['ZnCl2', 'AgNO3'],
+      predictions: [...result.predictions] as never,
+      activePrediction: result.predictions[0] as never,
+      answeredFor: 'AgNO3+ZnCl2',
+    });
+    if (result.predictions[0]!.evidence === 'predicted') {
+      assert.ok(
+        message.hints.some((h) => h.text.includes('no de una reaccion documentada')),
+        'deberia declarar que es una prediccion, no un dato',
+      );
+    }
+  });
+
+  test('en Construir explica que ahi NO ocurre ninguna reaccion', () => {
+    const message = guide({ ...base, mode: 'build' });
+    assert.match(message.body, /no ocurre ninguna reaccion/i);
+    assert.match(message.body, /PROPORCION/);
+  });
+
+  test('con un solo reactivo dice cuantas transformaciones hay documentadas', () => {
+    const message = ask(['CaO']);
+    assert.equal(message.mood, 'pointing');
+    assert.ok(message.hints.some((h) => h.from === 'Reacciones curadas'));
+  });
+
+  test('el laboratorio admite que su interfaz no esta hecha', () => {
+    // Preferible a ensenar una pantalla que no calcula.
+    assert.match(guide({ ...base, mode: 'lab' }).body, /hoja de ruta|no calcula/i);
   });
 });

@@ -26,6 +26,8 @@ import { renderAnalysis, renderWhy } from './analysis-view.js';
 import { LEVEL_LABEL } from '../analysis/findings.js';
 import { buildCombinationTable, comboKey, type CombinationTable } from '../engine/combinations.js';
 import { renderCombos, renderComboDetail, type CombosFilters } from './combos-view.js';
+import { guide, type GuideMessage } from '../teach/guide.js';
+import { renderAvatar, renderGuidePanel } from './guide-view.js';
 
 type Mode = 'build' | 'react' | 'tabla' | 'routes' | 'lab';
 type Tab = 'ficha' | 'estructura' | 'analisis' | 'balance' | 'profesor';
@@ -66,6 +68,13 @@ interface State {
   combosFilters: CombosFilters;
   /** Celda seleccionada, con la clave `comboKey`. */
   combosSelected: string | null;
+  /** El panel del guia esta desplegado. */
+  guideOpen: boolean;
+  /**
+   * Respuesta a la pregunta de descubrimiento (§23), atada a la pareja de
+   * reactivos concreta: al cambiar de pareja hay una pregunta nueva.
+   */
+  guideAnswer: { key: string; chosen: string; correct: boolean } | null;
   /** Ruta: origen y destino. */
   routeFrom: string;
   routeTo: string;
@@ -89,6 +98,8 @@ const state: State = {
   combos: null,
   combosFilters: { query: '', onlyVerified: false, onlyInsoluble: false },
   combosSelected: null,
+  guideOpen: true,
+  guideAnswer: null,
   routeFrom: 'Ca',
   routeTo: 'CaCO3',
   builder: { cation: null, anion: null },
@@ -414,6 +425,17 @@ function renderModeHint(): void {
       ? `<span class="mode-nature" title="${escapeHtml(nature.note)}">${escapeHtml(nature.verb)}</span>`
       : '') +
     `<span class="mode-hint-step">${icon}</span><span>${text}</span>`;
+
+  /*
+   * El guia se engancha AQUI y no en cada sitio que cambia el estado.
+   *
+   * `renderModeHint` ya se ejecuta tras cada cambio que importa — cambiar de
+   * modo, tocar el banco, predecir, construir, elegir sustancia — asi que
+   * colgarse de ella mantiene al guia sincronizado sin sembrar llamadas por
+   * todo el archivo, que es como se acaba con un ayudante que se queda
+   * congelado en una pantalla y nadie sabe por que.
+   */
+  renderGuide();
 }
 
 /** Coloca un ion en el hueco que le corresponde por su carga. */
@@ -864,6 +886,81 @@ function selectCombo(key: string): void {
   $('#inspector-content').innerHTML = renderComboDetail(cell);
 }
 
+/**
+ * Pinta el guia.
+ *
+ * Se llama despues de cada cambio de estado, y por eso tiene que ser barato:
+ * `guide()` no hace mas que mirar el estado y consultar los motores, sin
+ * recalcular nada pesado.
+ *
+ * El panel se abre SOLO cuando hay una pregunta o un aviso de riesgo. Es la
+ * unica automatismo que se permite: un ayudante que se despliega en cada
+ * pulsacion acaba cerrado para siempre, y entonces no avisa cuando importa.
+ */
+let lastGuideMood: string | null = null;
+
+function currentGuide(): GuideMessage {
+  const key = [...state.bench].sort().join('+');
+  return guide({
+    mode: state.mode,
+    builder: state.builder,
+    builtFormula: builtFormula()?.formula ?? null,
+    bench: state.bench,
+    predictions: state.predictions,
+    activePrediction: state.activePrediction,
+    selected: state.selected,
+    answeredFor: state.guideAnswer?.key === key ? key : null,
+  });
+}
+
+function renderGuide(): void {
+  const message = currentGuide();
+
+  // Un aviso de riesgo o una pregunta se despliegan solos; lo demas espera a
+  // que el usuario abra.
+  if ((message.mood === 'warning' || message.mood === 'asking') && message.mood !== lastGuideMood) {
+    state.guideOpen = true;
+  }
+  lastGuideMood = message.mood;
+
+  const root = $('#guide');
+  root.dataset['open'] = String(state.guideOpen);
+  root.dataset['mood'] = message.mood;
+
+  /*
+   * El guia se apoya SOBRE la franja del banco, nunca encima.
+   *
+   * Anclado al borde inferior de la ventana, el panel tapaba el boton
+   * «Predecir» — precisamente el que acababa de decirte que pulsaras. Un
+   * ayudante que oculta aquello a lo que te manda es peor que no tenerlo, y
+   * ya habia pasado antes con la lista de sustancias.
+   *
+   * La altura de esa franja cambia con el modo y con el ancho, asi que se
+   * mide en lugar de estimarse; se recalcula en cada repintado, que es
+   * justo cuando puede haber cambiado.
+   */
+  const bench = document.querySelector<HTMLElement>('.bench');
+  const benchHeight = bench && !bench.hidden ? bench.getBoundingClientRect().height : 0;
+  root.style.setProperty('--guide-lift', `${Math.round(benchHeight)}px`);
+
+  $('#guide-avatar-art').innerHTML = renderAvatar(message.mood);
+  $('#guide-avatar').setAttribute('aria-expanded', String(state.guideOpen));
+
+  // La chapa avisa de que hay algo que leer cuando el panel esta plegado.
+  const badge = $('#guide-badge');
+  const notable = message.mood === 'warning' || message.mood === 'asking';
+  badge.hidden = state.guideOpen || !notable;
+  badge.textContent = message.mood === 'warning' ? '!' : '?';
+
+  const key = [...state.bench].sort().join('+');
+  const answer =
+    state.guideAnswer && state.guideAnswer.key === key
+      ? { chosen: state.guideAnswer.chosen, correct: state.guideAnswer.correct }
+      : null;
+
+  $('#guide-panel').innerHTML = state.guideOpen ? renderGuidePanel(message, answer) : '';
+}
+
 function selectSubstance(formula: string): void {
   state.selected = formula;
   state.followed.clear();
@@ -1186,6 +1283,31 @@ function wireEvents(): void {
       renderCombosView();
     });
   }
+
+  // --- El guia -------------------------------------------------------------
+  $('#guide-avatar').addEventListener('click', () => {
+    state.guideOpen = !state.guideOpen;
+    renderGuide();
+  });
+
+  delegate($('#guide-panel'), 'click', '#guide-close', () => {
+    state.guideOpen = false;
+    renderGuide();
+  });
+
+  // La respuesta a la pregunta de descubrimiento (§23).
+  delegate($('#guide-panel'), 'click', '[data-guide-option]', (_e, target) => {
+    const chosen = target.dataset['guideOption']!;
+    const message = currentGuide();
+    const option = message.question?.options.find((o) => o.id === chosen);
+    if (!option) return;
+    state.guideAnswer = {
+      key: [...state.bench].sort().join('+'),
+      chosen,
+      correct: option.correct,
+    };
+    renderGuide();
+  });
 
   // --- Modos -------------------------------------------------------------
   delegate($('#mode-tabs'), 'click', '[data-mode]', (_e, target) => {

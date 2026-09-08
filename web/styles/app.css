@@ -2760,3 +2760,298 @@ button { cursor: pointer; border: none; background: none; }
   }
   .build-actions { width: 100%; }
 }
+
+/* ==========================================================================
+   EL GUIA
+   ==========================================================================
+
+   Un matraz con ojos, abajo a la izquierda, que despliega un panel con la
+   pista que toca. Vive fuera del escenario y de los paneles: acompana en
+   todos los modos y en movil no puede quedar atrapado en una columna que se
+   desplaza.
+
+   La zona inferior derecha esta ocupada por los controles de zoom del visor y
+   por el conmutador movil, asi que el guia se queda a la izquierda.
+   ========================================================================== */
+
+.guide {
+  position: fixed;
+  /* Justo a la derecha de la biblioteca, no encima.
+     
+     Pegado al borde izquierdo tapaba la lista de sustancias — es decir, el
+     sitio al que el propio guia te esta mandando cuando dice «anade otra
+     sustancia». Un ayudante que oculta aquello de lo que habla estorba mas
+     de lo que ayuda. */
+  left: calc(var(--panel-left) + 14px);
+  /* `--guide-lift` lo mide la aplicacion: es la altura de la franja del banco,
+     que cambia con el modo y con el ancho. Ver renderGuide(). */
+  bottom: calc(var(--guide-lift, 0px) + 14px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  /* El contenedor no debe interceptar clics fuera de sus piezas. */
+  pointer-events: none;
+}
+
+.guide > * { pointer-events: auto; }
+
+/* --- El avatar ---------------------------------------------------------- */
+
+.guide-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+.guide-avatar:hover { transform: translateY(-2px); }
+.guide-avatar:active { transform: translateY(0); }
+
+.guide-avatar-art { display: grid; place-items: center; line-height: 0; }
+.guide-avatar-svg { display: block; }
+
+/* El borde sigue al estado de animo, igual que el liquido del matraz. */
+.guide[data-mood='warning'] .guide-avatar { border-color: var(--hazard-danger); }
+.guide[data-mood='asking'] .guide-avatar { border-color: var(--violet); }
+.guide[data-mood='done'] .guide-avatar { border-color: var(--evidence-established); }
+
+/* La chapa: solo aparece con el panel plegado y algo que merece leerse. */
+.guide-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-accent, #fff);
+  background: var(--violet);
+  border: 2px solid var(--surface);
+}
+
+.guide[data-mood='warning'] .guide-badge { background: var(--hazard-danger); }
+
+/* Una llamada de atencion discreta, y solo cuando hay pregunta o aviso. */
+.guide[data-mood='asking'] .guide-avatar,
+.guide[data-mood='warning'] .guide-avatar {
+  animation: guide-nudge 2.6s ease-in-out infinite;
+}
+
+@keyframes guide-nudge {
+  0%, 88%, 100% { transform: translateY(0); }
+  92% { transform: translateY(-4px); }
+  96% { transform: translateY(-1px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-avatar { animation: none !important; }
+}
+
+/* --- El panel ----------------------------------------------------------- */
+
+.guide-panel {
+  width: min(330px, calc(100vw - 28px));
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
+  padding: 14px 15px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.guide[data-open='false'] .guide-panel {
+  display: none;
+}
+
+.guide-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.guide-headline {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.guide-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  font-size: 17px;
+  line-height: 1;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.guide-close:hover { background: var(--surface-2); color: var(--text); }
+
+.guide-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* --- Pistas, cada una con su procedencia -------------------------------- */
+
+.guide-hints {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guide-hints li {
+  position: relative;
+  padding: 8px 10px 8px 24px;
+  font-size: 12px;
+  line-height: 1.55;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.guide-hints li::before {
+  content: '→';
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  color: var(--mode-accent, var(--accent));
+  font-weight: 700;
+}
+
+/* De donde sale la pista. Sin esto el guia seria una voz sin respaldo, y la
+   diferencia entre «lo dice el motor» y «se lo ha inventado» es todo. */
+.guide-source {
+  display: block;
+  margin-top: 3px;
+  font-size: 9.5px;
+  font-weight: 640;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* --- La pregunta del §23 ------------------------------------------------ */
+
+.guide-question {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--violet);
+  background: color-mix(in srgb, var(--violet) 8%, transparent);
+}
+
+.guide-question-text {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.guide-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guide-option {
+  text-align: left;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.guide-option:hover:not(:disabled) {
+  border-color: var(--violet);
+  background: color-mix(in srgb, var(--violet) 10%, transparent);
+}
+
+/* Tras responder: la correcta se marca SIEMPRE, se haya acertado o no.
+   Dejar al usuario con la duda seria peor que no haber preguntado. */
+.guide-option.is-correct {
+  border-color: var(--evidence-established);
+  background: color-mix(in srgb, var(--evidence-established) 14%, transparent);
+  font-weight: 600;
+}
+
+.guide-option.is-wrong {
+  border-color: var(--hazard-forbidden);
+  background: color-mix(in srgb, var(--hazard-forbidden) 12%, transparent);
+  text-decoration: line-through;
+}
+
+.guide-option.is-dim { opacity: 0.5; }
+.guide-option:disabled { cursor: default; }
+
+.guide-question-note {
+  margin: 9px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.guide-reveal {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--surface-2);
+  border-left: 3px solid var(--hazard-forbidden);
+}
+
+.guide-reveal.ok { border-left-color: var(--evidence-established); }
+.guide-reveal strong { display: block; margin-bottom: 3px; }
+
+@media (max-width: 900px) {
+  /* Por encima de la barra de pestanas inferior, que ocupa el borde: 58 px
+     de alto mas el margen seguro del dispositivo. Se calcula en vez de
+     estimarse, para que no se solape en los moviles con barra de gestos. */
+  /* En movil NO se aplica `--guide-lift`.
+     
+     En escritorio el banco es una tira fija al pie del escenario, y elevarse
+     por encima de ella evita tapar el boton «Predecir». Aqui el banco no es
+     una tira: forma parte de la columna que se desplaza, asi que su altura es
+     grande y variable, y usarla como elevacion mandaba el panel fuera de la
+     pantalla por arriba. El unico obstaculo fijo en movil es la barra de
+     pestanas. */
+  .guide {
+    left: 10px;
+    bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 10px);
+  }
+  .guide-avatar { width: 50px; height: 50px; }
+  .guide-avatar-svg { width: 38px; height: 41px; }
+  .guide-panel { max-height: 54vh; }
+}

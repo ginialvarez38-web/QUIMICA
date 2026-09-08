@@ -34,7 +34,7 @@ No hay nada marcado como hecho que no lo este.
 | 20 | «¿Que puedo hacer con este compuesto?» | **Hecho** | `engine/predict.ts::reactionsAvailableFor`. Es la vista por defecto al elegir una sustancia. |
 | 21 | «¿Como llego a este compuesto?» | **Hecho** | `engine/graph.ts`. Dijkstra mas busqueda de rutas alternativas. |
 | 22 | Mapa de transformaciones | **Parcial** | El grafo, el vecindario y las rutas estan calculados y listados. **Falta:** el dibujo de la red como diagrama de nodos. |
-| 23 | Modo descubrimiento | **Parcial** | El motor ya devuelve todas las alternativas y avisa de que dependen de las condiciones. **Falta:** la pregunta «¿que crees que ocurrira?» antes de simular. |
+| 23 | Modo descubrimiento | **Hecho** | El guia pregunta «¿que tipo de reaccion crees que ocurre?» con dos reactivos en el banco y ANTES de predecir, nombrando solo las familias de los reactivos. Al responder muestra la explicacion del motor, se acierte o no. |
 | 24 | Sistema de advertencias | **Hecho** | Cuatro niveles con su codigo de color, en cada sustancia y cada reaccion. |
 | 25 | Laboratorio virtual | **Pendiente** | El material de vidrio y el trasvase. El modelo (`Container`) esta definido en `core/types.ts`. |
 | 26 | Cantidades reales | **Parcial** | `engine/stoichiometry.ts` completo y probado: unidades, limitante, exceso, rendimientos, gases, molaridad. **Falta:** la interfaz. |
@@ -137,13 +137,30 @@ prohibe.
    el formulario. Es el mayor retorno por esfuerzo del primer brief.
 4. **Dibujo de la red de transformaciones (§22).** El grafo ya esta calculado;
    falta la disposicion visual de nodos y aristas.
-5. **Modo descubrimiento (§23).** Interponer «¿que crees que ocurrira?» antes
-   de mostrar el resultado. El motor ya devuelve las alternativas necesarias.
 6. **Modo examen (§35).** Los metadatos por reaccion (dificultad, conceptos)
    estan puestos precisamente para esto.
 7. **Ampliar la base de datos.** Es el eje que mas mejora la experiencia sin
    tocar una linea de motor: mas sustancias y mas reacciones densifican
    automaticamente la red de rutas.
+
+## El guia
+
+`teach/guide.ts` decide que decir en cada momento; `ui/guide-view.ts` le pone
+cara (un matraz en SVG cuya expresion y color siguen al estado de animo).
+
+La regla que gobierna el modulo: **el guia no sabe quimica**. Ni una sola de
+sus frases afirma algo que no venga de un motor — la familia la da `classify`,
+el riesgo y el tipo de reaccion los da `predict`, la neutralidad el
+constructor — y cada pista muestra de DONDE sale. Un ayudante que suelta
+animos genericos es ruido que se aprende a ignorar; uno que se inventa quimica
+para parecer util es peor que no tenerlo.
+
+Su pieza mas valiosa es el §23: con dos reactivos en el banco y antes de
+predecir, no adelanta el resultado. Nombra las familias —que es un hecho— y
+pregunta que crees que va a pasar. La pregunta es sobre el TIPO de reaccion y
+no sobre los productos, y eso es deliberado: el vocabulario de tipos es
+cerrado, asi que las opciones falsas son tipos reales que no tocan, nunca
+formulas inventadas.
 
 ## Como crecer sin romper nada
 
@@ -156,6 +173,9 @@ prohibe.
 - **Anadir una regla de prediccion:** una funcion en `engine/predict.ts` y una
   entrada en `PAIR_RULES`. Toda prediccion se balancea antes de devolverse.
 - **Anadir una geometria:** una entrada en `SPECS` de `geometry/vsepr.ts`.
+- **Anadir una pista al guia:** una rama en `teach/guide.ts` que devuelva
+  `{ text, from }`. El campo `from` es obligatorio: si no se puede nombrar el
+  motor que lo afirma, la pista no deberia existir.
 - **Anadir un resultado al analisis:** una llamada a `graph.add()` en
   `analysis/analyze.ts` declarando de que otros hallazgos depende. El boton
   «¿por que?», el mapa de informacion, el filtro por profundidad y el resumen
