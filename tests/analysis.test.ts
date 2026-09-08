@@ -27,6 +27,11 @@ import {
   unitMateria, conservationDemo, definiteProportionsDemo, multipleProportionsDemo,
   gayLussacDemo, moleDemo, AVOGADRO, SEPARATION_METHODS,
 } from '../src/teach/theory.js';
+import {
+  unitAtomo, abundanceDemo, compositionDemo, isobarsDemo, isotonesDemo, periodicStatsDemo,
+} from '../src/teach/atom.js';
+import { isotopesOf, isobarsOf, elementsWithIsotopes } from '../src/data/isotopes.js';
+import { ELEMENTS } from '../src/data/elements.js';
 import { getElement } from '../src/data/elements.js';
 
 // ---------------------------------------------------------------------------
@@ -1217,5 +1222,149 @@ describe('unidad 1: las leyes calculadas', () => {
       assert.match(m.separates, /Homogenea|Heterogenea/);
     }
     assert.equal(SEPARATION_METHODS.find((m) => m.name === 'Destilacion')?.property, 'Punto de ebullicion');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('unidad 2: estructura atomica', () => {
+  test('la media ponderada de los isotopos REPRODUCE la masa atomica IUPAC', () => {
+    /*
+     * Es la prueba mas fuerte de la unidad, y la razon de que exista la tabla
+     * de isotopos. La masa atomica del cloro no es 35,45 porque lo diga un
+     * libro: es lo que sale de ponderar 75,76 % de ³⁵Cl con 24,24 % de ³⁷Cl.
+     *
+     * Si alguien mete mal una abundancia o una masa isotopica, esta prueba se
+     * entera: el resultado deja de coincidir con el dato independiente que
+     * publica la IUPAC.
+     */
+    for (const symbol of elementsWithIsotopes()) {
+      const demo = abundanceDemo(symbol);
+      assert.ok(demo, symbol);
+      assert.ok(
+        demo.difference < 0.01,
+        `${symbol}: calculado ${demo.weighted.toFixed(5)}, IUPAC ${demo.tabulated} (dif ${demo.difference.toFixed(5)})`,
+      );
+    }
+  });
+
+  test('las abundancias de cada elemento suman 100 %', () => {
+    for (const symbol of elementsWithIsotopes()) {
+      const total = isotopesOf(symbol)
+        .filter((i) => i.abundance > 0)
+        .reduce((sum, i) => sum + i.abundance, 0);
+      assert.ok(Math.abs(total - 100) < 0.001, `${symbol}: suman ${total} %`);
+    }
+  });
+
+  test('el cloro es el caso de manual', () => {
+    const cl = abundanceDemo('Cl');
+    assert.ok(cl);
+    assert.equal(cl.rows.length, 2);
+    assert.ok(Math.abs(cl.weighted - 35.45) < 0.01);
+    // Y ningun isotopo pesa el valor medio: la masa atomica es una media.
+    assert.ok(cl.rows.every((r) => Math.abs(r.mass - cl.weighted) > 0.4));
+  });
+
+  test('protones, neutrones y electrones salen de Z, A y la carga', () => {
+    const demo = compositionDemo();
+    for (const row of demo.rows) {
+      assert.equal(row.protons, row.Z, `${row.label}: protones = Z`);
+      assert.equal(row.neutrons, row.A - row.Z, `${row.label}: neutrones = A − Z`);
+      assert.equal(row.electrons, row.Z - row.charge, `${row.label}: electrones = Z − carga`);
+    }
+    // En un ion cambian los electrones, NUNCA los protones.
+    const sodium = demo.rows.find((r) => r.symbol === 'Na' && r.charge === 1)!;
+    assert.equal(sodium.protons, 11);
+    assert.equal(sodium.electrons, 10);
+  });
+
+  test('las isobaras comparten A y difieren en Z', () => {
+    const demo = isobarsDemo();
+    assert.ok(demo.groups.length > 0);
+    for (const group of demo.groups) {
+      assert.ok(group.members.length >= 2);
+      assert.ok(group.members.every((m) => m.A === group.value), `A = ${group.value}`);
+      assert.ok(new Set(group.members.map((m) => m.Z)).size > 1, 'deben ser elementos distintos');
+    }
+    // El trio clasico: ⁴⁰Ar, ⁴⁰K y ⁴⁰Ca.
+    const forty = demo.groups.find((g) => g.value === 40);
+    assert.ok(forty, 'deberia estar el grupo A = 40');
+    assert.deepEqual([...forty.members.map((m) => m.symbol)].sort(), ['Ar', 'Ca', 'K']);
+  });
+
+  test('los isotonos comparten N y difieren en Z', () => {
+    const demo = isotonesDemo();
+    assert.ok(demo.groups.length > 0);
+    for (const group of demo.groups) {
+      assert.ok(group.members.every((m) => m.neutrons === group.value), `N = ${group.value}`);
+      assert.ok(new Set(group.members.map((m) => m.Z)).size > 1);
+      // Isotonos, no isobaras: el numero masico NO coincide.
+      assert.ok(new Set(group.members.map((m) => m.A)).size > 1, 'si coincide A serian isobaras');
+    }
+  });
+
+  test('los tres «iso» no se confunden entre si', () => {
+    // isotopos: mismo Z. isobaras: mismo A. isotonos: mismo N.
+    const cl35 = isotopesOf('Cl').find((i) => i.A === 35)!;
+    const cl37 = isotopesOf('Cl').find((i) => i.A === 37)!;
+    assert.equal(cl35.Z, cl37.Z, 'isotopos: mismo Z');
+    assert.notEqual(cl35.A, cl37.A);
+
+    const ar40 = isobarsOf(40).find((i) => i.symbol === 'Ar')!;
+    const ca40 = isobarsOf(40).find((i) => i.symbol === 'Ca')!;
+    assert.equal(ar40.A, ca40.A, 'isobaras: mismo A');
+    assert.notEqual(ar40.Z, ca40.Z);
+  });
+
+  test('la tabla periodica se cuenta sobre los 118 elementos', () => {
+    const demo = periodicStatsDemo();
+    assert.equal(demo.total, 118);
+    // Los recuentos por familia y por bloque tienen que sumar el total.
+    assert.equal(demo.byCategory.reduce((s, c) => s + c.count, 0), 118);
+    assert.equal(demo.byBlock.reduce((s, b) => s + b.count, 0), 118);
+    // La mayoria de los elementos son metales.
+    assert.ok(demo.metals > demo.nonmetals + demo.metalloids);
+  });
+
+  test('cada elemento tiene una casilla, y solo una', () => {
+    // Es lo que garantiza que la tabla dibujada no pierda ni duplique ninguno.
+    const withGroup = ELEMENTS.filter((e) => e.group !== null);
+    const inner = ELEMENTS.filter((e) => e.category === 'lanthanide' || e.category === 'actinide');
+    assert.equal(withGroup.length + inner.length, 118, 'todos colocados');
+    assert.equal(withGroup.filter((e) => inner.includes(e)).length, 0, 'sin duplicados');
+
+    // Y ninguna casilla del cuerpo principal esta ocupada dos veces.
+    const seen = new Set<string>();
+    for (const e of withGroup) {
+      const cellKey = `${e.period}:${e.group}`;
+      assert.ok(!seen.has(cellKey), `dos elementos en la celda ${cellKey}`);
+      seen.add(cellKey);
+    }
+  });
+
+  test('el temario cubre los quince apartados pedidos', () => {
+    const unit = unitAtomo();
+    const ids: string[] = [];
+    const walk = (t: typeof unit): void => {
+      ids.push(t.id);
+      for (const c of t.children ?? []) walk(c);
+    };
+    walk(unit);
+
+    for (const id of [
+      '2.1', '2.2', '2.2.1', '2.2.1.1', '2.2.1.2',
+      '2.3', '2.4', '2.5', '2.6', '2.7', '2.8', '2.9',
+      '2.10', '2.10.1', '2.10.2',
+    ]) {
+      assert.ok(ids.includes(id), `falta el apartado ${id}`);
+    }
+  });
+
+  test('se declara que la tabla de nucleidos no esta completa', () => {
+    // Hay unos 3400 nucleidos conocidos; aqui estan los que se estudian.
+    // Un elemento sin datos devuelve lista vacia en vez de inventarlos.
+    assert.deepEqual(isotopesOf('Au'), [], 'sin datos curados: lista vacia');
+    assert.equal(abundanceDemo('Au'), null, 'y la demostracion se declara no disponible');
   });
 });

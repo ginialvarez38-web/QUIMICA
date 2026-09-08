@@ -456,7 +456,17 @@ export const SEPARATION_METHODS: readonly SeparationMethod[] = [
 // El temario
 // ---------------------------------------------------------------------------
 
-export interface TheoryTopic {
+/**
+ * Un apartado del temario.
+ *
+ * Es GENERICO en el tipo de demostracion, y esa es la unica razon de que lo
+ * sea: cada unidad tiene sus propias demostraciones — la 1 calcula leyes
+ * ponderales, la 2 cuenta nucleones— y compartir una union con todas
+ * obligaria a que cada modulo conociera los tipos de los demas. Asi cada
+ * unidad declara los suyos, y su vista los recorre con comprobacion
+ * exhaustiva.
+ */
+export interface TheoryTopic<D = TheoryDemo> {
   readonly id: string;
   readonly title: string;
   /** La explicacion. */
@@ -466,12 +476,12 @@ export interface TheoryTopic {
   /** El error que casi todo el mundo comete aqui. */
   readonly pitfall?: string;
   /** Demostracion calculada, cuando la hay. */
-  readonly demo?: TheoryDemo | null;
+  readonly demo?: D | null;
   /** Lo que este motor NO cubre de este apartado (§32). */
   readonly gap?: string;
   /** A que parte de la aplicacion lleva. */
   readonly tryIt?: { readonly label: string; readonly mode?: string; readonly formula?: string };
-  readonly children?: readonly TheoryTopic[];
+  readonly children?: readonly TheoryTopic<D>[];
 }
 
 /**
@@ -481,7 +491,7 @@ export interface TheoryTopic {
  * demostraciones se calculan: si un dato cambia, el texto que se ensena cambia
  * con el.
  */
-export function unitMateria(): TheoryTopic {
+export function unitMateria(): TheoryTopic<TheoryDemo> {
   return {
     id: '1',
     title: 'La materia',

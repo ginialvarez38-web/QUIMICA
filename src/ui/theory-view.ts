@@ -220,7 +220,7 @@ function renderSeparationMethods(): string {
 // El temario
 // ---------------------------------------------------------------------------
 
-function renderTopic(topic: TheoryTopic, depth: number): string {
+function renderTopic<D>(topic: TheoryTopic<D>, depth: number, demoRenderer: (d: D) => string): string {
   const heading = depth === 0 ? 'h2' : depth === 1 ? 'h3' : 'h4';
 
   return `
@@ -241,7 +241,7 @@ function renderTopic(topic: TheoryTopic, depth: number): string {
           ? `<div class="topic-pitfall"><span class="topic-key-label">Ojo</span>${escapeHtml(topic.pitfall)}</div>`
           : ''
       }
-      ${topic.demo ? renderDemo(topic.demo) : ''}
+      ${topic.demo ? demoRenderer(topic.demo) : ''}
       ${topic.id === '1.6.3' ? renderSeparationMethods() : ''}
       ${
         topic.gap
@@ -256,12 +256,12 @@ function renderTopic(topic: TheoryTopic, depth: number): string {
           : ''
       }
 
-      ${(topic.children ?? []).map((c) => renderTopic(c, depth + 1)).join('')}
+      ${(topic.children ?? []).map((c) => renderTopic(c, depth + 1, demoRenderer)).join('')}
     </section>`;
 }
 
 /** El indice, plano y con sangria por nivel. */
-function renderIndex(topic: TheoryTopic, depth = 0): string {
+function renderIndex<D>(topic: TheoryTopic<D>, depth = 0): string {
   const self =
     depth === 0
       ? ''
@@ -271,7 +271,18 @@ function renderIndex(topic: TheoryTopic, depth = 0): string {
   return self + (topic.children ?? []).map((c) => renderIndex(c, depth + 1)).join('');
 }
 
-export function renderTheory(unit: TheoryTopic): string {
+/**
+ * Dibuja una unidad entera.
+ *
+ * Recibe el renderizador de demostraciones porque cada unidad tiene las suyas
+ * — la 1 calcula leyes ponderales, la 2 cuenta nucleones — y asi la carcasa
+ * (indice, apartados, avisos) se escribe una sola vez.
+ */
+export function renderUnit<D>(
+  unit: TheoryTopic<D>,
+  demoRenderer: (demo: D) => string,
+  claim: string,
+): string {
   const demos = countDemos(unit);
 
   return `
@@ -284,26 +295,38 @@ export function renderTheory(unit: TheoryTopic): string {
         ${renderIndex(unit)}
       </nav>
 
-      <div class="theory-content" id="theory-content">
+      <div class="theory-content">
         <header class="theory-head">
           <h1 class="theory-title">${escapeHtml(unit.title)}</h1>
           <p class="theory-lead">${escapeHtml(unit.body)}</p>
           <p class="theory-claim">
             <strong>${demos} apartados de esta unidad no se afirman aqui: se calculan.</strong>
-            Los atomos de la conservacion se cuentan sobre una ecuacion que ajusto el balanceador; los
-            porcentajes en masa salen del desglose de la masa molar; la razon de las proporciones
-            multiples se obtiene dividiendo masas atomicas medidas. Si manana cambiara un dato,
-            cambiarian los numeros de esta pagina.
+            ${claim}
           </p>
         </header>
-        ${(unit.children ?? []).map((c) => renderTopic(c, 1)).join('')}
+        ${(unit.children ?? []).map((c) => renderTopic(c, 1, demoRenderer)).join('')}
       </div>
     </div>`;
 }
 
-function countDemos(topic: TheoryTopic): number {
+function countDemos<D>(topic: TheoryTopic<D>): number {
   return (topic.demo ? 1 : 0) + (topic.children ?? []).reduce((sum, c) => sum + countDemos(c), 0);
 }
+
+/** La unidad 1, con su renderizador de demostraciones. */
+export function renderTheory(unit: TheoryTopic<TheoryDemo>): string {
+  return renderUnit(
+    unit,
+    renderDemo,
+    'Los atomos de la conservacion se cuentan sobre una ecuacion que ajusto el balanceador; los ' +
+      'porcentajes en masa salen del desglose de la masa molar; la razon de las proporciones ' +
+      'multiples se obtiene dividiendo masas atomicas medidas. Si manana cambiara un dato, ' +
+      'cambiarian los numeros de esta pagina.',
+  );
+}
+
+/** Utilidades que comparte la vista de la unidad 2. */
+export { num, scientific };
 
 /** El numero de Avogadro, ya formateado, para quien lo necesite fuera. */
 export const AVOGADRO_TEXT = scientific(AVOGADRO);

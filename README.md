@@ -106,9 +106,10 @@ cada una por lo que se sabe de ella, no por si la aritmetica cuadra:
 
 ### `src/teach` — modo profesor, el guia y el temario
 
-`explain.ts` desarrolla una reaccion como una leccion. `theory.ts` es la unidad
-1 del temario. `guide.ts` es el cerebro del avatar: mira en que punto esta el
-usuario y decide que decirle.
+`explain.ts` desarrolla una reaccion como una leccion. `theory.ts` es la
+unidad 1 (la materia) y `atom.ts` la unidad 2 (estructura atomica). `guide.ts`
+es el cerebro del avatar: mira en que punto esta el usuario y decide que
+decirle.
 
 **El temario no se escribe: se calcula.** Donde una ley admite demostracion,
 se demuestra con los mismos motores que usa el resto de la aplicacion:
@@ -119,6 +120,9 @@ se demuestra con los mismos motores que usa el resto de la aplicacion:
 | Proporciones definidas | El % en masa sale del desglose de la masa molar, y se aplica a dos muestras de tamano distinto. |
 | Proporciones multiples | Se fija 1 g de un elemento y se divide. CO/CO₂ da 1:2, SO₂/SO₃ da 2:3, N₂O/NO/NO₂ da 1:2:4 — enteros pequenos, sin forzarlo. |
 | Gay-Lussac | Los volumenes son los coeficientes, que calculo el balanceador sin saber nada de volumenes. |
+| **Abundancia isotopica** | La masa atomica se deduce ponderando masas isotopicas por sus abundancias, y se compara con el valor IUPAC. Los 16 elementos con datos curados coinciden con error < 0,005 u. |
+| **Isobaras e isotonos** | Se BUSCAN agrupando los nucleidos por A y por N. El trio ⁴⁰Ar / ⁴⁰K / ⁴⁰Ca aparece porque esta en los datos. |
+| **Tabla periodica** | Los 118 elementos colocados en la celda (periodo, grupo) que dicen sus datos. No hay ninguna imagen. |
 
 Escribir «la masa se conserva» es una afirmacion que hay que creerse. Ensenar
 la tabla de atomos cuadrando es la ley ocurriendo delante. Y si manana cambiara
@@ -272,7 +276,7 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**264 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+**275 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
 motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
 ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
 de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los

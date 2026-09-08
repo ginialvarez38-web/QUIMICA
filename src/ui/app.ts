@@ -30,8 +30,10 @@ import { guide, type GuideMessage } from '../teach/guide.js';
 import { renderAvatar, renderGuidePanel } from './guide-view.js';
 import { unitMateria } from '../teach/theory.js';
 import { renderTheory } from './theory-view.js';
+import { unitAtomo } from '../teach/atom.js';
+import { renderAtomUnit } from './atom-view.js';
 
-type Mode = 'build' | 'react' | 'tabla' | 'teoria' | 'routes' | 'lab';
+type Mode = 'build' | 'react' | 'tabla' | 'teoria' | 'atomo' | 'routes' | 'lab';
 type Tab = 'ficha' | 'estructura' | 'analisis' | 'balance' | 'profesor';
 
 interface State {
@@ -360,6 +362,10 @@ const MODE_NATURE: Record<Mode, { verb: string; note: string } | null> = {
     note: 'Unas sustancias se convierten en OTRAS. Aqui si ocurre algo: hay productos nuevos, energia y riesgos.',
   },
   tabla: { verb: 'Formular', note: 'Todas las combinaciones de iones a la vez, con lo que se sabe de cada una.' },
+  atomo: {
+    verb: 'Estudiar',
+    note: 'La unidad 2: estructura atomica, isotopos y tabla periodica. Todo calculado con los datos.',
+  },
   teoria: {
     verb: 'Estudiar',
     note: 'La unidad 1 del temario. Las leyes que se pueden demostrar calculando, se demuestran calculando.',
@@ -581,7 +587,7 @@ function renderInspector(): void {
     return;
   }
 
-  if (state.mode === 'teoria') {
+  if (READING_MODES.has(state.mode)) {
     content.innerHTML =
       '<div class="empty-state">La unidad se lee en la zona central. Los bloques marcados con <strong>⚙</strong> no son texto: son calculos hechos con los mismos motores que usa el resto de la aplicacion.</div>';
     return;
@@ -800,7 +806,7 @@ function updateAtomLabels(): void {
  * Se pliega al ENTRAR, no en cada repintado: si el usuario lo abre mientras
  * lee, se queda abierto.
  */
-const READING_MODES: ReadonlySet<Mode> = new Set<Mode>(['teoria']);
+const READING_MODES: ReadonlySet<Mode> = new Set<Mode>(['teoria', 'atomo']);
 
 function setMode(mode: Mode): void {
   if (mode !== state.mode && READING_MODES.has(mode)) state.guideOpen = false;
@@ -828,7 +834,8 @@ function setMode(mode: Mode): void {
   // La tabla ocupa el sitio del visor 3D, no se superpone a el.
   $('#combos').hidden = mode !== 'tabla';
   $('#theory-panel').hidden = mode !== 'teoria';
-  $('#viewport').hidden = mode === 'tabla' || mode === 'teoria';
+  $('#atom-panel').hidden = mode !== 'atomo';
+  $('#viewport').hidden = mode === 'tabla' || READING_MODES.has(mode);
 
   /*
    * La franja inferior entera (banco, linea temporal, resultados) se retira en
@@ -836,7 +843,7 @@ function setMode(mode: Mode): void {
    * resultados de la ultima prediccion, que hablan de otra cosa. Ademas la
    * cuadricula agradece toda la altura que se le pueda dar.
    */
-  $<HTMLElement>('.bench').hidden = mode === 'tabla' || mode === 'teoria';
+  $<HTMLElement>('.bench').hidden = mode === 'tabla' || READING_MODES.has(mode);
 
   /*
    * Hay dos modos que se apoderan del inspector entero: Tabla y Rutas. En
@@ -844,7 +851,7 @@ function setMode(mode: Mode): void {
    * el contenido no cambia — asi que se ocultan en lugar de dejarlas
    * enganando. Una pestana muerta ensena al usuario a desconfiar de todas.
    */
-  $('#inspector-tabs').hidden = mode === 'tabla' || mode === 'routes' || mode === 'teoria';
+  $('#inspector-tabs').hidden = mode === 'tabla' || mode === 'routes' || READING_MODES.has(mode);
 
   switch (mode) {
     case 'build':
@@ -874,6 +881,10 @@ function setMode(mode: Mode): void {
       // El temario se construye una vez: las demostraciones se calculan al
       // vuelo y no cambian mientras no cambien los datos.
       if (!$('#theory-panel').innerHTML) $('#theory-panel').innerHTML = renderTheory(unitMateria());
+      break;
+
+    case 'atomo':
+      if (!$('#atom-panel').innerHTML) $('#atom-panel').innerHTML = renderAtomUnit(unitAtomo());
       break;
 
     case 'routes':
@@ -1338,18 +1349,32 @@ function wireEvents(): void {
   }
 
   // --- Teoria ---------------------------------------------------------------
-  delegate($('#theory-panel'), 'click', '[data-toc]', (_e, target) => {
-    const section = document.getElementById(`topic-${target.dataset['toc']}`);
-    if (!section) return;
+  const theoryPanels = [$('#theory-panel'), $('#atom-panel')];
+  for (const panel of theoryPanels) {
+  delegate(panel, 'click', '[data-toc]', (_e, target) => {
+    /*
+     * Todo se busca DENTRO del panel, no en el documento.
+     *
+     * Las dos unidades usan la misma plantilla, asi que sus contenedores y sus
+     * apartados comparten nombre. Con los dos paneles construidos a la vez, un
+     * `getElementById` global devolveria el de la unidad que se pintara
+     * primero y el indice de la segunda no llevaria a ninguna parte.
+     */
+    const section = panel.querySelector<HTMLElement>(`[id="topic-${target.dataset['toc']}"]`);
+    const container = panel.querySelector<HTMLElement>('.theory-content');
+    if (!section || !container) return;
     // Se desplaza el CONTENEDOR, no la ventana: el temario tiene su propio
     // desplazamiento y `scrollIntoView` moveria toda la pagina.
-    const container = $('#theory-content');
     container.scrollTop += section.getBoundingClientRect().top - container.getBoundingClientRect().top - 8;
-    setPressed($$('.toc-item'), (b) => b.dataset['toc'] === target.dataset['toc'], 'aria-current');
+    setPressed(
+      $$('.toc-item', panel),
+      (b) => b.dataset['toc'] === target.dataset['toc'],
+      'aria-current',
+    );
   });
 
   // «Probar esto» lleva al modo o a la sustancia de la que habla el apartado.
-  delegate($('#theory-panel'), 'click', '[data-theory-mode], [data-theory-formula]', (_e, target) => {
+  delegate(panel, 'click', '[data-theory-mode], [data-theory-formula]', (_e, target) => {
     const formula = target.dataset['theoryFormula'];
     const mode = target.dataset['theoryMode'];
     if (formula) {
@@ -1362,6 +1387,13 @@ function wireEvents(): void {
     }
     if (mode) setMode(mode as Mode);
   });
+
+  // Las celdas de la tabla periodica abren el elemento.
+  delegate(panel, 'click', '[data-element]', (_e, target) => {
+    setMode('react');
+    selectSubstance(target.dataset['element']!);
+  });
+  }
 
   // --- El guia -------------------------------------------------------------
   $('#guide-avatar').addEventListener('click', () => {

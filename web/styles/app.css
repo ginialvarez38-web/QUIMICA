@@ -3408,3 +3408,176 @@ button { cursor: pointer; border: none; background: none; }
   .demo-table { font-size: 11px; }
   .demo-table th, .demo-table td { padding: 5px 6px; }
 }
+
+/* ==========================================================================
+   TABLA PERIODICA (2.10)
+   ==========================================================================
+
+   118 celdas colocadas por sus propios datos: columna = grupo, fila = periodo.
+   Los lantanidos y actinidos van a dos filas aparte porque no tienen grupo —
+   su sitio real esta intercalado, y el apartado 2.10.2 lo aclara.
+   ========================================================================== */
+
+.pt-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.pt-wrap { display: flex; flex-direction: column; gap: 3px; }
+
+.pt-grid {
+  display: grid;
+  /* Las columnas las fija el propio HTML, para que la cabecera, el cuerpo y
+     las dos filas interiores compartan exactamente la misma reticula. */
+  gap: 2px;
+  min-width: 660px;
+}
+
+.pt-inner { margin-top: 6px; }
+
+.pt-axis {
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-faint);
+}
+
+.pt-period { font-size: 9.5px; }
+
+.pt-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 3px 1px;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  overflow: hidden;
+}
+
+.pt-cell:hover {
+  transform: scale(1.14);
+  z-index: 2;
+  box-shadow: var(--shadow);
+  border-color: var(--text);
+}
+
+.pt-z { font-family: var(--mono); font-size: 7.5px; opacity: 0.75; line-height: 1; }
+.pt-symbol { font-size: 13px; font-weight: 700; line-height: 1.15; }
+.pt-mass { font-family: var(--mono); font-size: 7px; opacity: 0.7; line-height: 1; }
+
+/* Los colores de familia. Se definen con `color-mix` sobre los tokens que ya
+   existen, de modo que siguen al tema claro y al oscuro sin duplicarlos. */
+.cat-alkali     { background: color-mix(in srgb, #ff7a59 26%, var(--surface)); color: var(--text); }
+.cat-alkaline   { background: color-mix(in srgb, #f5b342 26%, var(--surface)); color: var(--text); }
+.cat-transition { background: color-mix(in srgb, #4da3ff 24%, var(--surface)); color: var(--text); }
+.cat-post       { background: color-mix(in srgb, #35d6c3 22%, var(--surface)); color: var(--text); }
+.cat-metalloid  { background: color-mix(in srgb, #a78bfa 24%, var(--surface)); color: var(--text); }
+.cat-nonmetal   { background: color-mix(in srgb, #3fbf7f 24%, var(--surface)); color: var(--text); }
+.cat-halogen    { background: color-mix(in srgb, #35d6c3 34%, var(--surface)); color: var(--text); }
+.cat-noble      { background: color-mix(in srgb, #a78bfa 38%, var(--surface)); color: var(--text); }
+.cat-lanthanide { background: color-mix(in srgb, #ff7a59 16%, var(--surface)); color: var(--text); }
+.cat-actinide   { background: color-mix(in srgb, #f5b342 16%, var(--surface)); color: var(--text); }
+.cat-unknown    { background: var(--surface-3); color: var(--text-muted); }
+
+.pt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 11px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.pt-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+
+.pt-swatch {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+/* --- Nucleidos ---------------------------------------------------------- */
+
+.nuclide-table .nuclide-note,
+.demo-table .nuclide-note {
+  text-align: left;
+  font-family: var(--sans);
+  color: var(--text-muted);
+  min-width: 230px;
+  white-space: normal;
+}
+
+.nuclide-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.nuclide-group:last-of-type { border-bottom: none; }
+
+.nuclide-group-key {
+  flex-shrink: 0;
+  min-width: 62px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+.nuclide-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.nuclide-chip {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.nuclide-chip strong { font-family: var(--mono); font-size: 13px; }
+.nuclide-chip span { font-size: 10px; color: var(--text-faint); font-family: var(--mono); }
+
+/* --- Recuentos ---------------------------------------------------------- */
+
+.stats-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 11px; }
+
+.stat {
+  flex: 1 1 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 11px 8px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.stat-value { font-size: 24px; font-weight: 700; line-height: 1.1; }
+.stat-label {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 640;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 900px) {
+  .pt-grid { min-width: 0; }
+  .pt-cell { min-height: 36px; }
+  .pt-symbol { font-size: 11px; }
+  .pt-mass { display: none; }
+  .nuclide-group { flex-direction: column; gap: 6px; }
+}

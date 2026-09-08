@@ -159,6 +159,25 @@ sustancias puras: no puede simular una disolucion al 30 % ni separar sus
 componentes. El apartado 1.6 se explica igual, y dice abiertamente que ahi el
 motor no acompana.
 
+## Teoria — Unidad 2
+
+`teach/atom.ts`, `ui/atom-view.ts` y la tabla de nucleidos `data/isotopes.ts`.
+Los quince apartados de estructura atomica (2.1 a 2.10.2).
+
+La demostracion de mas peso es la ABUNDANCIA ISOTOPICA: la masa atomica se
+deduce ponderando las masas isotopicas por sus abundancias y se compara con el
+valor independiente que publica la IUPAC. Los 16 elementos curados coinciden
+con error menor de 0,005 u, y hay una prueba que lo comprueba — si alguien
+mete mal una abundancia, se entera.
+
+La TABLA PERIODICA no es una imagen: son los 118 elementos colocados en la
+celda que dicen su grupo y su periodo, con los lantanidos y actinidos en las
+dos filas de abajo. Cada celda abre su elemento.
+
+**Hueco declarado:** la tabla de nucleidos NO esta completa — hay unos 3400
+conocidos y aqui estan los que se estudian. Un elemento sin datos devuelve
+lista vacia en lugar de aparentar que no tiene isotopos.
+
 ## El guia
 
 `teach/guide.ts` decide que decir en cada momento; `ui/guide-view.ts` le pone
