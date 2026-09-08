@@ -143,6 +143,22 @@ prohibe.
    tocar una linea de motor: mas sustancias y mas reacciones densifican
    automaticamente la red de rutas.
 
+## Teoria — Unidad 1
+
+`teach/theory.ts` y `ui/theory-view.ts`. Los veinte apartados del temario
+(1.1 a 1.12, con 1.6.x y 1.8.x), con indice fijo y lectura corrida.
+
+Seis apartados no afirman: calculan. La conservacion cuenta atomos sobre una
+ecuacion ajustada por el balanceador; las proporciones definidas salen del
+desglose de la masa molar; las multiples dividen masas atomicas y devuelven
+enteros pequenos; Gay-Lussac lee los coeficientes. Hay pruebas que comprueban
+las cuatro leyes contra los datos, no contra numeros escritos a mano.
+
+**Hueco declarado:** no hay modelo de MEZCLAS. El sandbox trabaja con
+sustancias puras: no puede simular una disolucion al 30 % ni separar sus
+componentes. El apartado 1.6 se explica igual, y dice abiertamente que ahi el
+motor no acompana.
+
 ## El guia
 
 `teach/guide.ts` decide que decir en cada momento; `ui/guide-view.ts` le pone

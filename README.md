@@ -104,10 +104,25 @@ cada una por lo que se sabe de ella, no por si la aritmetica cuadra:
 | **Derivada** (2413) | La formula se deduce de las cargas — es la respuesta correcta al ejercicio de formulacion — pero el motor NO afirma que el compuesto exista o sea estable. |
 | **No procede** (55) | El modelo ionico no se aplica, y se explica por que. |
 
-### `src/teach` — modo profesor y el guia
+### `src/teach` — modo profesor, el guia y el temario
 
-`explain.ts` desarrolla una reaccion como una leccion. `guide.ts` es el cerebro
-del avatar: mira en que punto esta el usuario y decide que decirle.
+`explain.ts` desarrolla una reaccion como una leccion. `theory.ts` es la unidad
+1 del temario. `guide.ts` es el cerebro del avatar: mira en que punto esta el
+usuario y decide que decirle.
+
+**El temario no se escribe: se calcula.** Donde una ley admite demostracion,
+se demuestra con los mismos motores que usa el resto de la aplicacion:
+
+| Ley | Como se demuestra |
+|---|---|
+| Conservacion de la materia | Se **cuentan** los atomos de los dos lados de una ecuacion que ajusto el balanceador. |
+| Proporciones definidas | El % en masa sale del desglose de la masa molar, y se aplica a dos muestras de tamano distinto. |
+| Proporciones multiples | Se fija 1 g de un elemento y se divide. CO/CO₂ da 1:2, SO₂/SO₃ da 2:3, N₂O/NO/NO₂ da 1:2:4 — enteros pequenos, sin forzarlo. |
+| Gay-Lussac | Los volumenes son los coeficientes, que calculo el balanceador sin saber nada de volumenes. |
+
+Escribir «la masa se conserva» es una afirmacion que hay que creerse. Ensenar
+la tabla de atomos cuadrando es la ley ocurriendo delante. Y si manana cambiara
+una masa atomica, cambiarian los numeros de la pagina.
 
 El guia **no sabe quimica**. Ninguna de sus frases afirma nada que no venga de
 un motor, y cada pista muestra su procedencia. Cuando el motor no sabe algo, el
@@ -257,7 +272,7 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**252 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+**264 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
 motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
 ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
 de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los

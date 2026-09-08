@@ -23,6 +23,10 @@ import { filterTable, ionLabel } from '../src/ui/combos-view.js';
 import { allSpecies } from '../src/data/species.js';
 import { guide } from '../src/teach/guide.js';
 import { predict } from '../src/engine/predict.js';
+import {
+  unitMateria, conservationDemo, definiteProportionsDemo, multipleProportionsDemo,
+  gayLussacDemo, moleDemo, AVOGADRO, SEPARATION_METHODS,
+} from '../src/teach/theory.js';
 import { getElement } from '../src/data/elements.js';
 
 // ---------------------------------------------------------------------------
@@ -1057,5 +1061,161 @@ describe('el guia', () => {
   test('el laboratorio admite que su interfaz no esta hecha', () => {
     // Preferible a ensenar una pantalla que no calcula.
     assert.match(guide({ ...base, mode: 'lab' }).body, /hoja de ruta|no calcula/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('unidad 1: las leyes calculadas', () => {
+  /*
+   * Estas pruebas valen por lo que NO hacen: no comparan contra numeros
+   * escritos a mano en un texto. Comprueban que las leyes SALEN de los datos,
+   * de modo que si manana cambiara una masa atomica, cambiarian a la vez el
+   * calculo y lo que se ensena.
+   */
+
+  test('la ley de conservacion se comprueba contando atomos, no afirmandola', () => {
+    const demo = conservationDemo('caco3-hcl');
+    assert.ok(demo);
+    assert.ok(demo.rows.length >= 4);
+    for (const row of demo.rows) {
+      assert.equal(row.left, row.right, `${row.symbol}: ${row.left} ≠ ${row.right}`);
+      assert.equal(row.balanced, true);
+    }
+    // Y si los atomos cuadran, la masa cuadra: es la misma afirmacion.
+    assert.ok(Math.abs(demo.massLeft - demo.massRight) < 1e-9);
+  });
+
+  test('vale para cualquier reaccion curada, no solo para la del ejemplo', () => {
+    for (const id of ['cao-h2o-caoh2', 'hcl-naoh', 'haber-bosch', 'so2-o2-so3', 'agno3-nacl']) {
+      const demo = conservationDemo(id);
+      assert.ok(demo, id);
+      assert.ok(demo.rows.every((r) => r.balanced), `${id}: no cuadra`);
+      assert.ok(Math.abs(demo.massLeft - demo.massRight) < 1e-9, `${id}: masas distintas`);
+    }
+  });
+
+  test('las proporciones definidas no dependen del tamano de la muestra', () => {
+    const demo = definiteProportionsDemo('H2O');
+    assert.ok(demo);
+    const h = demo.rows.find((r) => r.symbol === 'H')!;
+    const o = demo.rows.find((r) => r.symbol === 'O')!;
+    assert.ok(Math.abs(h.percent - 11.19) < 0.02, `H: ${h.percent}`);
+    assert.ok(Math.abs(o.percent - 88.81) < 0.02, `O: ${o.percent}`);
+    assert.ok(Math.abs(h.percent + o.percent - 100) < 1e-6);
+
+    // Dos muestras distintas, el mismo reparto proporcional.
+    const [small, big] = demo.samples as [(typeof demo.samples)[0], (typeof demo.samples)[0]];
+    for (let i = 0; i < small.parts.length; i++) {
+      const ratioSmall = small.parts[i]!.grams / small.grams;
+      const ratioBig = big.parts[i]!.grams / big.grams;
+      assert.ok(Math.abs(ratioSmall - ratioBig) < 1e-9, 'la proporcion cambia con la muestra');
+    }
+  });
+
+  test('las proporciones multiples salen en numeros enteros pequenos', () => {
+    // Los cuatro casos de manual. Los enteros NO estan escritos en ningun
+    // sitio: se obtienen dividiendo masas atomicas medidas.
+    const cases: [string[], string][] = [
+      [['CO', 'CO2'], '1 : 2'],
+      [['SO2', 'SO3'], '2 : 3'],
+      [['FeO', 'Fe2O3'], '2 : 3'],
+      [['N2O', 'NO', 'NO2'], '1 : 2 : 4'],
+    ];
+    for (const [formulas, expected] of cases) {
+      const demo = multipleProportionsDemo(formulas);
+      assert.ok(demo, formulas.join('/'));
+      assert.equal(demo.ratioText, expected, formulas.join('/'));
+      // Y los enteros son de verdad pequenos: si hiciera falta un 17, la ley
+      // no se estaria cumpliendo.
+      for (const row of demo.rows) assert.ok(row.integer <= 8, `${row.formula}: ${row.integer}`);
+    }
+  });
+
+  test('la ley de las proporciones multiples se niega a hablar de lo que no es suyo', () => {
+    // Solo trata de DOS elementos que forman VARIOS compuestos.
+    assert.equal(multipleProportionsDemo(['H2O']), null, 'hace falta mas de un compuesto');
+    assert.equal(multipleProportionsDemo(['H2SO4', 'H2SO3']), null, 'tres elementos: no aplica');
+    assert.equal(multipleProportionsDemo(['CO', 'H2O']), null, 'elementos distintos: no aplica');
+  });
+
+  test('Gay-Lussac: los volumenes son los coeficientes que puso el balanceador', () => {
+    const demo = gayLussacDemo('haber-bosch');
+    assert.ok(demo);
+    assert.equal(demo.ratioText, '1 : 3 → 2', 'N2 + 3 H2 → 2 NH3');
+    assert.equal(demo.volumes.filter((v) => v.side === 'izquierda').length, 2);
+    assert.equal(demo.volumes.filter((v) => v.side === 'derecha').length, 1);
+  });
+
+  test('un mol de agua NO es un mol de atomos', () => {
+    // La confusion mas repetida del temario.
+    const demo = moleDemo('H2O');
+    assert.ok(demo);
+    assert.equal(demo.molecules, AVOGADRO);
+    assert.equal(demo.atoms.find((a) => a.symbol === 'H')?.moles, 2);
+    assert.equal(demo.atoms.find((a) => a.symbol === 'O')?.moles, 1);
+    // Tres moles de atomos, no uno.
+    assert.ok(Math.abs(demo.totalAtoms - 3 * AVOGADRO) < 1e10);
+    assert.ok(Math.abs(demo.molarMass - 18.015) < 0.01);
+  });
+
+  test('el numero de Avogadro es el valor exacto del SI de 2019', () => {
+    assert.equal(AVOGADRO, 6.02214076e23);
+  });
+
+  test('el temario cubre los doce apartados pedidos', () => {
+    const unit = unitMateria();
+    const ids: string[] = [];
+    const walk = (t: typeof unit): void => {
+      ids.push(t.id);
+      for (const c of t.children ?? []) walk(c);
+    };
+    walk(unit);
+
+    for (const id of [
+      '1.1', '1.2', '1.3', '1.4', '1.5',
+      '1.6', '1.6.1', '1.6.2', '1.6.3',
+      '1.7',
+      '1.8', '1.8.1', '1.8.2', '1.8.3', '1.8.4', '1.8.5',
+      '1.9', '1.10', '1.11', '1.12',
+    ]) {
+      assert.ok(ids.includes(id), `falta el apartado ${id}`);
+    }
+  });
+
+  test('cada apartado tiene cuerpo, y las leyes traen demostracion', () => {
+    const unit = unitMateria();
+    const withDemo: string[] = [];
+    const walk = (t: typeof unit): void => {
+      assert.ok(t.body.length > 40, `${t.id}: cuerpo demasiado corto`);
+      if (t.demo) withDemo.push(t.id);
+      for (const c of t.children ?? []) walk(c);
+    };
+    walk(unit);
+
+    // Las cuatro leyes demostrables, mas los dos apartados de cantidad.
+    for (const id of ['1.8.1', '1.8.2', '1.8.3', '1.8.4', '1.10', '1.12']) {
+      assert.ok(withDemo.includes(id), `${id} deberia traer demostracion calculada`);
+    }
+  });
+
+  test('se declara que aqui NO hay modelo de mezclas', () => {
+    // §32: decirlo antes que fingir que se puede.
+    const unit = unitMateria();
+    const mezclas = unit.children?.find((c) => c.id === '1.6');
+    assert.ok(mezclas?.gap, 'el apartado de mezclas debe declarar el hueco');
+    assert.match(mezclas.gap, /SUSTANCIAS PURAS|no tiene modelo de mezclas/i);
+  });
+
+  test('los metodos de separacion nombran la propiedad que aprovechan', () => {
+    // Es lo unico que importa de esa tabla: memorizar la lista sin saber que
+    // propiedad usa cada metodo no sirve de nada.
+    assert.ok(SEPARATION_METHODS.length >= 8);
+    for (const m of SEPARATION_METHODS) {
+      assert.ok(m.property.length > 0, `${m.name}: sin propiedad`);
+      assert.ok(m.example.length > 0, `${m.name}: sin ejemplo`);
+      assert.match(m.separates, /Homogenea|Heterogenea/);
+    }
+    assert.equal(SEPARATION_METHODS.find((m) => m.name === 'Destilacion')?.property, 'Punto de ebullicion');
   });
 });

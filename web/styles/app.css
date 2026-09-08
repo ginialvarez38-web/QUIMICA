@@ -2782,9 +2782,9 @@ button { cursor: pointer; border: none; background: none; }
      sitio al que el propio guia te esta mandando cuando dice «anade otra
      sustancia». Un ayudante que oculta aquello de lo que habla estorba mas
      de lo que ayuda. */
+  /* `--guide-lift` lo mide la aplicacion en renderGuide(): es la altura de la
+     franja del banco, que cambia con el modo y con el ancho. */
   left: calc(var(--panel-left) + 14px);
-  /* `--guide-lift` lo mide la aplicacion: es la altura de la franja del banco,
-     que cambia con el modo y con el ancho. Ver renderGuide(). */
   bottom: calc(var(--guide-lift, 0px) + 14px);
   z-index: 60;
   display: flex;
@@ -2796,6 +2796,15 @@ button { cursor: pointer; border: none; background: none; }
 }
 
 .guide > * { pointer-events: auto; }
+
+/* En los modos de lectura el guia se ancla a la derecha, donde el inspector no
+   tiene nada que decir. Por la izquierda no cabe sin tapar el indice o la
+   columna de texto. */
+.guide[data-anchor='right'] {
+  left: auto;
+  right: 14px;
+  align-items: flex-end;
+}
 
 /* --- El avatar ---------------------------------------------------------- */
 
@@ -3054,4 +3063,348 @@ button { cursor: pointer; border: none; background: none; }
   .guide-avatar { width: 50px; height: 50px; }
   .guide-avatar-svg { width: 38px; height: 41px; }
   .guide-panel { max-height: 54vh; }
+}
+
+/* ==========================================================================
+   TEORIA — UNIDAD 1
+   ==========================================================================
+
+   Indice fijo a la izquierda y el temario entero a la derecha, en una columna
+   que se lee de arriba abajo. No es un acordeon: un temario se estudia
+   seguido, y obligar a abrir doce cajas para leerlo es trabajo sin premio.
+   ========================================================================== */
+
+.theory-panel {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  background: var(--bg);
+}
+
+.theory {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* --- Indice ------------------------------------------------------------- */
+
+.theory-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 12px 8px 20px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.toc-head {
+  padding: 6px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toc-unit {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.toc-head strong { font-size: 14px; }
+
+.toc-item {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.toc-item:hover { background: var(--surface-2); color: var(--text); }
+.toc-item[aria-current='true'] {
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.toc-number {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* La sangria hace visible la jerarquia del temario sin numerarla dos veces. */
+.toc-d2 { padding-left: 22px; }
+.toc-d3 { padding-left: 36px; font-size: 11.5px; }
+
+/* --- Contenido ---------------------------------------------------------- */
+
+.theory-content {
+  overflow-y: auto;
+  padding: 22px 26px 60px;
+  /* Una linea de texto larga cansa: se limita el ancho de lectura. */
+  scroll-behavior: smooth;
+}
+
+.theory-head { max-width: 68ch; margin-bottom: 28px; }
+
+.theory-title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.theory-lead {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.theory-claim {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-muted);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+}
+
+.theory-claim strong { color: var(--text); }
+
+/* --- Un apartado -------------------------------------------------------- */
+
+.topic {
+  max-width: 68ch;
+  scroll-margin-top: 12px;
+}
+
+.topic-d1 {
+  padding-top: 26px;
+  margin-top: 26px;
+  border-top: 1px solid var(--border);
+}
+
+.topic-d2, .topic-d3 { margin-top: 22px; }
+
+.topic-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 9px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.topic-d1 > .topic-title { font-size: 20px; font-weight: 650; }
+.topic-d2 > .topic-title { font-size: 16px; font-weight: 620; }
+.topic-d3 > .topic-title { font-size: 14px; font-weight: 620; }
+
+.topic-number {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 0.78em;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.topic-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--text-muted);
+}
+
+/* --- Los tres avisos: la idea, el error, y lo que no hay ---------------- */
+
+.topic-key,
+.topic-pitfall,
+.topic-gap {
+  margin-top: 12px;
+  padding: 11px 13px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  border-radius: var(--radius);
+  border-left: 3px solid;
+}
+
+.topic-key {
+  background: color-mix(in srgb, var(--evidence-established) 8%, transparent);
+  border-left-color: var(--evidence-established);
+}
+
+.topic-pitfall {
+  background: color-mix(in srgb, var(--hazard-danger) 8%, transparent);
+  border-left-color: var(--hazard-danger);
+}
+
+.topic-gap {
+  background: var(--surface-2);
+  border-left-color: var(--text-faint);
+  color: var(--text-muted);
+}
+
+.topic-key-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.topic-try { margin-top: 14px; }
+
+/* --- Las demostraciones calculadas -------------------------------------- */
+
+.demo {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.demo-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 11px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* El engranaje marca que lo de abajo esta CALCULADO, no escrito. */
+.demo-title::before {
+  content: '⚙';
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.demo-equation {
+  margin: 0 0 11px;
+  padding: 9px 11px;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: center;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.demo-scroll { overflow-x: auto; }
+
+.demo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.demo-table th,
+.demo-table td {
+  padding: 6px 9px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.demo-table thead th {
+  font-size: 10px;
+  font-weight: 640;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom-color: var(--border-strong);
+}
+
+.demo-table tbody th {
+  text-align: left;
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.demo-table tbody td { font-family: var(--mono); }
+
+.demo-total th,
+.demo-total td {
+  border-bottom: none;
+  border-top: 1px solid var(--border-strong);
+  padding-top: 8px;
+}
+
+.demo-check { color: var(--evidence-established); font-weight: 700; }
+
+.demo-result {
+  margin: 11px 0 0;
+  padding: 9px 11px;
+  font-size: 13px;
+  text-align: center;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+
+.demo-result strong { font-family: var(--mono); font-size: 15px; }
+
+.demo-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.methods-table th,
+.methods-table td { text-align: left; vertical-align: top; }
+.methods-table tbody th { font-family: var(--sans); white-space: nowrap; }
+.methods-table td { font-family: var(--sans); }
+.method-example { color: var(--text-muted); min-width: 210px; }
+
+@media (max-width: 900px) {
+  /* El indice pasa a ser una tira que se desplaza en horizontal por encima
+     del texto: en vertical se comeria media pantalla. */
+  .theory { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+
+  .theory-toc {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    padding: 8px 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .theory-toc::-webkit-scrollbar { display: none; }
+  .toc-head { display: none; }
+  .toc-item { width: auto; white-space: nowrap; padding: 6px 10px; }
+  .toc-d2, .toc-d3 { padding-left: 10px; }
+
+  .theory-content { padding: 16px 14px 40px; }
+  .theory-title { font-size: 21px; }
+  .topic-d1 > .topic-title { font-size: 17px; }
+  .demo { padding: 11px; }
+  .demo-table { font-size: 11px; }
+  .demo-table th, .demo-table td { padding: 5px 6px; }
 }

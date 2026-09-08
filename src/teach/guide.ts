@@ -396,6 +396,23 @@ export function guide(ctx: GuideContext): GuideMessage {
         question: null,
       };
 
+    case 'teoria':
+      return {
+        mood: 'idle',
+        headline: 'La unidad 1, con las leyes calculadas',
+        body:
+          'Los bloques marcados con ⚙ no son texto: se calculan con los mismos motores que usa el resto ' +
+          'de la aplicacion. Si manana cambiara una masa atomica, cambiarian esos numeros.',
+        hints: [
+          { text: 'Usa el indice de la izquierda para saltar a un apartado.', from: 'Temario' },
+          {
+            text: 'El apartado 1.6 dice abiertamente lo que este sandbox NO tiene: modelo de mezclas.',
+            from: 'Temario',
+          },
+        ],
+        question: null,
+      };
+
     case 'routes':
       return {
         mood: 'idle',
