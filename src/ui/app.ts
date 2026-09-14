@@ -29,12 +29,71 @@ import { renderCombos, renderComboDetail, type CombosFilters } from './combos-vi
 import { guide, type GuideMessage } from '../teach/guide.js';
 import { renderAvatar, renderGuidePanel } from './guide-view.js';
 import { unitMateria } from '../teach/theory.js';
-import { renderTheory } from './theory-view.js';
+import {
+  renderTheoryShell, renderTopicPage, flattenTopics, materiaView, anyView, type AnyUnitView,
+} from './theory-view.js';
 import { unitAtomo } from '../teach/atom.js';
-import { renderAtomUnit } from './atom-view.js';
+import { atomoView } from './atom-view.js';
 import { FigureManager } from './figure-3d.js';
 
-type Mode = 'build' | 'react' | 'tabla' | 'teoria' | 'atomo' | 'routes' | 'lab';
+type Mode = 'build' | 'react' | 'tabla' | 'teoria' | 'routes' | 'lab';
+
+/**
+ * LOS MODOS, AGRUPADOS.
+ *
+ * Siete pestanas en fila obligaban a elegir entre siete cosas cada vez, y tres
+ * de ellas —Construir, Reaccionar y Tabla— son la misma actividad con distinto
+ * alcance. Agrupadas quedan tres decisiones arriba y, dentro del grupo, las
+ * que de verdad se alternan.
+ *
+ * El grupo de una sola entrada (Teoria) no despliega segunda fila: seria una
+ * fila con un boton, que es ruido.
+ */
+type GroupId = 'practicar' | 'teoria' | 'explorar';
+
+interface ModeGroup {
+  readonly id: GroupId;
+  readonly label: string;
+  readonly icon: string;
+  readonly modes: readonly { readonly mode: Mode; readonly label: string; readonly icon: string }[];
+}
+
+const MODE_GROUPS: readonly ModeGroup[] = [
+  {
+    id: 'practicar',
+    label: 'Practicar',
+    icon: '\u2B22',
+    modes: [
+      { mode: 'build', label: 'Construir', icon: '\u2B22' },
+      { mode: 'react', label: 'Reaccionar', icon: '\u21C4' },
+      { mode: 'tabla', label: 'Tabla de iones', icon: '\u229E' },
+    ],
+  },
+  {
+    id: 'teoria',
+    label: 'Teoria',
+    icon: '\u2630',
+    modes: [{ mode: 'teoria', label: 'Temario', icon: '\u2630' }],
+  },
+  {
+    id: 'explorar',
+    label: 'Explorar',
+    icon: '\u21E2',
+    modes: [
+      { mode: 'routes', label: 'Rutas', icon: '\u21E2' },
+      { mode: 'lab', label: 'Laboratorio', icon: '\u2697' },
+    ],
+  },
+];
+
+const GROUP_OF: Record<Mode, GroupId> = {
+  build: 'practicar',
+  react: 'practicar',
+  tabla: 'practicar',
+  teoria: 'teoria',
+  routes: 'explorar',
+  lab: 'explorar',
+};
 type Tab = 'ficha' | 'estructura' | 'analisis' | 'balance' | 'profesor';
 
 interface State {
@@ -81,6 +140,10 @@ interface State {
    */
   guideAnswer: { key: string; chosen: string; correct: boolean } | null;
   /** Ruta: origen y destino. */
+  /** Unidad abierta en el temario: indice dentro de THEORY_VIEWS. */
+  theoryUnit: number;
+  /** Apartado que se esta leyendo. `null` = todavia ninguno, se abre el primero. */
+  theoryTopic: string | null;
   routeFrom: string;
   routeTo: string;
   /** Constructor de compuestos (§5, §7): los dos iones que se combinan. */
@@ -105,6 +168,8 @@ const state: State = {
   combosSelected: null,
   guideOpen: true,
   guideAnswer: null,
+  theoryUnit: 0,
+  theoryTopic: null,
   routeFrom: 'Ca',
   routeTo: 'CaCO3',
   builder: { cation: null, anion: null },
@@ -363,13 +428,9 @@ const MODE_NATURE: Record<Mode, { verb: string; note: string } | null> = {
     note: 'Unas sustancias se convierten en OTRAS. Aqui si ocurre algo: hay productos nuevos, energia y riesgos.',
   },
   tabla: { verb: 'Formular', note: 'Todas las combinaciones de iones a la vez, con lo que se sabe de cada una.' },
-  atomo: {
-    verb: 'Estudiar',
-    note: 'La unidad 2: estructura atomica, isotopos y tabla periodica. Todo calculado con los datos.',
-  },
   teoria: {
     verb: 'Estudiar',
-    note: 'La unidad 1 del temario. Las leyes que se pueden demostrar calculando, se demuestran calculando.',
+    note: 'El temario, un apartado cada vez. Las leyes que se pueden demostrar calculando, se demuestran calculando.',
   },
   routes: { verb: 'Recorrer', note: 'Encadenar reacciones para llegar de una sustancia a otra.' },
   lab: { verb: 'Medir', note: 'Cantidades: moles, gramos, reactivo limitante.' },
@@ -807,12 +868,47 @@ function updateAtomLabels(): void {
  * Se pliega al ENTRAR, no en cada repintado: si el usuario lo abre mientras
  * lee, se queda abierto.
  */
-const READING_MODES: ReadonlySet<Mode> = new Set<Mode>(['teoria', 'atomo']);
+const READING_MODES: ReadonlySet<Mode> = new Set<Mode>(['teoria']);
+
+/**
+ * La barra de modos, en dos niveles.
+ *
+ * Arriba los tres grupos; debajo, solo cuando el grupo activo tiene mas de un
+ * modo, la fila de sus modos. Un grupo de una sola entrada no despliega nada:
+ * una fila con un boton es ruido, no navegacion.
+ *
+ * Se pinta desde `MODE_GROUPS` en lugar de estar escrita en el HTML para que
+ * la agrupacion viva en un sitio solo. Antes los siete botones estaban a mano
+ * en `index.html` y la relacion entre ellos —que Construir, Reaccionar y Tabla
+ * son la misma actividad— no estaba escrita en ninguna parte.
+ */
+function renderModeTabs(): void {
+  const active = GROUP_OF[state.mode];
+  const group = MODE_GROUPS.find((g) => g.id === active)!;
+
+  $('#mode-groups').innerHTML = MODE_GROUPS.map(
+    (g) =>
+      `<button class="mode-tab" role="tab" data-group="${g.id}" aria-selected="${g.id === active}">
+         <span class="mode-icon">${g.icon}</span>${escapeHtml(g.label)}
+       </button>`,
+  ).join('');
+
+  const sub = $('#mode-submodes');
+  sub.hidden = group.modes.length < 2;
+  sub.innerHTML = group.modes
+    .map(
+      (m) =>
+        `<button class="submode-tab" role="tab" data-mode="${m.mode}" aria-selected="${m.mode === state.mode}">
+           <span class="mode-icon">${m.icon}</span>${escapeHtml(m.label)}
+         </button>`,
+    )
+    .join('');
+}
 
 function setMode(mode: Mode): void {
   if (mode !== state.mode && READING_MODES.has(mode)) state.guideOpen = false;
   state.mode = mode;
-  setPressed($$('.mode-tab'), (b) => b.dataset['mode'] === mode, 'aria-selected');
+  renderModeTabs();
 
   /*
    * El modo se marca en la raiz para que el CSS pueda darle a cada uno su
@@ -820,6 +916,16 @@ function setMode(mode: Mode): void {
    * carcasa; un acento distinto los separa antes de leer una sola palabra.
    */
   $('#app').dataset['activeMode'] = mode;
+
+  /*
+   * En los modos de lectura se retiran la biblioteca y el inspector.
+   *
+   * No es una cuestion de espacio: el inspector mostraba un aviso que repite
+   * el que ya lleva el indice, y la biblioteca ensena iones mientras se lee un
+   * apartado sobre las leyes ponderales. Dos columnas de informacion que no
+   * viene al caso, compitiendo con la que si.
+   */
+  $('#app').dataset['reading'] = String(READING_MODES.has(mode));
 
   /*
    * Cada barra pertenece a UN modo y solo aparece en el suyo.
@@ -835,7 +941,6 @@ function setMode(mode: Mode): void {
   // La tabla ocupa el sitio del visor 3D, no se superpone a el.
   $('#combos').hidden = mode !== 'tabla';
   $('#theory-panel').hidden = mode !== 'teoria';
-  $('#atom-panel').hidden = mode !== 'atomo';
   if (!READING_MODES.has(mode)) {
     for (const manager of figureManagers.values()) manager.dispose();
   }
@@ -882,15 +987,7 @@ function setMode(mode: Mode): void {
       break;
 
     case 'teoria':
-      // El temario se construye una vez: las demostraciones se calculan al
-      // vuelo y no cambian mientras no cambien los datos.
-      if (!$('#theory-panel').innerHTML) $('#theory-panel').innerHTML = renderTheory(unitMateria());
-      activateFigures('#theory-panel');
-      break;
-
-    case 'atomo':
-      if (!$('#atom-panel').innerHTML) $('#atom-panel').innerHTML = renderAtomUnit(unitAtomo());
-      activateFigures('#atom-panel');
+      renderTheoryPanel();
       break;
 
     case 'routes':
@@ -985,6 +1082,110 @@ function currentGuide(): GuideMessage {
     selected: state.selected,
     answeredFor: state.guideAnswer?.key === key ? key : null,
   });
+}
+
+// ---------------------------------------------------------------------------
+// EL LECTOR DEL TEMARIO
+// ---------------------------------------------------------------------------
+
+/**
+ * Las dos unidades, con su renderizador de demostraciones cada una.
+ *
+ * Se construyen una sola vez: los apartados calculan sus demostraciones al
+ * vuelo y no cambian mientras no cambien los datos.
+ *
+ * Los dos temarios eran DOS MODOS distintos, con dos paneles y dos indices.
+ * Eso repartia por la barra superior lo que es una sola actividad —estudiar— y
+ * obligaba a saber de antemano si lo que buscabas era «de materia» o «de
+ * atomos». Ahora son una pestana con un conmutador de unidad, que es donde esa
+ * eleccion se entiende.
+ *
+ * `anyView` empareja cada unidad con SU renderizador en una clausura y olvida
+ * el tipo de la demostracion. Sin ese emparejamiento no se podrian guardar las
+ * dos en la misma lista; con el, es imposible pasarle a un renderizador una
+ * demostracion de la otra unidad.
+ */
+const THEORY_VIEWS: readonly AnyUnitView[] = [
+  anyView(materiaView(unitMateria())),
+  anyView(atomoView(unitAtomo())),
+];
+
+/** Los apartados de la unidad abierta, en orden de lectura. */
+function theoryTopics() {
+  return flattenTopics(THEORY_VIEWS[state.theoryUnit]!.unit);
+}
+
+/**
+ * Pinta la carcasa del temario y el apartado en curso.
+ *
+ * La carcasa (conmutador, indice) se rehace solo al cambiar de unidad; el
+ * apartado, en cada navegacion. Separarlo no es una optimizacion: es lo que
+ * mantiene el indice donde el lector lo habia desplazado.
+ */
+function renderTheoryPanel(rebuildShell = true): void {
+  const panel = $('#theory-panel');
+  const view = THEORY_VIEWS[state.theoryUnit]!;
+  const topics = theoryTopics();
+
+  if (rebuildShell || !panel.innerHTML) {
+    panel.innerHTML = renderTheoryShell(THEORY_VIEWS, state.theoryUnit);
+  }
+
+  // Un apartado sin elegir —o uno que no existe en esta unidad, al cambiar de
+  // unidad— se resuelve abriendo el primero.
+  const index = Math.max(0, topics.findIndex((t) => t.id === state.theoryTopic));
+  const topic = topics[index]!;
+  state.theoryTopic = topic.id;
+
+  const page = panel.querySelector<HTMLElement>('.topic-page');
+  if (page) {
+    page.innerHTML = renderTopicPage(
+      topic,
+      {
+        unitId: view.unit.id,
+        unitTitle: view.unit.title,
+        position: index + 1,
+        total: topics.length,
+        previous: topics[index - 1],
+        next: topics[index + 1],
+      },
+      view.demoRenderer,
+    );
+  }
+
+  // El apartado en curso se marca en el indice y se trae a la vista: con
+  // veintiun entradas, el que se esta leyendo puede quedar fuera de pantalla.
+  setPressed($$('.toc-item', panel), (b) => b.dataset['toc'] === topic.id, 'aria-current');
+  const marked = panel.querySelector<HTMLElement>(`.toc-item[data-toc="${CSS.escape(topic.id)}"]`);
+  const list = panel.querySelector<HTMLElement>('.toc-list');
+  if (marked && list) {
+    const delta = marked.getBoundingClientRect().top - list.getBoundingClientRect().top;
+    if (delta < 0 || delta > list.clientHeight - 40) list.scrollTop += delta - list.clientHeight / 2;
+  }
+
+  // Cada apartado empieza por arriba. Sin esto, al pasar al siguiente se
+  // heredaba el desplazamiento del anterior y se entraba por la mitad.
+  const content = panel.querySelector<HTMLElement>('.theory-content');
+  if (content) content.scrollTop = 0;
+
+  activateFigures('#theory-panel');
+}
+
+/** Abre un apartado por su identificador, cambiando de unidad si hace falta. */
+function openTopic(id: string): void {
+  const inCurrent = theoryTopics().some((t) => t.id === id);
+  if (!inCurrent) {
+    const other = THEORY_VIEWS.findIndex((v) => flattenTopics(v.unit).some((t) => t.id === id));
+    if (other < 0) return;
+    state.theoryUnit = other;
+    state.theoryTopic = id;
+    if (state.mode !== 'teoria') setMode('teoria');
+    else renderTheoryPanel(true);
+    return;
+  }
+  state.theoryTopic = id;
+  if (state.mode !== 'teoria') setMode('teoria');
+  else renderTheoryPanel(false);
 }
 
 function renderGuide(): void {
@@ -1379,57 +1580,82 @@ function wireEvents(): void {
   }
 
   // --- Teoria ---------------------------------------------------------------
-  const theoryPanels = [$('#theory-panel'), $('#atom-panel')];
-  for (const panel of theoryPanels) {
-  delegate(panel, 'click', '[data-toc]', (_e, target) => {
+  {
+    const panel = $('#theory-panel');
+
+    // El indice ABRE el apartado, no se limita a desplazarse hasta el.
+    delegate(panel, 'click', '[data-toc]', (_e, target) => {
+      openTopic(target.dataset['toc']!);
+      // En movil el indice esta plegado: elegir un apartado lo cierra, o
+      // taparia justo lo que acabas de pedir.
+      panel.querySelector('.theory-toc')?.classList.remove('is-open');
+    });
+
+    delegate(panel, 'click', '[data-toc-toggle]', () => {
+      panel.querySelector('.theory-toc')?.classList.toggle('is-open');
+    });
+
+    // Anterior y siguiente.
+    delegate(panel, 'click', '[data-goto]', (_e, target) => {
+      openTopic(target.dataset['goto']!);
+    });
+
+    // Conmutador de unidad. Al cambiar de unidad no se conserva el apartado
+    // —no existe alli— asi que se entra por el primero.
+    delegate(panel, 'click', '[data-unit]', (_e, target) => {
+      const next = Number(target.dataset['unit']);
+      if (!Number.isInteger(next) || next === state.theoryUnit) return;
+      state.theoryUnit = next;
+      state.theoryTopic = null;
+      renderTheoryPanel(true);
+    });
+
     /*
-     * Todo se busca DENTRO del panel, no en el documento.
+     * Las pestanas de la segunda capa del apartado.
      *
-     * Las dos unidades usan la misma plantilla, asi que sus contenedores y sus
-     * apartados comparten nombre. Con los dos paneles construidos a la vez, un
-     * `getElementById` global devolveria el de la unidad que se pintara
-     * primero y el indice de la segunda no llevaria a ninguna parte.
+     * Se muestran y se ocultan los paneles ya pintados en vez de volver a
+     * dibujarlos: asi los <details> de la autocomprobacion no se cierran solos
+     * al ir a «Ojo» y volver, que es justo cuando el lector quiere comparar.
      */
-    const section = panel.querySelector<HTMLElement>(`[id="topic-${target.dataset['toc']}"]`);
-    const container = panel.querySelector<HTMLElement>('.theory-content');
-    if (!section || !container) return;
-    // Se desplaza el CONTENEDOR, no la ventana: el temario tiene su propio
-    // desplazamiento y `scrollIntoView` moveria toda la pagina.
-    container.scrollTop += section.getBoundingClientRect().top - container.getBoundingClientRect().top - 8;
-    setPressed(
-      $$('.toc-item', panel),
-      (b) => b.dataset['toc'] === target.dataset['toc'],
-      'aria-current',
-    );
-  });
+    delegate(panel, 'click', '[data-more]', (_e, target) => {
+      const block = target.closest<HTMLElement>('.topic-more');
+      if (!block) return;
+      const id = target.dataset['more']!;
+      for (const tab of block.querySelectorAll<HTMLElement>('.more-tab')) {
+        tab.setAttribute('aria-selected', String(tab.dataset['more'] === id));
+      }
+      for (const body of block.querySelectorAll<HTMLElement>('.more-panel')) {
+        body.hidden = body.dataset['morePanel'] !== id;
+      }
+    });
 
-  // «Probar esto» lleva al modo o a la sustancia de la que habla el apartado.
-  delegate(panel, 'click', '[data-theory-mode], [data-theory-formula]', (_e, target) => {
-    const formula = target.dataset['theoryFormula'];
-    const mode = target.dataset['theoryMode'];
-    if (formula) {
+    // «Probar esto» lleva al modo o a la sustancia de la que habla el apartado.
+    delegate(panel, 'click', '[data-theory-mode], [data-theory-formula]', (_e, target) => {
+      const formula = target.dataset['theoryFormula'];
+      const mode = target.dataset['theoryMode'];
+      if (formula) {
+        setMode('react');
+        selectSubstance(formula);
+        state.tab = 'ficha';
+        renderTabs();
+        renderInspector();
+        return;
+      }
+      if (mode) setMode(mode as Mode);
+    });
+
+    // Cambiar de vista dentro de una figura 3D.
+    delegate(panel, 'click', '[data-scene]', (_e, target) => {
+      const figure = target.closest<HTMLElement>('.figure3d');
+      const manager = figureManagers.get('#theory-panel');
+      if (figure && manager) manager.select(figure, target.dataset['scene']!);
+    });
+
+    // Las celdas de la tabla periodica abren el elemento.
+    delegate(panel, 'click', '[data-element]', (_e, target) => {
       setMode('react');
-      selectSubstance(formula);
-      state.tab = 'ficha';
-      renderTabs();
-      renderInspector();
-      return;
-    }
-    if (mode) setMode(mode as Mode);
-  });
-
-  // Cambiar de vista dentro de una figura 3D.
-  delegate(panel, 'click', '[data-scene]', (_e, target) => {
-    const figure = target.closest<HTMLElement>('.figure3d');
-    const manager = figureManagers.get(panel === $('#theory-panel') ? '#theory-panel' : '#atom-panel');
-    if (figure && manager) manager.select(figure, target.dataset['scene']!);
-  });
-
-  // Las celdas de la tabla periodica abren el elemento.
-  delegate(panel, 'click', '[data-element]', (_e, target) => {
-    setMode('react');
-    selectSubstance(target.dataset['element']!);
-  });
+      selectSubstance(target.dataset['element']!);
+    });
   }
 
   // --- El guia -------------------------------------------------------------
@@ -1460,6 +1686,17 @@ function wireEvents(): void {
   // --- Modos -------------------------------------------------------------
   delegate($('#mode-tabs'), 'click', '[data-mode]', (_e, target) => {
     setMode(target.dataset['mode'] as Mode);
+  });
+
+  /*
+   * Pulsar un GRUPO entra por su primer modo, salvo que ya estes dentro: si el
+   * grupo activo se vuelve a pulsar no pasa nada, en lugar de echarte del modo
+   * en el que estabas trabajando al primero de la lista.
+   */
+  delegate($('#mode-tabs'), 'click', '[data-group]', (_e, target) => {
+    const group = MODE_GROUPS.find((g) => g.id === target.dataset['group']);
+    if (!group || GROUP_OF[state.mode] === group.id) return;
+    setMode(group.modes[0]!.mode);
   });
 
   // --- Barra del visor ---------------------------------------------------

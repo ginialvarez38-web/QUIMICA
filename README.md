@@ -128,6 +128,31 @@ Escribir «la masa se conserva» es una afirmacion que hay que creerse. Ensenar
 la tabla de atomos cuadrando es la ley ocurriendo delante. Y si manana cambiara
 una masa atomica, cambiarian los numeros de la pagina.
 
+### La navegacion: tres grupos y un lector
+
+Habia **siete pestanas** en fila y el temario se pintaba entero de una vez.
+Medido: la unidad 2 ocupaba 28.085 px —treinta y una pantallas— y un solo
+apartado llegaba a 12.703. Eso no es «leer seguido», es no encontrar nada.
+
+| Antes | Ahora |
+|---|---|
+| 7 pestanas sueltas | 3 grupos (**Practicar · Teoria · Explorar**) y, dentro, los modos que de verdad se alternan |
+| Materia y Atomo, dos modos | una pestana **Teoria** con conmutador de unidad |
+| la unidad entera en una columna | **un apartado por pantalla**, con «18 de 21» y anterior/siguiente |
+| el indice solo desplazaba | el indice **navega** y marca donde estas |
+| 9 cajas apiladas por apartado | dos capas: arriba «¿que es esto?», detras de pestanas «¿lo he entendido?» |
+| biblioteca e inspector siempre puestos | en lectura se retiran: el temario se queda la pantalla |
+
+El apartado mas alto paso de **31,3 pantallas a 1,5**.
+
+Dos anchos de lectura, no uno: la prosa se queda en 70 caracteres porque una
+linea larga cansa, y la figura 3D y las tablas de diez columnas se ensanchan a
+104 — con un solo ancho, la tabla de numeros cuanticos se desplazaba en
+horizontal teniendo media pantalla vacia al lado.
+
+En movil el indice de veintiun apartados no es una barra: se pliega detras de
+un boton, y la lectura normal se lleva con anterior y siguiente.
+
 ### El contrato didactico
 
 Cada apartado se construye con las mismas piezas, y hay pruebas que las

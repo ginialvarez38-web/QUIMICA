@@ -23,14 +23,11 @@
 
       <div class="header-spacer"></div>
 
-      <nav class="mode-tabs" id="mode-tabs" role="tablist" aria-label="Modo de trabajo">
-        <button class="mode-tab" role="tab" data-mode="build" aria-selected="true"><span class="mode-icon">⬡</span>Construir</button>
-        <button class="mode-tab" role="tab" data-mode="react" aria-selected="false"><span class="mode-icon">⇄</span>Reaccionar</button>
-        <button class="mode-tab" role="tab" data-mode="tabla" aria-selected="false"><span class="mode-icon">⊞</span>Tabla</button>
-        <button class="mode-tab" role="tab" data-mode="teoria" aria-selected="false"><span class="mode-icon">☰</span>Materia</button>
-        <button class="mode-tab" role="tab" data-mode="atomo" aria-selected="false"><span class="mode-icon">⚛</span>Atomo</button>
-        <button class="mode-tab" role="tab" data-mode="routes" aria-selected="false"><span class="mode-icon">⇢</span>Rutas</button>
-        <button class="mode-tab" role="tab" data-mode="lab" aria-selected="false"><span class="mode-icon">⚗</span>Laboratorio</button>
+      <!-- Los botones los pinta `renderModeTabs()` desde MODE_GROUPS: la
+           agrupacion de los modos tiene que vivir en un sitio solo. -->
+      <nav class="mode-tabs" id="mode-tabs" aria-label="Modo de trabajo">
+        <div class="mode-groups" id="mode-groups" role="tablist" aria-label="Que quieres hacer"></div>
+        <div class="mode-submodes" id="mode-submodes" role="tablist" aria-label="Dentro de este grupo" hidden></div>
       </nav>
 
       <button class="button mobile-switch" id="mobile-switch">Analisis</button>
@@ -87,10 +84,9 @@
 
       <!-- Teoria: la unidad 1 del temario. Sustituye al visor igual que la
            tabla, porque necesita el ancho entero para leerse. -->
-      <section class="theory-panel" id="theory-panel" aria-label="Unidad 1: la materia" hidden></section>
+      <section class="theory-panel" id="theory-panel" aria-label="Temario" hidden></section>
 
       <!-- Unidad 2: estructura atomica. Comparte carcasa con la unidad 1. -->
-      <section class="theory-panel" id="atom-panel" aria-label="Unidad 2: estructura atomica" hidden></section>
 
       <div class="viewport" id="viewport">
         <canvas id="gl-canvas" aria-label="Vista tridimensional de la estructura"></canvas>

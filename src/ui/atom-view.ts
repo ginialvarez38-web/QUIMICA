@@ -1,7 +1,7 @@
 /**
  * UNIDAD 2 — vista.
  *
- * Reutiliza la carcasa de la unidad 1 (indice, apartados, avisos) y aporta lo
+ * Reutiliza el lector de la unidad 1 (conmutador, indice, apartados) y aporta lo
  * suyo: los renderizadores de sus demostraciones y la TABLA PERIODICA.
  *
  * SOBRE LA TABLA PERIODICA
@@ -13,7 +13,8 @@
 
 import type { AtomDemo } from '../teach/atom.js';
 import type { TheoryTopic } from '../teach/theory.js';
-import { renderUnit, num } from './theory-view.js';
+import type { UnitView } from './theory-view.js';
+import { num } from './theory-view.js';
 import { ELEMENTS } from '../data/elements.js';
 import type { Element } from '../core/types.js';
 import { escapeHtml } from './dom.js';
@@ -554,12 +555,13 @@ function renderDemo(demo: AtomDemo): string {
   }
 }
 
-export function renderAtomUnit(unit: TheoryTopic<AtomDemo>): string {
-  return renderUnit(
+/** La unidad 2, lista para el lector. */
+export function atomoView(unit: TheoryTopic<AtomDemo>): UnitView<AtomDemo> {
+  return {
     unit,
-    renderDemo,
-    'La composicion de cada nucleido sale de Z y A; la masa atomica se deduce de las abundancias ' +
-      'isotopicas y se compara con el valor IUPAC; las isobaras y los isotonos se buscan agrupando los ' +
-      'datos; y la tabla periodica se dibuja colocando cada elemento donde dicen su grupo y su periodo.',
-  );
+    demoRenderer: renderDemo,
+    claim:
+      'La masa atomica se deduce de las abundancias isotopicas y se compara con el valor IUPAC, y los ' +
+      'orbitales se sortean de la funcion de onda.',
+  };
 }

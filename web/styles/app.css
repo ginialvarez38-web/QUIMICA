@@ -255,7 +255,17 @@ button { cursor: pointer; border: none; background: none; }
 
 .header-spacer { flex: 1; }
 
+/* La barra de modos, en dos niveles: grupos arriba, modos del grupo debajo.
+   Siete pestanas en fila obligaban a elegir entre siete cosas cada vez; tres
+   grupos y, dentro, lo que de verdad se alterna. */
 .mode-tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.mode-groups {
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -263,6 +273,29 @@ button { cursor: pointer; border: none; background: none; }
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
+
+/* La segunda fila es mas ligera a proposito: es una eleccion menor dentro de
+   la que ya se ha hecho arriba, y competir con ella en peso las igualaria. */
+.mode-submodes {
+  display: flex;
+  gap: 1px;
+}
+
+.submode-tab {
+  padding: 3px 11px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-faint);
+  white-space: nowrap;
+  transition: background 0.14s, color 0.14s;
+}
+.submode-tab:hover { color: var(--text-muted); }
+.submode-tab[aria-selected='true'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.submode-tab .mode-icon { margin-right: 4px; opacity: 0.75; }
 
 .mode-tab {
   padding: 5px 13px;
@@ -2510,6 +2543,69 @@ button { cursor: pointer; border: none; background: none; }
    de fiarlo todo a la palabra de la pestana.
    ========================================================================== */
 
+/* ==========================================================================
+   MODO LECTURA: el temario se queda con la pantalla
+   ==========================================================================
+
+   Leyendo el temario, las otras dos columnas no aportan nada y compiten por la
+   atencion. La biblioteca ensena la lista de iones, que no tiene que ver con
+   lo que se esta leyendo; y el inspector se quedaba con medio ancho para
+   mostrar un aviso que REPETIA el que ya esta en el indice — dos paneles
+   diciendo lo mismo, y uno de ellos de quinientos pixeles.
+
+   Con las dos retiradas, el temario pasa de una columna estrecha entre dos
+   distracciones a ser lo unico que hay, que es lo que se vino a hacer aqui.
+   ========================================================================== */
+.app[data-reading='true'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'header'
+    'stage';
+}
+.app[data-reading='true'] .library,
+.app[data-reading='true'] .inspector { display: none; }
+
+/* Con toda la pantalla, el indice puede respirar y la columna de lectura
+   centrarse en vez de pegarse al borde.
+
+   VA DENTRO DE UNA CONSULTA DE ANCHO, y no por gusto: `.app[data-reading]
+   .theory` pesa mas que el `.theory` del bloque movil, asi que sin acotarla
+   se aplicaba tambien en un telefono. El resultado medido en un iPhone SE era
+   un indice de 268 px sobre una pantalla de 320, con 80 px para el texto y la
+   pagina desplazandose en horizontal. Una regla de escritorio tiene que decir
+   que es de escritorio. */
+@media (min-width: 901px) {
+  .app[data-reading='true'] .theory { grid-template-columns: 268px minmax(0, 1fr); }
+  .app[data-reading='true'] .theory-content { padding: 26px 40px 70px; }
+}
+
+/*
+   EL ANCHO NO ES UNO SOLO.
+
+   Una linea de prosa larga cansa, asi que el texto se queda en 68 caracteres.
+   Pero una figura 3D y una tabla de diez columnas no son prosa: con el mismo
+   limite, la tabla de numeros cuanticos se desplazaba en horizontal dentro de
+   su caja teniendo media pantalla vacia al lado.
+
+   El apartado se ensancha y son los bloques de TEXTO los que se contienen.
+*/
+@media (min-width: 901px) {
+  .app[data-reading='true'] .topic {
+    max-width: 104ch;
+    margin: 0 auto;
+  }
+  .app[data-reading='true'] .topic-crumb,
+  .app[data-reading='true'] .topic-title,
+  .app[data-reading='true'] .topic-body,
+  .app[data-reading='true'] .topic-key,
+  .app[data-reading='true'] .topic-gap,
+  .app[data-reading='true'] .topic-more,
+  .app[data-reading='true'] .topic-connects,
+  .app[data-reading='true'] .topic-nav {
+    max-width: 70ch;
+  }
+}
+
 .app { --mode-accent: var(--accent); }
 .app[data-active-mode='build']  { --mode-accent: var(--teal); }
 .app[data-active-mode='react']  { --mode-accent: var(--acid); }
@@ -3095,9 +3191,10 @@ button { cursor: pointer; border: none; background: none; }
    TEORIA — UNIDAD 1
    ==========================================================================
 
-   Indice fijo a la izquierda y el temario entero a la derecha, en una columna
-   que se lee de arriba abajo. No es un acordeon: un temario se estudia
-   seguido, y obligar a abrir doce cajas para leerlo es trabajo sin premio.
+   Indice a la izquierda y UN APARTADO a la derecha. No una columna continua:
+   medida, la unidad 2 ocupaba treinta y una pantallas seguidas y no habia
+   forma de saber donde estabas. El indice navega, el apartado dice su sitio
+   («18 de 21») y al pie estan anterior y siguiente.
    ========================================================================== */
 
 .theory-panel {
@@ -3118,14 +3215,93 @@ button { cursor: pointer; border: none; background: none; }
 
 /* --- Indice ------------------------------------------------------------- */
 
+/* El indice ya no se desplaza entero: el conmutador de unidad y el aviso se
+   quedan fijos arriba y solo rueda la lista. Con veintiun apartados, perder de
+   vista el selector de unidad al bajar era perder la orientacion. */
 .theory-toc {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 12px 8px 20px;
-  overflow-y: auto;
+  min-height: 0;
+  padding: 10px 8px 0;
   border-right: 1px solid var(--border);
   background: var(--surface);
+}
+
+.unit-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.unit-tab {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 520;
+  text-align: left;
+  color: var(--text-muted);
+  transition: background 0.14s, color 0.14s;
+}
+.unit-tab:hover { color: var(--text); }
+.unit-tab[aria-selected='true'] {
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.unit-number {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.unit-tab[aria-selected='true'] .unit-number { color: var(--accent); }
+
+.toc-claim {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+}
+.toc-claim strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+/* Solo existe en movil: en escritorio el indice cabe entero y plegarlo seria
+   esconder la navegacion sin ganar nada. */
+.toc-toggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 12px;
+  font-weight: 520;
+  color: var(--text-muted);
+}
+.toc-toggle::after { content: '▾'; font-size: 10px; transition: transform 0.16s; }
+.theory-toc.is-open .toc-toggle::after { transform: rotate(180deg); }
+
+.toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: 16px;
 }
 
 .toc-head {
@@ -3220,16 +3396,127 @@ button { cursor: pointer; border: none; background: none; }
 
 .topic {
   max-width: 68ch;
-  scroll-margin-top: 12px;
 }
 
-.topic-d1 {
-  padding-top: 26px;
+/* Donde estas: la unidad y el numero de apartado. Antes no habia forma de
+   saberlo — el temario era una columna de treinta y una pantallas. */
+.topic-crumb {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+}
+.crumb-pos {
+  font-family: var(--mono);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+
+/* --- La segunda capa ----------------------------------------------------- */
+
+/* Ojo, la analogia, el ejercicio y la autocomprobacion comparten UNA caja con
+   pestanas en lugar de apilarse. Cuatro bloques con marco y etiqueta propios,
+   todos con el mismo peso que el texto principal, no dejaban ver cual era el
+   texto principal. */
+.topic-more {
   margin-top: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.more-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.more-tabs::-webkit-scrollbar { display: none; }
+
+.more-tab {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 520;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: background 0.14s, color 0.14s;
+}
+.more-tab:hover { color: var(--text); }
+.more-tab[aria-selected='true'] {
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.more-panel { padding: 16px 16px 18px; }
+
+/* Dentro de la caja, las piezas ya no necesitan marco propio: la caja ES el
+   marco, y repetirlo era parte del ruido que se venia a quitar. */
+.more-panel > .topic-pitfall,
+.more-panel > .topic-analogy,
+.more-panel > .topic-worked,
+.more-panel > .topic-check {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.more-panel > .topic-analogy > .topic-key-label,
+.more-panel > .topic-worked > .topic-key-label,
+.more-panel > .topic-check > .topic-key-label { display: none; }
+
+/* --- Anterior y siguiente ------------------------------------------------ */
+
+.topic-nav {
+  display: flex;
+  gap: 10px;
+  margin-top: 30px;
+  padding-top: 18px;
   border-top: 1px solid var(--border);
 }
 
-.topic-d2, .topic-d3 { margin-top: 22px; }
+.topic-step {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color 0.14s, background 0.14s;
+}
+.topic-step:hover { border-color: var(--accent-line); background: var(--surface-2); }
+/* El hueco del primero y del ultimo se reserva para que «siguiente» no salte
+   al lado contrario en el primer apartado. */
+.topic-step.is-empty { flex: 1 1 0; pointer-events: none; }
+
+.topic-step:last-child { text-align: right; }
+
+.step-dir {
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.step-title {
+  font-size: 12.5px;
+  font-weight: 520;
+  color: var(--text);
+  line-height: 1.4;
+}
 
 .topic-title {
   display: flex;
@@ -3527,23 +3814,43 @@ button { cursor: pointer; border: none; background: none; }
      del texto: en vertical se comeria media pantalla. */
   .theory { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 
+  /*
+     EL INDICE, PLEGADO.
+
+     Antes se convertia en una tira horizontal. Con doce apartados ya era
+     incomodo; con los veintiuno de la unidad 2 quedo inservible — y medido en
+     un iPhone SE, las entradas ni siquiera se podian pulsar: la tira se
+     comprimia y el encabezado se quedaba encima.
+
+     Un indice de veintiun apartados en un movil no es una barra: es una lista.
+     Asi que el conmutador de unidad se queda a la vista —que son dos botones—
+     y la lista se abre cuando se pide. La lectura normal no lo necesita: para
+     eso estan «anterior» y «siguiente» al pie de cada apartado.
+  */
   .theory-toc {
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
     padding: 8px 10px;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
-  .theory-toc::-webkit-scrollbar { display: none; }
-  .toc-head { display: none; }
-  .toc-item { width: auto; white-space: nowrap; padding: 6px 10px; }
-  .toc-d2, .toc-d3 { padding-left: 10px; }
+  .unit-switch { flex-direction: row; margin-bottom: 0; }
+  .unit-tab { flex: 1; justify-content: center; padding: 6px 8px; }
+  /* El aviso de «se calculan» se lee una vez y ocupa cuatro lineas: en movil
+     se queda solo en la version de escritorio. */
+  .toc-claim { display: none; }
 
-  .theory-content { padding: 16px 14px 40px; }
+  .toc-toggle { display: flex; }
+  .toc-list {
+    display: none;
+    max-height: 52vh;
+    margin-top: 6px;
+  }
+  .theory-toc.is-open .toc-list { display: flex; }
+  .toc-item { width: auto; padding: 8px 10px; }
+
+  /* El hueco de abajo tiene que despejar la barra de modos, que va fija al
+     borde: con 40 px, «anterior» y «siguiente» quedaban medio tapados justo
+     cuando son el unico modo de avanzar. */
+  .theory-content { padding: 16px 14px calc(76px + env(safe-area-inset-bottom, 0px)); }
   .theory-title { font-size: 21px; }
   .topic-d1 > .topic-title { font-size: 17px; }
   .demo { padding: 11px; }

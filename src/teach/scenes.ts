@@ -173,7 +173,7 @@ function scaleSet(): SceneSet {
         id: 'vacio',
         title: '3 · Lo que hay en medio',
         caption:
-          'Entre el nucleo y los electrones no hay NADA. Ni aire, ni materia, ni una sustancia que los una: vacio. Un atomo es, sobre todo, espacio vacio.',
+          'Entre el nucleo y los electrones no hay NADA: ni aire, ni materia, ni una sustancia que los una. Solo vacio.',
         limit:
           'Lo que si hay es un CAMPO electrico, que no se puede dibujar como objeto. «Vacio» significa ' +
           'sin particulas, no sin fisica.',
@@ -688,9 +688,9 @@ function orbitalSet(): SceneSet {
     id: 'orbitales',
     title: 'De donde sale la forma de un orbital',
     intro:
-      'Cada punto es un sitio donde el electron podria encontrarse si se midiera, y estan sorteados ' +
-      'con probabilidad |ψ|² a partir de la solucion exacta de la ecuacion de Schrodinger. Nadie ha ' +
-      'dibujado estas formas: salen. Los dos colores son los dos SIGNOS de la onda, no dos cargas.',
+      'Nadie ha dibujado estas formas: salen. Cada punto se sortea con probabilidad |ψ|² a partir de la ' +
+      'solucion exacta de la ecuacion de Schrodinger, asi que si hay dos lobulos es porque la funcion ' +
+      'los tiene. Los dos colores son los dos SIGNOS de la onda, no dos cargas.',
     scenes: [
       {
         id: 'nube',
@@ -906,9 +906,8 @@ function fillingSet(): SceneSet {
         title: 'Hund · como NO es',
         caption:
           'Tres electrones en el 2p del nitrogeno, apilados en los dos primeros orbitales y dejando el ' +
-          'tercero vacio (gris). El de la izquierda lleva DOS —el doble de puntos, azul y naranja ' +
-          'mezclados— y esos dos ocupan la misma region del espacio y se estorban. Esa cercania cuesta ' +
-          'energia, y por eso la naturaleza no elige esto.',
+          'tercero vacio (gris). Cuenta los puntos: el de la izquierda tiene el DOBLE, azul y naranja ' +
+          'mezclados. Ahi esta la aglomeracion que el atomo evita.',
         limit:
           'Esta configuracion no existe en el nitrogeno: se dibuja a proposito para compararla con la ' +
           'siguiente. «Se estorban» es una manera de hablar: la repulsion entre dos electrones no es la ' +
@@ -953,9 +952,9 @@ function magnetismSet(): SceneSet {
     id: 'magnetismo',
     title: 'Por que unas sustancias sienten el iman y otras no',
     intro:
-      'Un electron desapareado deja un momento magnetico sin compensar. Dos electrones apareados, con ' +
-      'espines opuestos, se anulan. Contar los que quedan sueltos es contar el magnetismo — y el ' +
-      'recuento lo hace el motor, no el dibujo.',
+      'Aqui se ven los que quedan sueltos. Busca los orbitales con UN solo color: esos son los ' +
+      'desapareados. Los que llevan azul y naranja a la vez se cancelan entre si. El recuento lo hace ' +
+      'el motor, no el dibujo.',
     scenes: [
       {
         id: 'oxigeno',

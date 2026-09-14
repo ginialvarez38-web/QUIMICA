@@ -32,6 +32,7 @@ import {
 } from '../src/teach/atom.js';
 import type { TheoryTopic } from '../src/teach/theory.js';
 import { allSceneSets, sceneSet } from '../src/teach/scenes.js';
+import { flattenTopics } from '../src/ui/theory-view.js';
 import { radial, psi, sampleOrbital, radiusContaining } from '../src/teach/orbitals.js';
 
 /** Recorre un temario en profundidad. Lo usan varias pruebas. */
@@ -1960,5 +1961,113 @@ describe('unidad 2.11: estructura electronica', () => {
       'el orden de m_l cambio y el pie de la figura ya no describe lo que se ve',
     );
     assert.deepEqual(p.orbitals.map((o) => orbitalName(o)), ['2px', '2pz', '2py']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('el lector del temario', () => {
+  /*
+   * Lo que estas pruebas vigilan es una DECISION, no un detalle.
+   *
+   * El temario se pintaba entero de una vez: 28.085 px en la unidad 2, y un
+   * solo apartado llegaba a 12.703. Ahora se lee de uno en uno, y eso solo
+   * funciona si la lista de apartados que recorre «siguiente» es EXACTAMENTE
+   * la que pinta el indice y la que cuenta el «7 de 21». Si se separaran, el
+   * lector veria un numero que no corresponde a donde esta.
+   */
+  // Las dos unidades tienen demostraciones de tipos distintos; el lector las
+  // guarda con el tipo ya olvidado, y aqui se hace lo mismo para poder
+  // recorrerlas juntas.
+  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo()];
+
+  test('las dos unidades se recorren en el mismo orden que el indice', () => {
+    for (const unidad of unidades) {
+      const plana = flattenTopics(unidad);
+      // Tantos apartados como nodos tiene el arbol, sin contar la raiz.
+      const contar = (t: TheoryTopic<unknown>): number =>
+        1 + (t.children ?? []).reduce((s, c) => s + contar(c), 0);
+      assert.equal(plana.length, contar(unidad) - 1, `${unidad.id}: la lista plana no cuadra`);
+      // Y en orden de lectura: un padre siempre antes que sus hijos.
+      for (const topic of plana) {
+        for (const child of topic.children ?? []) {
+          assert.ok(
+            plana.indexOf(topic) < plana.indexOf(child),
+            `${unidad.id}: ${child.id} sale antes que su padre ${topic.id}`,
+          );
+        }
+      }
+    }
+  });
+
+  test('ningun apartado se queda sin salida', () => {
+    // Todo apartado tiene anterior o siguiente: uno aislado seria un callejon
+    // sin salida, porque ya no hay una columna por la que seguir bajando.
+    for (const unidad of unidades) {
+      const plana = flattenTopics(unidad);
+      assert.ok(plana.length > 1, `${unidad.id}: hace falta mas de un apartado`);
+      for (let i = 0; i < plana.length; i++) {
+        assert.ok(i > 0 || plana[1], `${plana[i]!.id}: sin anterior ni siguiente`);
+      }
+    }
+  });
+
+  test('los identificadores no se repiten entre las dos unidades', () => {
+    /*
+     * Ahora las dos unidades comparten lector, e ir a un apartado es buscarlo
+     * por su id en la unidad abierta y, si no esta, en la otra. Dos apartados
+     * con el mismo id harian que un enlace llevara al de la unidad equivocada.
+     */
+    const ids = unidades.flatMap((u) => flattenTopics(u).map((t) => t.id));
+    assert.equal(new Set(ids).size, ids.length, 'hay identificadores repetidos');
+  });
+
+  test('todo enlace «se conecta con» apunta a un apartado que existe', () => {
+    // Antes bastaba con que existiera en la misma unidad. Ahora el lector
+    // cambia de unidad solo, asi que se admite cualquiera de las dos — pero
+    // tiene que existir en ALGUNA.
+    const ids = new Set(unidades.flatMap((u) => flattenTopics(u).map((t) => t.id)));
+    for (const unidad of unidades) {
+      for (const topic of flattenTopics(unidad)) {
+        for (const link of topic.connects ?? []) {
+          if (!link.topic) continue;
+          assert.ok(ids.has(link.topic), `${topic.id} enlaza a «${link.topic}», que no existe`);
+        }
+      }
+    }
+  });
+
+  test('la segunda capa nunca se queda vacia ni se lo lleva todo', () => {
+    /*
+     * El reparto: arriba lo que contesta «¿que es esto?» y detras de las
+     * pestanas lo que contesta «¿lo he entendido?». Un apartado que dejara
+     * ARRIBA solo el titulo —sin cuerpo— habria escondido su contenido, que es
+     * justo lo contrario de lo que se buscaba al ordenarlo en capas.
+     */
+    for (const unidad of unidades) {
+      for (const topic of flattenTopics(unidad)) {
+        assert.ok(topic.body.length > 40, `${topic.id}: sin cuerpo, la primera capa queda vacia`);
+        const segunda = [topic.pitfall, topic.analogy, topic.worked, topic.check?.length].filter(Boolean);
+        // No es obligatorio tener segunda capa; si la tiene, que se pueda
+        // etiquetar. Lo que no vale es tenerla vacia de contenido util.
+        if (topic.check) {
+          for (const c of topic.check) {
+            assert.ok(c.question.length > 10 && c.answer.length > 40, `${topic.id}: autocomprobacion pobre`);
+          }
+        }
+        void segunda;
+      }
+    }
+  });
+
+  test('las figuras siguen colgando de apartados que existen en el lector', () => {
+    // Con un apartado por pantalla, la figura solo se monta si su apartado se
+    // abre: una figura colgada de un id inexistente no se veria nunca.
+    for (const unidad of unidades) {
+      for (const topic of flattenTopics(unidad)) {
+        if (!topic.figure) continue;
+        assert.ok(sceneSet(topic.figure), `${topic.id}: figura «${topic.figure}» inexistente`);
+      }
+    }
   });
 });
