@@ -10,7 +10,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { configureAtom, lewisValenceElectrons, ionise, quantumNumbers } from '../src/analysis/electronic.js';
+import { configureAtom, lewisValenceElectrons, ionise, quantumNumbers, orbitalName } from '../src/analysis/electronic.js';
 import { deriveLewis, diagnoseLewis, lewisLine, validateLewis, formalChargeWorkings } from '../src/analysis/lewis.js';
 import { FindingGraph } from '../src/analysis/findings.js';
 import { analyzeResonance } from '../src/analysis/resonance.js';
@@ -32,6 +32,7 @@ import {
 } from '../src/teach/atom.js';
 import type { TheoryTopic } from '../src/teach/theory.js';
 import { allSceneSets, sceneSet } from '../src/teach/scenes.js';
+import { radial, psi, sampleOrbital, radiusContaining } from '../src/teach/orbitals.js';
 
 /** Recorre un temario en profundidad. Lo usan varias pruebas. */
 function walkTopics<D>(t: TheoryTopic<D>, out: TheoryTopic<D>[] = []): TheoryTopic<D>[] {
@@ -1527,11 +1528,12 @@ describe('las figuras 3D del temario', () => {
   const sets = allSceneSets();
 
   test('hay figura solo donde lo explicado es espacial', () => {
-    // Cuatro conjuntos, y ninguno es decoracion: escala, modelos atomicos,
-    // reparto de particulas en las mezclas, y antes/despues de un cambio.
+    // Siete conjuntos, y ninguno es decoracion: escala, modelos atomicos,
+    // reparto de particulas en las mezclas, antes/despues de un cambio, la
+    // forma de los orbitales, el llenado y el magnetismo.
     assert.deepEqual(
       sets.map((s) => s.id).sort(),
-      ['cambio', 'escala', 'materia', 'modelos'],
+      ['cambio', 'escala', 'llenado', 'magnetismo', 'materia', 'modelos', 'orbitales'],
     );
   });
 
@@ -1633,8 +1635,330 @@ describe('las figuras 3D del temario', () => {
     assert.deepEqual(conFigura.sort(), [
       '1.5:materia',   // puro / homogeneo / heterogeneo
       '1.7:cambio',    // fisico / quimico
+      // Ordenados como cadenas, no como numeros de apartado: «2.11.1:» va
+      // antes que «2.1:» porque el '1' pesa menos que el ':'.
+      '2.11.1.3:llenado',   // Pauli y Hund, vistos en el espacio
+      '2.11.1.4:magnetismo',
+      '2.11.1:orbitales',   // de donde sale la forma de un orbital
       '2.1:escala',    // el atomo es sobre todo vacio
       '2.2.1.2:modelos',
     ]);
+  });
+
+  test('cada figura apuntada existe de verdad', () => {
+    // Un `figure` mal escrito no rompe nada: `renderFigure` devuelve cadena
+    // vacia y el apartado sale sin figura, en silencio. Esta prueba es el
+    // unico sitio donde eso se nota.
+    for (const topic of [...walkTopics(unitMateria()), ...walkTopics(unitAtomo())]) {
+      if (!topic.figure) continue;
+      assert.ok(sceneSet(topic.figure), `${topic.id} apunta a la figura «${topic.figure}», que no existe`);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('los orbitales se calculan, no se dibujan', () => {
+  /*
+   * Estas pruebas son la diferencia entre una figura util y una bonita.
+   *
+   * Las formas de los orbitales del apartado 2.11 NO estan dibujadas a mano:
+   * se sortean de la funcion de onda hidrogenoide. Si las formulas tuvieran un
+   * signo cambiado o una constante mal, la nube seguiria pareciendo un orbital
+   * —seguiria siendo una mancha simetrica y convincente— y nadie lo notaria
+   * mirandola. Solo se nota comprobandola contra valores exactos conocidos.
+   */
+
+  test('las funciones radiales estan normalizadas', () => {
+    // ∫|R|²r²dr = 1. Si una constante estuviera mal, esto lo dice.
+    for (const [n, l] of [[1, 0], [2, 0], [2, 1], [3, 0], [3, 1], [3, 2]] as const) {
+      const steps = 40000;
+      const rmax = 60;
+      const h = rmax / steps;
+      let total = 0;
+      for (let i = 0; i < steps; i++) {
+        const a = i * h;
+        const b = (i + 1) * h;
+        total += ((radial(n, l, a) ** 2 * a * a + radial(n, l, b) ** 2 * b * b) / 2) * h;
+      }
+      assert.ok(Math.abs(total - 1) < 0.002, `R(${n},${l}) integra ${total.toFixed(4)}, no 1`);
+    }
+  });
+
+  test('los nodos radiales salen donde dice la teoria: n − l − 1', () => {
+    for (const [n, l] of [[1, 0], [2, 0], [2, 1], [3, 0], [3, 1], [3, 2]] as const) {
+      let changes = 0;
+      let previous = Math.sign(radial(n, l, 1e-6));
+      for (let r = 1e-6; r < 40; r += 0.002) {
+        const sign = Math.sign(radial(n, l, r));
+        if (sign !== 0 && sign !== previous) {
+          changes++;
+          previous = sign;
+        }
+      }
+      assert.equal(changes, n - l - 1, `R(${n},${l}) cruza el cero ${changes} veces`);
+    }
+  });
+
+  test('el nodo del 2s cae exactamente en r = 2 a₀', () => {
+    // No es un cero cualquiera: es la raiz del polinomio (2 − r), y por tanto
+    // esta puesto por la formula, no ajustado para que la figura quede bien.
+    assert.ok(radial(2, 0, 1.99) > 0);
+    assert.ok(radial(2, 0, 2.01) < 0);
+    assert.ok(Math.abs(radial(2, 0, 2)) < 1e-12);
+  });
+
+  test('los nodos angulares son planos y conos exactos, no zonas de poca densidad', () => {
+    // El 2p_z se anula en TODO el plano ecuatorial; el 3d_xy en dos planos.
+    for (const [x, y] of [[1, 1], [3, 0], [0, 5], [2, -7]] as const) {
+      assert.equal(psi('2pz', x, y, 0), 0, `2pz no se anula en (${x},${y},0)`);
+    }
+    assert.equal(psi('3dxy', 2, 0, 2), 0, '3dxy deberia anularse en el plano xz');
+    assert.equal(psi('3dxy', 0, 3, 1), 0, '3dxy deberia anularse en el plano yz');
+    // Y el 2s NO se anula ahi: si lo hiciera, la esfera tendria un agujero.
+    assert.notEqual(psi('2s', 1, 1, 0), 0);
+  });
+
+  test('la nube muestreada reproduce ⟨r⟩ = (3n² − l(l+1))/2 a₀', () => {
+    /*
+     * La prueba de fondo. El valor esperado del radio tiene formula cerrada
+     * para el atomo hidrogenoide, y el muestreo no sabe nada de ella: si la
+     * nube saliera mas gorda o mas flaca de lo que debe —por un maximo mal
+     * estimado, por una cola recortada— este numero se iria.
+     */
+    for (const [key, n, l] of [
+      ['1s', 1, 0],
+      ['2s', 2, 0],
+      ['2pz', 2, 1],
+      ['3s', 3, 0],
+      ['3dz2', 3, 2],
+    ] as const) {
+      const points = sampleOrbital(key, 4000, 4242);
+      assert.equal(points.length, 4000, `${key}: el muestreo se quedo corto`);
+      const mean =
+        points.reduce((s, p) => s + Math.hypot(p.position.x, p.position.y, p.position.z), 0) /
+        points.length;
+      const exact = (3 * n * n - l * (l + 1)) / 2;
+      const error = Math.abs(mean - exact) / exact;
+      assert.ok(error < 0.05, `${key}: ⟨r⟩ = ${mean.toFixed(2)}, exacto ${exact} (${(100 * error).toFixed(1)} %)`);
+    }
+  });
+
+  test('el 2p reparte su densidad en el eje, no en la esfera', () => {
+    // Si ⟨z²⟩ no fuera muy mayor que ⟨x²⟩, la nube seria una bola y la figura
+    // de «l · la forma» estaria ensenando una mentira.
+    const points = sampleOrbital('2pz', 3000, 11);
+    const mean = (f: (p: (typeof points)[number]) => number) =>
+      points.reduce((s, p) => s + f(p), 0) / points.length;
+    const z2 = mean((p) => p.position.z ** 2);
+    const x2 = mean((p) => p.position.x ** 2);
+    assert.ok(z2 > 2.5 * x2, `2p_z: ⟨z²⟩ = ${z2.toFixed(1)} frente a ⟨x²⟩ = ${x2.toFixed(1)}`);
+  });
+
+  test('el 3d_xy vive en su plano, y el 3d_z² en su eje', () => {
+    const xy = sampleOrbital('3dxy', 3000, 12);
+    const flat = xy.reduce((s, p) => s + p.position.x ** 2 + p.position.y ** 2, 0) / xy.length;
+    const tall = xy.reduce((s, p) => s + p.position.z ** 2, 0) / xy.length;
+    assert.ok(flat > 4 * tall, 'el d_xy deberia ser mucho mas ancho que alto');
+
+    const z2 = sampleOrbital('3dz2', 3000, 13);
+    const along = z2.reduce((s, p) => s + p.position.z ** 2, 0) / z2.length;
+    const across = z2.reduce((s, p) => s + p.position.x ** 2, 0) / z2.length;
+    assert.ok(along > 1.8 * across, 'el d_z² deberia alargarse por el eje z');
+  });
+
+  test('los dos lobulos de un p tienen SIGNO OPUESTO y el mismo peso', () => {
+    // Las dos fases no son adorno: son la razon de que dos orbitales se sumen
+    // o se cancelen al formar un enlace. Y por simetria tienen que salir mitad
+    // y mitad — si no, el muestreo estaria sesgado.
+    const points = sampleOrbital('2pz', 4000, 14);
+    const positive = points.filter((p) => p.phase === 1).length;
+    const fraction = positive / points.length;
+    assert.ok(Math.abs(fraction - 0.5) < 0.05, `fase positiva al ${(100 * fraction).toFixed(0)} %`);
+    // Y cada fase esta de un lado del plano nodal, no mezcladas.
+    for (const p of points) {
+      assert.equal(p.phase === 1, p.position.z >= 0, 'una fase esta del lado equivocado');
+    }
+  });
+
+  test('el recorte al 90 % es el radio que de verdad encierra el 90 %', () => {
+    // Las escenas recortan ahi y lo declaran en su limite. Si el numero
+    // estuviera elegido a ojo, la declaracion seria falsa.
+    for (const [n, l] of [[1, 0], [2, 1], [3, 2]] as const) {
+      const cut = radiusContaining(n, l, 0.9);
+      const points = sampleOrbital(`${n}${l === 0 ? 's' : l === 1 ? 'pz' : 'dz2'}` as never, 3000, 15);
+      const inside = points.filter(
+        (p) => Math.hypot(p.position.x, p.position.y, p.position.z) <= cut,
+      ).length;
+      const fraction = inside / points.length;
+      assert.ok(
+        Math.abs(fraction - 0.9) < 0.03,
+        `n=${n} l=${l}: dentro de ${cut.toFixed(1)} a₀ cae el ${(100 * fraction).toFixed(0)} %`,
+      );
+    }
+  });
+
+  test('la misma escena sale igual en cada visita', () => {
+    const a = sampleOrbital('2pz', 200, 99).map((p) => p.position.x);
+    const b = sampleOrbital('2pz', 200, 99).map((p) => p.position.x);
+    assert.deepEqual(a, b);
+  });
+
+  test('construir un conjunto de figuras no bloquea la interfaz', () => {
+    /*
+     * Un umbral flojo a proposito: no mide el rendimiento de la maquina, vigila
+     * que nadie vuelva a meter aqui un muestreo por rechazo en 3D. El primero
+     * que se escribio tardaba cerca de un segundo y congelaba la pestana.
+     */
+    const start = Date.now();
+    sceneSet('orbitales');
+    sceneSet('llenado');
+    sceneSet('magnetismo');
+    const elapsed = Date.now() - start;
+    assert.ok(elapsed < 400, `construir las figuras del 2.11 tardo ${elapsed} ms`);
+  });
+
+  test('pedir una figura NO construye las demas', () => {
+    // Abrir la pestana Materia no debe pagar el coste de las nubes de
+    // orbitales, que es lo que pasaba cuando se construian todas de golpe.
+    const start = Date.now();
+    sceneSet('materia');
+    assert.ok(Date.now() - start < 60, 'construir «materia» deberia ser inmediato');
+  });
+});
+
+describe('unidad 2.11: estructura electronica', () => {
+  const topics = new Map(walkTopics(unitAtomo()).map((t) => [t.id, t]));
+
+  test('estan los seis apartados que pide el temario', () => {
+    for (const id of ['2.11', '2.11.1', '2.11.1.1', '2.11.1.2', '2.11.1.3', '2.11.1.4']) {
+      assert.ok(topics.has(id), `falta el apartado ${id}`);
+    }
+  });
+
+  test('los cuatro numeros cuanticos NO se repiten: Pauli, comprobado', () => {
+    /*
+     * La demostracion del 2.11.1.1 tabula los cuatro numeros de cada electron
+     * y cuenta cuantas combinaciones distintas hay. Que coincida con el numero
+     * de electrones ES el principio de exclusion. Si el motor repartiera mal,
+     * dejarian de coincidir — y esta prueba lo dice antes que el alumno.
+     */
+    const demo = topics.get('2.11.1.1')!.demo;
+    assert.equal(demo?.kind, 'quantum-numbers');
+    if (demo?.kind !== 'quantum-numbers') return;
+    assert.equal(demo.total, 7, 'el nitrogeno tiene 7 electrones');
+    assert.equal(demo.distinct, demo.total, 'hay dos electrones con los cuatro numeros iguales');
+    for (const row of demo.rows) {
+      assert.ok(row.l < row.n, `l = ${row.l} con n = ${row.n} es imposible`);
+      assert.ok(Math.abs(row.ml) <= row.l, `m_l = ${row.ml} se sale del rango de l = ${row.l}`);
+    }
+  });
+
+  test('la capacidad de cada capa se CUENTA y da 2n²', () => {
+    const demo = topics.get('2.11.1.1')!.demo;
+    if (demo?.kind !== 'quantum-numbers') return assert.fail('demo equivocada');
+    for (const shell of demo.shells) {
+      assert.equal(shell.orbitals, shell.n ** 2, `n=${shell.n}: orbitales`);
+      assert.equal(shell.electrons, 2 * shell.n ** 2, `n=${shell.n}: electrones`);
+      assert.equal(shell.subshells.length, shell.n, `n=${shell.n}: subcapas`);
+    }
+  });
+
+  test('las anomalias del cromo y el cobre se senalan, no se corrigen', () => {
+    const demo = topics.get('2.11.1.2')!.demo;
+    if (demo?.kind !== 'configuration') return assert.fail('demo equivocada');
+    const cr = demo.rows.find((r) => r.symbol === 'Cr')!;
+    const cu = demo.rows.find((r) => r.symbol === 'Cu')!;
+    assert.ok(cr.note, 'el cromo deberia venir con su motivo');
+    assert.ok(cu.note, 'el cobre deberia venir con su motivo');
+    assert.match(cr.condensed, /3d⁵/, 'el cromo es 3d⁵ 4s¹, no 3d⁴ 4s²');
+    assert.match(cu.condensed, /3d¹⁰/, 'el cobre es 3d¹⁰ 4s¹');
+  });
+
+  test('Hund se ve en el recuento: sube a 3 en el nitrogeno y baja despues', () => {
+    const demo = topics.get('2.11.1.3')!.demo;
+    if (demo?.kind !== 'filling') return assert.fail('demo equivocada');
+    const unpaired = (symbol: string) => demo.rows.find((r) => r.symbol === symbol)!.unpaired;
+    assert.deepEqual(
+      ['B', 'C', 'N', 'O', 'F', 'Ne'].map(unpaired),
+      [1, 2, 3, 2, 1, 0],
+      'el reparto del 2p no sigue la regla de Hund',
+    );
+  });
+
+  test('el magnetismo se deduce del recuento, no se escribe', () => {
+    const demo = topics.get('2.11.1.4')!.demo;
+    if (demo?.kind !== 'magnetism') return assert.fail('demo equivocada');
+    for (const row of demo.rows) {
+      const expected = row.unpaired > 0 ? 'paramagnetico' : 'diamagnetico';
+      assert.equal(row.behaviour, expected, `${row.label}: ${row.unpaired} desapareados`);
+    }
+    // El caso que da la vuelta a la intuicion, y que el ejercicio resuelto usa.
+    const fe2 = demo.rows.find((r) => r.symbol === 'Fe' && r.charge === 2)!;
+    const fe3 = demo.rows.find((r) => r.symbol === 'Fe' && r.charge === 3)!;
+    assert.equal(fe2.unpaired, 4);
+    assert.equal(fe3.unpaired, 5);
+    assert.ok(fe3.unpaired > fe2.unpaired, 'quitar un electron al Fe²⁺ AUMENTA los desapareados');
+  });
+
+  test('las tendencias periodicas salen de los datos y declaran su hueco', () => {
+    const demo = topics.get('2.11')!.demo;
+    if (demo?.kind !== 'periodic-trend') return assert.fail('demo equivocada');
+
+    const period = demo.series[0]!.rows;
+    assert.ok(
+      period[0]!.radius! > period[period.length - 1]!.radius!,
+      'el radio deberia encoger a lo largo del periodo 3',
+    );
+    assert.ok(
+      period[0]!.electronegativity! < period[period.length - 1]!.electronegativity!,
+      'la electronegatividad deberia subir a lo largo del periodo 3',
+    );
+
+    const group = demo.series[1]!.rows;
+    assert.ok(group[0]!.radius! < group[group.length - 1]!.radius!, 'el radio deberia crecer bajando');
+    for (const row of group) {
+      assert.equal(row.valence, 1, `${row.symbol}: los alcalinos tienen 1 electron de valencia`);
+    }
+
+    // §32: lo que no hay, se dice.
+    assert.match(demo.gap, /ionizacion/i, 'el hueco declarado deberia nombrar lo que falta');
+  });
+
+  test('las figuras del 2.11 leen la ocupacion del motor, no la escriben', () => {
+    /*
+     * La escena del nitrogeno tiene que tener TRES nubes de un solo color
+     * (Hund: uno por orbital, espines paralelos) y la del neon seis mezcladas.
+     * Si alguien tocara el motor de llenado, estas figuras cambiarian con el
+     * — que es justo lo que se quiere, y lo que esta prueba vigila.
+     */
+    const colores = (setId: string, sceneId: string) => {
+      const scene = sceneSet(setId)!.scenes.find((s) => s.id === sceneId)!;
+      return new Set(scene.structure.atoms.map((a) => a.color));
+    };
+    // Nitrogeno segun Hund: los tres espines iguales → un solo color.
+    assert.equal(colores('llenado', 'hund-bien').size, 1);
+    // Neon: los tres orbitales llenos → los dos espines presentes.
+    assert.equal(colores('llenado', 'pauli').size, 2);
+    // Boro: un electron y dos orbitales vacios → color de espin + gris.
+    assert.equal(colores('llenado', 'vacio').size, 2);
+  });
+
+  test('el orden de los orbitales p es el que describe el pie de la figura', () => {
+    /*
+     * El pie dice «el de la izquierda apunta a los lados, el del medio hacia
+     * ti y el de la derecha arriba y abajo». Eso depende de en que orden
+     * devuelve el motor los tres orbitales y de como se reparten los ejes. Si
+     * cambiara el orden, el texto pasaria a ser falso sin que nadie lo notara
+     * mirando la figura — las tres nubes seguirian ahi.
+     */
+    const config = configureAtom('N')!;
+    const p = config.subshells.find((s) => s.n === 2 && s.subshell === 'p')!;
+    assert.deepEqual(
+      p.orbitals.map((o) => o.ml),
+      [-1, 0, 1],
+      'el orden de m_l cambio y el pie de la figura ya no describe lo que se ve',
+    );
+    assert.deepEqual(p.orbitals.map((o) => orbitalName(o)), ['2px', '2pz', '2py']);
   });
 });

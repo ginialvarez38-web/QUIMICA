@@ -15,7 +15,7 @@ No hay nada marcado como hecho que no lo este.
 | 1 | Concepto central: cadena de transformaciones | **Hecho** | `engine/graph.ts`. La cadena Ca → CaO → Ca(OH)₂ → CaCO₃ → CaCl₂ sale del grafo. |
 | 2 | Objetivo educativo: interpretar, no listar | **Hecho** | `teach/explain.ts` y las explicaciones de `data/reactions.ts`. |
 | 3 | Interfaz: biblioteca con buscador | **Hecho** | `data/search.ts`, 320 entradas. Las 14 categorias del brief estan. |
-| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. El mismo renderizador dibuja las **quince escenas didacticas** del temario (`teach/scenes.ts`). **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
+| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. El mismo renderizador dibuja las **veintiseis escenas didacticas** del temario (`teach/scenes.ts`). **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
 | 5 | Constructor de compuestos | **Parcial** | `core/build/ionicFormula.ts` genera la formula con su derivacion y la ficha completa. **Falta:** el arrastrar y soltar sobre el lienzo 3D. |
 | 6 | Binarios, ternarios y cuaternarios | **Hecho** | `core/formula/composition.ts`. Cuenta elementos, no atomos. Ver la nota sobre NH₄NO₃ en el README. |
 | 7 | Generador de formulas | **Hecho** | Seis pasos de derivacion, incluida la comprobacion `2(+3) + 3(−2) = 0`. |
@@ -162,7 +162,7 @@ motor no acompana.
 ## Teoria — Unidad 2
 
 `teach/atom.ts`, `ui/atom-view.ts` y la tabla de nucleidos `data/isotopes.ts`.
-Los quince apartados de estructura atomica (2.1 a 2.10.2).
+Los veintiun apartados de estructura atomica (2.1 a 2.11.1.4).
 
 La demostracion de mas peso es la ABUNDANCIA ISOTOPICA: la masa atomica se
 deduce ponderando las masas isotopicas por sus abundancias y se compara con el
@@ -192,7 +192,7 @@ sigue siendo el que se usa para ajustar una ecuacion.
 
 ## Las figuras 3D del temario (§4)
 
-`teach/scenes.ts` y `ui/figure-3d.ts`. Cuatro juegos, quince escenas, dibujadas
+`teach/scenes.ts` y `ui/figure-3d.ts`. Siete juegos, veintisiete escenas, dibujadas
 con el renderizador WebGL2 del visor — no hay ni una imagen.
 
 | Juego | Escenas | Apartado |
@@ -201,6 +201,9 @@ con el renderizador WebGL2 del visor — no hay ni una imagen.
 | Los modelos atomicos | Dalton · Thomson · Rutherford · Bohr · cuantico | 2.2.1.2 |
 | Como esta la materia | sustancia pura · mezcla homogenea · mezcla heterogenea | 1.5 |
 | Cambio fisico y quimico | hielo · agua · vapor · electrolisis | 1.7 |
+| La forma de un orbital | que es · n · l · m_l · d_xy · d_z² | 2.11.1 |
+| Pauli y Hund en el espacio | vacios · Hund mal · Hund bien · Pauli | 2.11.1.3 |
+| Para / diamagnetismo | oxigeno · neon | 2.11.1.4 |
 
 **Toda escena declara en que MIENTE el dibujo**, y el tipo lo exige: sin ese
 campo no compila. Es la misma regla de las analogias, porque un dibujo de un
@@ -211,15 +214,48 @@ Dos restricciones reales dan forma al modulo. Un navegador limita los contextos
 WebGL simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos
 en silencio, dejando lienzos negros; por eso el contexto se crea al entrar la
 figura en pantalla (`IntersectionObserver`) y se libera al salir del modo. Y se
-dibuja bajo demanda, no en bucle: son escenas estaticas, y quince bucles de
+dibuja bajo demanda, no en bucle: son escenas estaticas, y veintisiete bucles de
 animacion solo calentarian el portatil.
 
 Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.
 
-**Hueco declarado:** las escenas son ILUSTRACIONES, no simulaciones. Las
-posiciones de una mezcla o de una nube electronica salen de un generador
-pseudoaleatorio con semilla fija — reproducibles, pero no calculadas por
-ninguna fisica. Las moleculas reales del visor 3D si vienen de VSEPR.
+**Hueco declarado:** las cuatro primeras son ILUSTRACIONES, no simulaciones.
+Las posiciones de una mezcla salen de un generador pseudoaleatorio con semilla
+fija — reproducibles, pero no calculadas por ninguna fisica. Las moleculas
+reales del visor 3D si vienen de VSEPR, y las tres ultimas de la tabla, de la
+funcion de onda (abajo).
+
+## Estructura electronica — 2.11
+
+`teach/atom.ts` (apartados), `teach/orbitals.ts` (las funciones de onda) y
+`teach/scenes.ts` (las figuras). Seis apartados: 2.11, 2.11.1 y 2.11.1.1 a
+2.11.1.4.
+
+**Lo que aqui se demuestra en lugar de afirmarse.** Todo sale de
+`analysis/electronic.ts`, que ya existia:
+
+| Afirmacion | Como se comprueba |
+|---|---|
+| Principio de exclusion de Pauli | Se tabulan los cuatro numeros cuanticos de cada electron y se CUENTAN las combinaciones distintas. Que coincidan con el numero de electrones es Pauli. |
+| Capacidad de una capa = 2n² | No se aplica la formula: se suman los 2l+1 orbitales de cada subcapa y se multiplica por dos. El 2n² es el resultado. |
+| Regla de Hund | El recuento de desapareados del boro al neon sale 1, 2, 3, 2, 1, 0. Sube mientras hay orbitales vacios y baja al empezar a emparejar. |
+| Magnetismo | La columna «para/diamagnetico» se deduce de la de desapareados. El Fe³⁺ tiene CINCO frente a los cuatro del Fe²⁺: quitar un electron aumenta el magnetismo. |
+| Anomalias de Cr y Cu | Se senalan con su motivo en lugar de corregirse. |
+| Tendencias periodicas | Radio covalente y electronegatividad leidos de los 118 elementos, con barras proporcionales al dato. |
+
+**Los orbitales se resuelven, no se dibujan.** `orbitals.ts` escribe las seis
+funciones radiales hidrogenoides y los armonicos esfericos reales, y sortea
+puntos con probabilidad |ψ|². Las pruebas lo verifican contra valores exactos:
+normalizacion ∫|R|²r²dr = 1, nodos radiales n−l−1 con el del 2s en r = 2 a₀,
+nodos angulares con ψ = 0 exacto, y ⟨r⟩ = (3n²−l(l+1))/2 al 1 %. El muestreo
+factoriza R(r)·Y(θ,φ) —que es exacto, no una aproximacion— y por eso cuesta
+66 ms en vez de 722.
+
+**Hueco declarado:** no hay energias de ionizacion en la base de datos, asi que
+esa tendencia —la mas directa de todas— no se calcula. Se dice. Y las formulas
+de los orbitales son exactas solo para UN electron: en un atomo polielectronico
+se conserva la forma angular, que es lo que usa la quimica, pero los tamanos
+son orientativos.
 
 ## El guia
 

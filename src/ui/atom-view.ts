@@ -331,6 +331,226 @@ function renderDemo(demo: AtomDemo): string {
             </tbody>
           </table>
         </div>`;
+
+    /*
+     * Los cuatro numeros de CADA electron de un atomo real.
+     *
+     * La fila que importa es la ultima: cuantas combinaciones distintas hay
+     * frente a cuantos electrones. Que coincidan es el principio de exclusion
+     * comprobado, no enunciado — y si el motor se equivocara repartiendo,
+     * dejarian de coincidir.
+     */
+    case 'quantum-numbers': {
+      const ok = demo.distinct === demo.total;
+      return `
+        <div class="demo">
+          <div class="demo-title">Los ${demo.total} electrones del ${escapeHtml(demo.elementName)}, uno a uno</div>
+          <div class="demo-scroll">
+            <table class="demo-table quantum-table">
+              <thead><tr><th>Orbital</th><th>n</th><th>l</th><th>m<sub>l</sub></th><th>m<sub>s</sub></th></tr></thead>
+              <tbody>
+                ${demo.rows
+                  .map(
+                    (r) =>
+                      `<tr><th scope="row">${escapeHtml(r.orbital)}</th>
+                       <td>${r.n}</td><td>${r.l}</td><td>${r.ml > 0 ? '+' : ''}${r.ml}</td>
+                       <td class="q-spin">${escapeHtml(r.ms)}</td></tr>`,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+          <p class="demo-result">
+            ${demo.total} electrones · <strong>${demo.distinct}</strong> combinaciones distintas de
+            (n, l, m<sub>l</sub>, m<sub>s</sub>) ${ok ? '— ninguna se repite ✓' : '— ¡hay repeticiones!'}
+          </p>
+          <p class="demo-note">
+            Eso es el principio de exclusion de Pauli, comprobado en lugar de enunciado: no hay dos filas
+            iguales. Y observa que las parejas que comparten n, l y m<sub>l</sub> —los dos electrones de un
+            mismo orbital— se diferencian siempre en la ultima columna, porque no les queda otra.
+          </p>
+          <table class="demo-table">
+            <thead><tr><th>Capa</th><th>Subcapas</th><th>Orbitales</th><th>Electrones</th></tr></thead>
+            <tbody>
+              ${demo.shells
+                .map(
+                  (s) =>
+                    `<tr><th scope="row">n = ${s.n}</th>
+                     <td>${s.subshells.map(escapeHtml).join(' · ')}</td>
+                     <td>${s.orbitals} = ${s.n}²</td>
+                     <td><strong>${s.electrons}</strong> = 2·${s.n}²</td></tr>`,
+                )
+                .join('')}
+            </tbody>
+          </table>
+          <p class="demo-note">
+            Esta segunda tabla no aplica la formula 2n²: cuenta. Para cada n suma los 2l+1 orbitales de
+            cada subcapa y multiplica por los dos espines. Que el total salga 2n² es el RESULTADO.
+          </p>
+        </div>`;
+    }
+
+    case 'configuration':
+      return `
+        <div class="demo">
+          <div class="demo-title">Configuraciones repartidas por el motor de llenado</div>
+          <div class="demo-scroll">
+            <table class="demo-table">
+              <thead><tr><th>Elemento</th><th>Z</th><th>Completa</th><th>Abreviada</th><th>Valencia</th></tr></thead>
+              <tbody>
+                ${demo.rows
+                  .map(
+                    (r) => `
+                    <tr class="${r.note ? 'is-anomalous' : ''}">
+                      <th scope="row">${escapeHtml(r.name)} (${escapeHtml(r.symbol)})</th>
+                      <td>${r.Z}</td>
+                      <td class="config-cell">${escapeHtml(r.full)}</td>
+                      <td class="config-cell"><strong>${escapeHtml(r.condensed)}</strong></td>
+                      <td>${r.valenceElectrons}</td>
+                    </tr>
+                    ${
+                      r.note
+                        ? `<tr class="anomaly-note"><td colspan="5">
+                             <strong>${escapeHtml(r.symbol)} rompe la regla:</strong> ${escapeHtml(r.note)}
+                           </td></tr>`
+                        : ''
+                    }`,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+          <p class="demo-note">
+            Las filas marcadas son ANOMALIAS: elementos cuya configuracion real no es la que predice el
+            orden de llenado. No se han corregido para que la tabla quede bonita — estan senaladas, con su
+            motivo, porque una regla que falla y lo dice ensena mas que una regla que nunca falla.
+          </p>
+        </div>`;
+
+    /* Hund en accion: el diagrama de casillas lo escribe el motor. */
+    case 'filling':
+      return `
+        <div class="demo">
+          <div class="demo-title">El llenado del 2p, casilla a casilla</div>
+          <div class="demo-scroll">
+            <table class="demo-table filling-table">
+              <thead><tr><th>Elemento</th><th>Diagrama de casillas</th><th>Desapareados</th></tr></thead>
+              <tbody>
+                ${demo.rows
+                  .map(
+                    (r) => `
+                    <tr>
+                      <th scope="row">${escapeHtml(r.name)} (${escapeHtml(r.symbol)}, Z = ${r.Z})</th>
+                      <td><pre class="box-diagram">${r.diagram.map(escapeHtml).join('\n')}</pre></td>
+                      <td class="unpaired-count"><strong>${r.unpaired}</strong></td>
+                    </tr>
+                    ${
+                      r.anomaly
+                        ? `<tr class="anomaly-note"><td colspan="3">
+                             <strong>Anomalia:</strong> ${escapeHtml(r.anomaly)}
+                           </td></tr>`
+                        : ''
+                    }`,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+          <p class="demo-note">
+            Recorre la columna de la derecha del boro al neon: 1, 2, 3, 2, 1, 0. Sube mientras hay
+            orbitales vacios que ocupar —Hund reparte— y baja en cuanto no quedan y toca emparejar. Ese
+            pico en el nitrogeno, con sus tres orbitales a uno cada uno, es la regla de Hund dibujada.
+          </p>
+        </div>`;
+
+    case 'magnetism':
+      return `
+        <div class="demo">
+          <div class="demo-title">Desapareados contados por el motor, y lo que mide el iman</div>
+          <div class="demo-scroll">
+            <table class="demo-table">
+              <thead><tr><th>Especie</th><th>Configuracion</th><th>Desapareados</th><th>Comportamiento</th></tr></thead>
+              <tbody>
+                ${demo.rows
+                  .map(
+                    (r) =>
+                      `<tr><th scope="row">${escapeHtml(r.label)}</th>
+                       <td class="config-cell">${escapeHtml(r.condensed)}</td>
+                       <td class="unpaired-count"><strong>${r.unpaired}</strong></td>
+                       <td><span class="magnet-tag is-${r.behaviour}">${escapeHtml(r.behaviour)}</span></td></tr>`,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+          <p class="demo-note">
+            La ultima columna no se ha escrito a mano: sale de la anterior. Hay desapareados →
+            paramagnetico; no los hay → diamagnetico. Fijate en los dos iones del hierro: quitarle un
+            electron al Fe²⁺ AUMENTA los desapareados de 4 a 5, porque el que se marcha es justo el que
+            estaba emparejado.
+          </p>
+        </div>`;
+
+    /* Las tendencias, leidas de los datos reales de cada elemento. */
+    case 'periodic-trend':
+      return `
+        <div class="demo">
+          <div class="demo-title">Tendencias leidas de los datos, no afirmadas</div>
+          ${demo.series
+            .map(
+              (s) => `
+              <div class="trend-block">
+                <h5 class="trend-title">${escapeHtml(s.title)}</h5>
+                <div class="demo-scroll">
+                  <table class="demo-table">
+                    <thead><tr><th>Elemento</th><th>Valencia</th><th>Radio covalente</th><th>Electronegatividad</th></tr></thead>
+                    <tbody>
+                      ${s.rows
+                        .map((r) => {
+                          // La barra es proporcional al dato; el ancho sale del
+                          // valor, no de una escala elegida para que quede bien.
+                          const maxR = Math.max(...s.rows.map((x) => x.radius ?? 0));
+                          const maxE = Math.max(...s.rows.map((x) => x.electronegativity ?? 0));
+                          const wR = r.radius ? (100 * r.radius) / maxR : 0;
+                          const wE = r.electronegativity ? (100 * r.electronegativity) / maxE : 0;
+                          /*
+                           * La barra va dentro de una PISTA de ancho fijo.
+                           *
+                           * Antes iba suelta en la celda, con su ancho en tanto
+                           * por ciento: un porcentaje dentro de una celda de
+                           * tabla se mide contra el ancho del contenido, que
+                           * depende del texto, y ademas habia un `max-width`
+                           * que recortaba por igual a todo lo que pasara del
+                           * 60 %. Resultado: los siete radios del periodo 3
+                           * —de 166 a 102 pm— salian con la barra EXACTAMENTE
+                           * igual de larga. Una grafica que no varia con el
+                           * dato no es una grafica: es un adorno que miente.
+                           */
+                          return `<tr>
+                            <th scope="row">${escapeHtml(r.name)} (${escapeHtml(r.symbol)})</th>
+                            <td>${r.valence}</td>
+                            <td class="trend-cell">
+                              <span class="trend-track"><span class="trend-bar" style="width:${wR.toFixed(1)}%"></span></span>
+                              <span class="trend-value">${r.radius === null ? 'sin dato' : `${r.radius} pm`}</span>
+                            </td>
+                            <td class="trend-cell">
+                              <span class="trend-track"><span class="trend-bar is-en" style="width:${wE.toFixed(1)}%"></span></span>
+                              <span class="trend-value">${
+                                r.electronegativity === null ? 'sin dato' : num(r.electronegativity, 2)
+                              }</span>
+                            </td>
+                          </tr>`;
+                        })
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>
+                <p class="demo-note">${escapeHtml(s.reading)}</p>
+              </div>`,
+            )
+            .join('')}
+          <p class="demo-gap"><strong>Lo que aqui no se puede calcular:</strong> ${escapeHtml(demo.gap)}</p>
+        </div>`;
   }
 }
 

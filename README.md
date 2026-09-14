@@ -156,7 +156,7 @@ recuperado nada de memoria.
 
 ### Las figuras 3D del temario
 
-`scenes.ts` define **cuatro juegos con quince escenas**, que se dibujan con el
+`scenes.ts` define **siete juegos con veintisiete escenas**, que se dibujan con el
 mismo renderizador WebGL2 del visor de moleculas — no con imagenes:
 
 | Juego | Escenas | Donde |
@@ -165,6 +165,11 @@ mismo renderizador WebGL2 del visor de moleculas — no con imagenes:
 | **Los modelos atomicos** | Dalton, Thomson, Rutherford, Bohr, cuantico | 2.2.1.2 Modelos atomicos |
 | **Como esta la materia** | Sustancia pura, mezcla homogenea, mezcla heterogenea | 1.5 Sustancias puras |
 | **Cambio fisico y cambio quimico** | Hielo, agua, vapor, y la electrolisis | 1.7 Transformaciones quimicas |
+| **La forma de un orbital** | Que es · n · l · m_l · los cinco d | 2.11.1 Electrones del atomo |
+| **Pauli y Hund en el espacio** | Vacios, Hund mal, Hund bien, Pauli | 2.11.1.3 Las tres reglas |
+| **Para / diamagnetismo** | Oxigeno, neon | 2.11.1.4 Propiedades magneticas |
+
+Las tres ultimas no estan dibujadas: estan **calculadas**. Ver mas abajo.
 
 Los cinco modelos atomicos, uno por pestana, son el argumento entero de la
 unidad 2 en una sola figura: cada uno explica algo que el anterior no podia, y
@@ -181,10 +186,53 @@ simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos en
 silencio, dejando lienzos en negro; asi que el contexto **se crea cuando la
 figura entra en pantalla** (`IntersectionObserver`) y **se libera al abandonar
 el modo**. Y se dibuja **bajo demanda**, no en un bucle: las escenas son
-estaticas, y mantener quince bucles de animacion calentaria el portatil de un
+estaticas, y mantener veintisiete bucles de animacion calentaria el portatil de un
 estudiante para no ensenar nada nuevo.
 
 Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.
+
+### Los orbitales no se dibujan: se resuelven
+
+Las figuras del apartado 2.11 son de otra clase. Las demas colocan esferas
+donde hace falta para ilustrar una idea; estas sortean cada punto de la
+**funcion de onda hidrogenoide** —la solucion exacta de la ecuacion de
+Schrodinger— con probabilidad proporcional a |ψ|². Nadie ha dibujado dos
+lobulos en ningun sitio: los lobulos SALEN porque cos θ se anula en el plano
+ecuatorial.
+
+Y eso hay que comprobarlo, porque una nube mal calculada seguiria pareciendo un
+orbital. `tests/` verifica contra valores exactos conocidos:
+
+| Lo que se comprueba | Contra que |
+|---|---|
+| Normalizacion de las seis radiales | ∫\|R\|²r²dr = 1 |
+| Numero de nodos radiales | n − l − 1, y el del 2s cae en r = 2 a₀ exactos |
+| Nodos angulares | ψ = 0 **exacto** en el plano ecuatorial del p y en los dos planos del d_xy |
+| Tamano de la nube muestreada | ⟨r⟩ = (3n² − l(l+1))/2 a₀, al 1 % |
+| Que un p no sea una bola | ⟨z²⟩ > 2,5·⟨x²⟩ |
+| Que las dos fases sean mitad y mitad | y que cada una quede de su lado del plano nodal |
+| Que el recorte del 90 % encierre el 90 % | integrando la distribucion radial |
+
+El muestreo aprovecha que ψ = R(r)·Y(θ,φ) **factoriza**, asi que el radio y la
+direccion se sortean por separado. No es un atajo: esa separacion es la razon
+de que se pueda hablar del «tamano» y de la «forma» de un orbital como de dos
+cosas distintas, que es de lo que trata el apartado entero. La primera version
+lo hacia todo por rechazo en 3D, daba la misma nube y tardaba **722 ms**; asi
+tarda **66**.
+
+Dos recursos de dibujante, los dos declarados en el limite de su escena: el
+**recorte al radio del 90 %** —la misma convencion de los libros, con el radio
+calculado, no elegido— y el **corte en lamina** para ver los nodos, que son
+huecos interiores y a traves de una nube opaca no se ven.
+
+### La ocupacion la calcula el motor de llenado
+
+Las figuras de Pauli, Hund y magnetismo no llevan escrito «el nitrogeno tiene
+tres flechas arriba»: preguntan a `analysis/electronic.ts`, el mismo codigo que
+escribe la configuracion en la ficha de cualquier elemento. La densidad de
+puntos es proporcional al numero de electrones del orbital, que es lo que la
+densidad electronica hace de verdad. Si manana se corrigiera una anomalia del
+cromo, el dibujo cambiaria solo.
 
 El guia **no sabe quimica**. Ninguna de sus frases afirma nada que no venga de
 un motor, y cada pista muestra su procedencia. Cuando el motor no sabe algo, el

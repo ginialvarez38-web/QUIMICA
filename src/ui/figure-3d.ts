@@ -4,7 +4,7 @@
  * EL PROBLEMA QUE HAY QUE RESOLVER
  * Un navegador limita el numero de contextos WebGL simultaneos — del orden de
  * dieciseis — y al pasarse empieza a descartar los mas antiguos en silencio,
- * dejando lienzos en negro. Con cuatro figuras por unidad y dos unidades, se
+ * dejando lienzos en negro. La unidad 2 sola lleva cinco figuras, asi que se
  * puede estar cerca del limite sin darse cuenta.
  *
  * De ahi las dos decisiones de este modulo:
@@ -15,8 +15,8 @@
  *
  *   2. Se dibuja BAJO DEMANDA, no en un bucle continuo. Estas escenas son
  *      estaticas: solo hay que repintar al cambiar de vista o al mover la
- *      camara. Mantener quince bucles de animacion calentaria el portatil de
- *      un estudiante para no ensenar nada nuevo.
+ *      camara. Mantener un bucle por figura calentaria el portatil
+ *      de un estudiante para no ensenar nada nuevo.
  *
  * Y una tercera que no es tecnica: cada figura muestra SU LIMITE debajo, igual
  * que las analogias del temario. Un dibujo de un atomo es una analogia visual,

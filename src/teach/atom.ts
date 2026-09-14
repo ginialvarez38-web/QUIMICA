@@ -34,6 +34,12 @@ import {
 } from '../data/isotopes.js';
 import type { Isotope } from '../data/isotopes.js';
 import type { TheoryTopic } from './theory.js';
+import {
+  configureAtom,
+  orbitalDiagram,
+  orbitalName,
+  quantumNumbers,
+} from '../analysis/electronic.js';
 
 // ---------------------------------------------------------------------------
 // Demostraciones
@@ -121,12 +127,105 @@ export interface ModelsDemo {
   readonly models: readonly AtomicModel[];
 }
 
+/**
+ * LOS CUATRO NUMEROS CUANTICOS DE ELECTRONES CONCRETOS.
+ *
+ * No una tabla de «que significa cada letra» —eso es texto— sino los cuatro
+ * numeros de cada electron de un atomo de verdad, sacados del motor. Leida de
+ * arriba abajo se ve lo unico que hay que entender: no hay dos filas iguales.
+ * Eso ES el principio de exclusion de Pauli, y aqui se comprueba contandolo.
+ */
+export interface QuantumDemo {
+  readonly kind: 'quantum-numbers';
+  readonly symbol: string;
+  readonly elementName: string;
+  readonly rows: readonly {
+    readonly orbital: string;
+    readonly n: number;
+    readonly l: number;
+    readonly ml: number;
+    readonly ms: string;
+    readonly subshell: string;
+  }[];
+  /** Combinaciones distintas encontradas. Si coincide con el total, Pauli se cumple. */
+  readonly distinct: number;
+  readonly total: number;
+  /** Cuantos orbitales y electrones caben en cada capa, CONTANDOLOS. */
+  readonly shells: readonly {
+    readonly n: number;
+    readonly subshells: readonly string[];
+    readonly orbitals: number;
+    readonly electrons: number;
+  }[];
+}
+
+export interface ConfigDemo {
+  readonly kind: 'configuration';
+  readonly rows: readonly {
+    readonly symbol: string;
+    readonly name: string;
+    readonly Z: number;
+    readonly full: string;
+    readonly condensed: string;
+    readonly valenceElectrons: number;
+    readonly note: string | null;
+  }[];
+}
+
+export interface FillingDemo {
+  readonly kind: 'filling';
+  readonly rows: readonly {
+    readonly symbol: string;
+    readonly name: string;
+    readonly Z: number;
+    readonly diagram: readonly string[];
+    readonly unpaired: number;
+    readonly anomaly: string | null;
+  }[];
+}
+
+export interface MagnetismDemo {
+  readonly kind: 'magnetism';
+  readonly rows: readonly {
+    readonly label: string;
+    readonly symbol: string;
+    readonly charge: number;
+    readonly condensed: string;
+    readonly unpaired: number;
+    readonly behaviour: 'paramagnetico' | 'diamagnetico';
+  }[];
+}
+
+/** Una tendencia periodica medida sobre datos reales, no afirmada. */
+export interface TrendDemo {
+  readonly kind: 'periodic-trend';
+  readonly series: readonly {
+    readonly title: string;
+    readonly axis: string;
+    readonly rows: readonly {
+      readonly symbol: string;
+      readonly name: string;
+      readonly radius: number | null;
+      readonly electronegativity: number | null;
+      readonly valence: number;
+    }[];
+    readonly reading: string;
+  }[];
+  /** Lo que NO se puede calcular con los datos que hay (§32). */
+  readonly gap: string;
+}
+
 export type AtomDemo =
   | CompositionDemo
   | AbundanceDemo
   | NuclideGroupDemo
   | PeriodicStatsDemo
-  | ModelsDemo;
+  | ModelsDemo
+  | QuantumDemo
+  | ConfigDemo
+  | FillingDemo
+  | MagnetismDemo
+  | TrendDemo;
 
 /**
  * LOS MODELOS ATOMICOS, como cadena de experimentos.
@@ -433,6 +532,199 @@ export function periodicStatsDemo(): PeriodicStatsDemo {
 // ---------------------------------------------------------------------------
 // El temario
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Las demostraciones de la estructura electronica (2.11)
+// ---------------------------------------------------------------------------
+
+/**
+ * Los cuatro numeros cuanticos de TODOS los electrones de un atomo.
+ *
+ * El motor ya reparte los electrones por orbitales aplicando Aufbau, Hund y
+ * Pauli; aqui solo se le pregunta y se tabula. La comprobacion del final —
+ * cuantas combinaciones (n, l, m_l, m_s) distintas hay frente a cuantos
+ * electrones— es Pauli puesto a prueba: si el motor se equivocara y metiera
+ * dos electrones identicos, el numero de combinaciones distintas bajaria y la
+ * tabla lo diria.
+ */
+function quantumDemo(symbol: string): QuantumDemo | null {
+  const element = getElement(symbol);
+  const config = configureAtom(symbol);
+  if (!element || !config) return null;
+
+  const rows: QuantumDemo['rows'] = config.subshells.flatMap((shell) =>
+    shell.orbitals.flatMap((orbital) =>
+      orbital.spins.map((_spin, index) => {
+        const q = quantumNumbers(orbital, index);
+        return {
+          orbital: orbitalName(orbital),
+          n: q.n,
+          l: q.l,
+          ml: q.ml,
+          ms: q.ms,
+          subshell: `${shell.n}${shell.subshell}`,
+        };
+      }),
+    ),
+  );
+
+  const seen = new Set(rows.map((r) => `${r.n}|${r.l}|${r.ml}|${r.ms}`));
+
+  /*
+   * Cuantos electrones caben en la capa n.
+   *
+   * La regla que se ensena es 2n², y se podria escribir «2n²» y quedarse tan
+   * ancho. Aqui se CUENTA: para cada l de 0 a n−1 hay 2l+1 valores de m_l, y
+   * cada orbital admite 2 espines. Que la suma de 2n² es la consecuencia, no
+   * el punto de partida.
+   */
+  const NAMES = ['s', 'p', 'd', 'f', 'g'];
+  const shells = [1, 2, 3, 4].map((n) => {
+    let orbitals = 0;
+    const subshells: string[] = [];
+    for (let l = 0; l < n; l++) {
+      orbitals += 2 * l + 1;
+      subshells.push(`${n}${NAMES[l]}`);
+    }
+    return { n, subshells, orbitals, electrons: orbitals * 2 };
+  });
+
+  return {
+    kind: 'quantum-numbers',
+    symbol: element.symbol,
+    elementName: element.name,
+    rows,
+    distinct: seen.size,
+    total: rows.length,
+    shells,
+  };
+}
+
+function configDemo(symbols: readonly string[]): ConfigDemo {
+  const rows = symbols.flatMap((symbol) => {
+    const element = getElement(symbol);
+    const config = configureAtom(symbol);
+    if (!element || !config) return [];
+    return [
+      {
+        symbol: element.symbol,
+        name: element.name,
+        Z: element.Z,
+        full: config.full,
+        condensed: config.condensed,
+        valenceElectrons: config.valenceElectrons,
+        note: config.anomalyReason,
+      },
+    ];
+  });
+  return { kind: 'configuration', rows };
+}
+
+function fillingDemo(symbols: readonly string[]): FillingDemo {
+  const rows = symbols.flatMap((symbol) => {
+    const element = getElement(symbol);
+    const config = configureAtom(symbol);
+    if (!element || !config) return [];
+    return [
+      {
+        symbol: element.symbol,
+        name: element.name,
+        Z: element.Z,
+        diagram: orbitalDiagram(config),
+        unpaired: config.unpairedElectrons,
+        anomaly: config.anomalyReason,
+      },
+    ];
+  });
+  return { kind: 'filling', rows };
+}
+
+function magnetismDemo(): MagnetismDemo {
+  const cases: readonly { symbol: string; charge: number; label: string }[] = [
+    { symbol: 'He', charge: 0, label: 'Helio' },
+    { symbol: 'C', charge: 0, label: 'Carbono' },
+    { symbol: 'N', charge: 0, label: 'Nitrogeno' },
+    { symbol: 'O', charge: 0, label: 'Oxigeno' },
+    { symbol: 'Ne', charge: 0, label: 'Neon' },
+    { symbol: 'Fe', charge: 0, label: 'Hierro' },
+    { symbol: 'Fe', charge: 2, label: 'Ion hierro(II)' },
+    { symbol: 'Fe', charge: 3, label: 'Ion hierro(III)' },
+    { symbol: 'Zn', charge: 0, label: 'Cinc' },
+    { symbol: 'Cu', charge: 0, label: 'Cobre' },
+  ];
+
+  const rows = cases.flatMap(({ symbol, charge, label }) => {
+    const config = configureAtom(symbol, charge);
+    if (!config) return [];
+    return [
+      {
+        label,
+        symbol,
+        charge,
+        condensed: config.condensed,
+        unpaired: config.unpairedElectrons,
+        behaviour: config.magnetism,
+      },
+    ];
+  });
+  return { kind: 'magnetism', rows };
+}
+
+/**
+ * Las tendencias periodicas, LEIDAS de los datos.
+ *
+ * Se recorre un periodo y un grupo y se sacan el radio covalente y la
+ * electronegatividad que tiene cada elemento en la base. La frase «el radio
+ * disminuye a lo largo de un periodo» no se escribe: se ve en la columna.
+ *
+ * Y donde no hay datos, no hay tendencia (§32). No se guarda energia de
+ * ionizacion, asi que no se dibuja ninguna: se dice que falta.
+ */
+function trendDemo(): TrendDemo {
+  const row = (symbol: string) => {
+    const element = getElement(symbol);
+    const config = configureAtom(symbol);
+    if (!element) return null;
+    return {
+      symbol: element.symbol,
+      name: element.name,
+      radius: element.physical.covalentRadius.value,
+      electronegativity: element.electronegativity,
+      valence: config?.valenceElectrons ?? 0,
+    };
+  };
+
+  const build = (symbols: readonly string[]) =>
+    symbols.map(row).filter((r): r is NonNullable<typeof r> => r !== null);
+
+  return {
+    kind: 'periodic-trend',
+    series: [
+      {
+        title: 'A lo largo del periodo 3 (de izquierda a derecha)',
+        axis: 'periodo',
+        rows: build(['Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl']),
+        reading:
+          'La capa de valencia es la misma (n = 3) en los siete, pero el nucleo gana un proton en cada ' +
+          'paso y tira mas fuerte de ella. Por eso el atomo se ENCOGE hacia la derecha mientras la ' +
+          'electronegatividad sube.',
+      },
+      {
+        title: 'Bajando por el grupo 1 (los alcalinos)',
+        axis: 'grupo',
+        rows: build(['Li', 'Na', 'K', 'Rb', 'Cs']),
+        reading:
+          'Todos tienen UN electron de valencia, y sin embargo el atomo crece en cada fila: se estrena ' +
+          'una capa nueva, mas lejos del nucleo y apantallada por las de dentro. Ese electron cada vez ' +
+          'mas suelto es la razon de que el cesio reaccione mas violentamente que el litio.',
+      },
+    ],
+    gap:
+      'No hay energias de ionizacion en la base de datos, asi que esa tendencia —la mas directa de ' +
+      'todas, porque mide literalmente lo que cuesta arrancar el electron— no se puede calcular aqui. ' +
+      'Se dice en lugar de estimarla.',
+  };
+}
 
 export function unitAtomo(): TheoryTopic<AtomDemo> {
   const withIsotopes = elementsWithIsotopes();
@@ -882,6 +1174,395 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
               },
             ],
             connects: [{ label: '2.10 La tabla completa', topic: '2.10' }],
+          },
+        ],
+      },
+
+      // ---------------------------------------------------------------------
+      // 2.11 — donde la unidad se cierra sobre si misma
+      // ---------------------------------------------------------------------
+      {
+        id: '2.11',
+        title: 'Estructura electronica y propiedades periodicas',
+        body:
+          'Hasta aqui la tabla periodica era un hecho: los elementos se parecen por columnas y nadie ha ' +
+          'dicho por que. La respuesta esta en como se colocan los electrones. Un grupo entero comparte ' +
+          'propiedades porque comparte la CONFIGURACION de su ultima capa, y las tendencias que recorren ' +
+          'la tabla —el tamano, la electronegatividad, el caracter metalico— son consecuencias de esa ' +
+          'colocacion.',
+        keyIdea:
+          'La tabla periodica no ordena elementos: ordena CONFIGURACIONES ELECTRONICAS. Las dos ' +
+          'coordenadas, grupo y periodo, son el numero de electrones de valencia y el numero cuantico n. ' +
+          'Todo lo demas se sigue de ahi.',
+        pitfall:
+          'La periodicidad no la produce la masa. Mendeleiev ordeno por peso atomico y le funciono casi ' +
+          'siempre, pero tuvo que invertir parejas (el telurio pesa mas que el yodo y va antes) sin saber ' +
+          'por que. Lo que manda es Z, y por debajo de Z, la configuracion electronica.',
+        demo: trendDemo(),
+        check: [
+          {
+            question:
+              'El argon (Z = 18) y el potasio (Z = 19) se diferencian en un solo electron. ¿Por que uno ' +
+              'es un gas que no reacciona con nada y el otro un metal que arde en el agua?',
+            answer:
+              'Porque ese electron estrena una capa. El argon cierra la suya (3s² 3p⁶): para reaccionar ' +
+              'tendria que tocar una capa completa, y eso cuesta muchisima energia. El potasio pone su ' +
+              'electron n.º 19 en el 4s, solo, lejos del nucleo y apantallado por las 18 cargas de dentro; ' +
+              'soltarlo es facilisimo. Un electron de diferencia, pero en una capa distinta.',
+          },
+        ],
+        connects: [
+          { label: '2.10.2 Grupos y periodos', topic: '2.10.2' },
+          { label: '2.11.1.2 Configuracion electronica', topic: '2.11.1.2' },
+        ],
+        children: [
+          {
+            id: '2.11.1',
+            title: 'Electrones del atomo',
+            body:
+              'Los electrones no estan «dando vueltas». Ocupan ORBITALES: regiones del espacio donde la ' +
+              'probabilidad de encontrarlos es alta. Un orbital no es una trayectoria ni una caja: es una ' +
+              'funcion matematica —la solucion de la ecuacion de Schrodinger para ese atomo— y su forma ' +
+              'no la ha elegido nadie.',
+            figure: 'orbitales',
+            keyIdea:
+              'La pregunta «¿donde esta el electron?» no tiene respuesta. La que si la tiene es «¿que ' +
+              'probabilidad hay de encontrarlo aqui?», y esa probabilidad, dibujada, es el orbital.',
+            analogy: {
+              image:
+                'Como la foto de un ventilador en marcha: no se ve donde esta cada aspa, se ve una zona ' +
+                'borrosa mas oscura donde el aspa pasa mas rato.',
+              limit:
+                'La comparacion falla en lo esencial. El aspa SI esta en un sitio concreto en cada ' +
+                'instante y la borrosidad es culpa de la camara. El electron no tiene posicion definida ' +
+                'entre medidas: la indeterminacion no es del aparato, es del electron.',
+            },
+            pitfall:
+              'Los dos colores de las figuras NO son cargas ni dos clases de electron: son el SIGNO de ' +
+              'la funcion de onda, positivo o negativo, como la cresta y el valle de una onda. Importa ' +
+              'porque al juntarse dos atomos los lobulos del mismo signo se suman (enlace) y los de signo ' +
+              'contrario se cancelan.',
+            check: [
+              {
+                question: '¿Que significa que la nube del 1s «no termina» en ningun sitio?',
+                answer:
+                  'Que la probabilidad de encontrar el electron disminuye al alejarse pero nunca llega a ' +
+                  'cero exactamente. A un metro del nucleo es ridiculamente pequena, no nula. Por eso la ' +
+                  'esfera que se dibuja en los libros es un convenio: el contorno que encierra el 90 % de ' +
+                  'la probabilidad. Con otro porcentaje saldria otra esfera.',
+              },
+            ],
+            connects: [{ label: '2.2.1.2 De donde viene este modelo', topic: '2.2.1.2' }],
+            children: [
+              {
+                id: '2.11.1.1',
+                title: 'Numeros cuanticos',
+                body:
+                  'Para senalar un electron dentro de un atomo hacen falta cuatro numeros, y ni uno mas: ' +
+                  'n (nivel y tamano), l (forma), m_l (orientacion) y m_s (espin). No son etiquetas ' +
+                  'inventadas para clasificar: salen como constantes de la propia ecuacion, igual que al ' +
+                  'resolver la ecuacion de una cuerda vibrante salen los armonicos.',
+                keyIdea:
+                  'Los tres primeros numeros identifican un ORBITAL; el cuarto distingue a los dos ' +
+                  'electrones que caben dentro. Por eso no hacen falta cinco ni bastan tres.',
+                pitfall:
+                  'Las restricciones no son arbitrarias: l va de 0 a n−1 y m_l de −l a +l. De ahi que no ' +
+                  'exista un orbital 1p (con n = 1, l solo puede valer 0) ni un 2d. Cuando en un ejercicio ' +
+                  'sale una combinacion imposible, la respuesta no es «no se»: es «ese electron no puede ' +
+                  'existir», y se dice cual de las reglas rompe.',
+                analogy: {
+                  image:
+                    'Como una direccion postal: n es la ciudad, l el barrio, m_l la calle y m_s el ' +
+                    'numero del portal, que solo puede ser el 1 o el 2.',
+                  limit:
+                    'En una direccion postal los cuatro datos son independientes y cualquiera vale con ' +
+                    'cualquiera. Aqui no: l depende de n y m_l depende de l. Y, sobre todo, una direccion ' +
+                    'senala UN punto; los numeros cuanticos senalan una region de probabilidad.',
+                },
+                demo: quantumDemo('N'),
+                worked: {
+                  question:
+                    '¿Cuantos electrones caben en la capa n = 3, y por que exactamente esos?',
+                  steps: [
+                    {
+                      text: 'Con n = 3, el numero l puede valer 0, 1 y 2. Son tres subcapas: 3s, 3p y 3d.',
+                      math: 'l = 0, 1, 2',
+                    },
+                    {
+                      text: 'Cada l tiene 2l+1 orientaciones posibles, que son los valores de m_l.',
+                      math: 'l=0 → 1 orbital · l=1 → 3 · l=2 → 5',
+                    },
+                    { text: 'Se suman los orbitales de las tres subcapas.', math: '1 + 3 + 5 = 9 orbitales' },
+                    {
+                      text: 'En cada orbital caben dos electrones, y solo dos, porque m_s tiene dos valores.',
+                      math: '9 × 2 = 18 electrones',
+                    },
+                    {
+                      text: 'Y 18 es 2·3². La regla 2n² no es un dato suelto: es el resultado de esta suma.',
+                      math: '2n² = 2·3² = 18 ✓',
+                    },
+                  ],
+                  answer:
+                    'Dieciocho. Y lo importante no es el numero, sino que sale de contar orientaciones y ' +
+                    'espines: si m_s tuviera tres valores, la tabla periodica tendria otra forma.',
+                },
+                check: [
+                  {
+                    question:
+                      '¿Puede existir un electron con n = 2, l = 2, m_l = 0, m_s = +1/2? ¿Y con n = 3, ' +
+                      'l = 1, m_l = −2?',
+                    answer:
+                      'Ninguno de los dos. En el primero l = 2 con n = 2 es imposible: l llega como mucho ' +
+                      'hasta n−1 = 1. Seria un orbital «2d», que no existe. En el segundo, con l = 1 los ' +
+                      'valores de m_l son −1, 0 y +1: el −2 se sale del rango. Los dos fallan por la ' +
+                      'misma razon de fondo, que cada numero acota al siguiente.',
+                  },
+                  {
+                    question:
+                      'Si dos electrones estan en el mismo orbital 2p_z, ¿en que se diferencian?',
+                    answer:
+                      'Solo en el espin. Comparten n = 2, l = 1 y m_l = 0 —los tres numeros que definen ' +
+                      'el orbital— asi que el cuarto tiene que ser distinto: uno +1/2 y el otro −1/2. Si ' +
+                      'tambien coincidiera el espin serian el mismo electron, y eso es lo que prohibe ' +
+                      'Pauli. Ahi esta el tope de dos.',
+                  },
+                ],
+                connects: [
+                  { label: '2.11.1.3 El principio de Pauli', topic: '2.11.1.3' },
+                  { label: '2.10.2 Grupos y periodos', topic: '2.10.2' },
+                ],
+              },
+              {
+                id: '2.11.1.2',
+                title: 'Configuracion electronica',
+                body:
+                  'La configuracion electronica es la lista de que orbitales estan ocupados y con cuantos ' +
+                  'electrones: 1s² 2s² 2p⁴ para el oxigeno. Se escribe llenando por orden de energia ' +
+                  'creciente, y la forma abreviada sustituye el nucleo interno por el gas noble anterior ' +
+                  '—[He] 2s² 2p⁴— porque lo que hace quimica es la capa de fuera.',
+                keyIdea:
+                  'Sabiendo la configuracion de un elemento se sabe su grupo, su periodo, su valencia, sus ' +
+                  'estados de oxidacion probables y si es magnetico. Es el dato del que cuelga todo lo ' +
+                  'demas de la unidad.',
+                pitfall:
+                  'El orden en que se LLENAN los orbitales y el orden en que se ESCRIBEN no coinciden. El ' +
+                  '4s se llena antes que el 3d, pero la configuracion se escribe 3d antes que 4s porque se ' +
+                  'ordena por n. Y al ionizar se quitan primero los del 4s, no los ultimos que entraron: ' +
+                  'el Fe²⁺ es [Ar] 3d⁶, no [Ar] 3d⁴ 4s².',
+                demo: configDemo(['H', 'C', 'O', 'Na', 'S', 'Ca', 'Fe', 'Cr', 'Cu', 'Br']),
+                worked: {
+                  question: '¿Cual es la configuracion del azufre (Z = 16) y que dice de el?',
+                  steps: [
+                    {
+                      text: 'Se reparten los 16 electrones por orden de energia: 1s, 2s, 2p, 3s, 3p.',
+                      math: '2 + 2 + 6 + 2 + 4 = 16',
+                    },
+                    { text: 'Queda la configuracion completa.', math: '1s² 2s² 2p⁶ 3s² 3p⁴' },
+                    {
+                      text: 'Los diez primeros son exactamente el neon, asi que se abrevia.',
+                      math: '[Ne] 3s² 3p⁴',
+                    },
+                    {
+                      text: 'La ultima capa es la n = 3 y tiene 2 + 4 = 6 electrones.',
+                      math: 'periodo 3 · 6 electrones de valencia → grupo 16',
+                    },
+                    {
+                      text: 'Le faltan dos para completar el octeto, de ahi su estado de oxidacion mas comun.',
+                      math: 'S + 2e⁻ → S²⁻',
+                    },
+                  ],
+                  answer:
+                    '[Ne] 3s² 3p⁴. De una sola linea salen el periodo, el grupo, la valencia y el ion que ' +
+                    'forma. Por eso se empieza siempre por aqui.',
+                },
+                check: [
+                  {
+                    question:
+                      'El cromo deberia ser [Ar] 3d⁴ 4s² y es [Ar] 3d⁵ 4s¹. ¿Es un error de la regla o ' +
+                      'un error del cromo?',
+                    answer:
+                      'Ninguno de los dos: es que la regla es una aproximacion. El orden de llenado que se ' +
+                      'ensena vale casi siempre, pero las energias del 3d y el 4s son casi iguales, y ' +
+                      'cuando pasar un electron de 4s a 3d deja la subcapa d SEMILLENA —cinco orbitales ' +
+                      'con uno cada uno— el conjunto queda mas estable. La naturaleza no sigue la regla: ' +
+                      'la regla intenta describir a la naturaleza, y aqui se queda corta. El cobre hace lo ' +
+                      'mismo para dejar el 3d¹⁰ completo.',
+                  },
+                ],
+                connects: [
+                  { label: '2.11.1.3 Las tres reglas del llenado', topic: '2.11.1.3' },
+                  { label: '2.10.1 Clasificacion por bloques', topic: '2.10.1' },
+                ],
+              },
+              {
+                id: '2.11.1.3',
+                title: 'Principio de exclusion de Pauli · Regla de Hund · Principio de Aufbau',
+                body:
+                  'Tres reglas, y cada una contesta a una pregunta distinta. AUFBAU: ¿en que orden se ' +
+                  'ocupan los orbitales? De menor a mayor energia. PAULI: ¿cuantos electrones caben en ' +
+                  'uno? Dos, y con espines opuestos, porque no puede haber dos electrones con los cuatro ' +
+                  'numeros iguales. HUND: ¿y si hay varios orbitales con la misma energia? Primero uno en ' +
+                  'cada uno, todos con el mismo espin, y solo despues se emparejan.',
+                figure: 'llenado',
+                keyIdea:
+                  'Hund no es una manía de la naturaleza: dos electrones en el mismo orbital ocupan la ' +
+                  'misma region del espacio y se repelen. Repartirlos entre orbitales que apuntan a ' +
+                  'direcciones distintas los aleja, y eso cuesta menos energia. La figura lo ensena mejor ' +
+                  'que cualquier frase.',
+                pitfall:
+                  'Aufbau da el orden de ENERGIA, no el orden de los numeros. El 4s entra antes que el 3d ' +
+                  'porque tiene menos energia, aunque n sea mayor. La regla de Madelung (menor n+l primero, ' +
+                  'y a igualdad, menor n) lo resume, y aun asi falla en el cromo y en el cobre.',
+                analogy: {
+                  image:
+                    'Como sentarse en un autobus medio vacio: la gente ocupa primero los asientos dobles ' +
+                    'libres, uno por fila, y solo cuando no queda ninguno se sienta al lado de alguien.',
+                  limit:
+                    'El pasajero elige; el electron no. Y la razon de fondo no es solo la incomodidad de ' +
+                    'ir juntos: que los espines salgan PARALELOS se debe a un efecto cuantico, el ' +
+                    'intercambio, que no tiene ningun equivalente en el autobus.',
+                },
+                demo: fillingDemo(['B', 'C', 'N', 'O', 'F', 'Ne', 'Cr', 'Cu']),
+                worked: {
+                  question:
+                    'Reparte los cuatro electrones 2p del oxigeno entre sus tres orbitales, paso a paso.',
+                  steps: [
+                    {
+                      text: 'Hay tres orbitales 2p con la misma energia. Por Hund, primero uno en cada uno.',
+                      math: '2p [↑ ] [↑ ] [↑ ]  (tres electrones)',
+                    },
+                    {
+                      text: 'Los tres con el mismo espin: es lo que dice Hund, y ademas asi no violan Pauli, ' +
+                        'porque tienen m_l distinto.',
+                      math: 'm_l = −1, 0, +1 → los tres son distintos ✓',
+                    },
+                    {
+                      text: 'Queda un cuarto electron y ya no hay orbital vacio: toca emparejar.',
+                      math: '2p [↑↓] [↑ ] [↑ ]',
+                    },
+                    {
+                      text: 'El que se empareja entra con el espin CONTRARIO, porque comparte n, l y m_l ' +
+                        'con el que ya estaba.',
+                      math: 'm_s = +1/2 y −1/2 → Pauli se cumple ✓',
+                    },
+                  ],
+                  answer:
+                    'Dos electrones apareados y dos desapareados. Esos dos sueltos son exactamente lo que ' +
+                    'hace paramagnetico al oxigeno, y es el apartado siguiente.',
+                },
+                check: [
+                  {
+                    question:
+                      '¿Por que el carbono tiene 2 electrones desapareados y no 0, si sus dos electrones ' +
+                      '2p cabrian de sobra en un mismo orbital?',
+                    answer:
+                      'Porque caber no es lo mismo que convenir. Metidos en el mismo orbital ocuparian la ' +
+                      'misma zona del espacio y se repelerian; repartidos en dos orbitales perpendiculares ' +
+                      '—uno en el 2p_x y otro en el 2p_y— se estorban mucho menos, y ademas el estado con ' +
+                      'espines paralelos es mas estable por el termino de intercambio. Esos dos electrones ' +
+                      'desapareados son la razon de que el carbono forme cuatro enlaces.',
+                  },
+                  {
+                    question: '¿Que regla rompe la configuracion 2p [↑↓] [  ] [↑ ]?',
+                    answer:
+                      'La de Hund. Pauli se cumple —los dos del orbital lleno tienen espines opuestos— y ' +
+                      'Aufbau tambien, porque no se ha saltado ningun nivel. Lo que falla es el reparto: ' +
+                      'habiendo un orbital vacio de la misma energia, el segundo electron deberia haber ' +
+                      'ido alli en lugar de emparejarse. Esa configuracion existe, pero es un estado ' +
+                      'EXCITADO: tiene mas energia que el fundamental.',
+                  },
+                ],
+                connects: [
+                  { label: '2.11.1.1 Los cuatro numeros', topic: '2.11.1.1' },
+                  { label: '2.11.1.4 Lo que se puede medir con un iman', topic: '2.11.1.4' },
+                ],
+              },
+              {
+                id: '2.11.1.4',
+                title: 'Propiedades magneticas',
+                body:
+                  'Cada electron desapareado deja un momento magnetico sin compensar, y eso se puede ' +
+                  'MEDIR: basta con pesar una muestra dentro y fuera de un campo magnetico. Una sustancia ' +
+                  'con electrones desapareados es PARAMAGNETICA y el iman la atrae; una con todos ' +
+                  'apareados es DIAMAGNETICA y la repele muy debilmente.',
+                figure: 'magnetismo',
+                keyIdea:
+                  'Es la comprobacion experimental de todo el apartado. Las reglas de llenado predicen ' +
+                  'cuantos electrones quedan desapareados, y una balanza lo confirma. Si Hund fuera falsa, ' +
+                  'el oxigeno no se pegaria a los polos de un iman.',
+                pitfall:
+                  'Paramagnetico no es lo mismo que magnetico en el sentido de la nevera. Eso es ' +
+                  'FERROMAGNETISMO, y necesita ademas que los momentos de millones de atomos se alineen ' +
+                  'entre si y se queden alineados. Solo lo hacen unos pocos solidos —hierro, cobalto, ' +
+                  'niquel— y por encima de cierta temperatura dejan de hacerlo. El aluminio es ' +
+                  'paramagnetico y no se pega a nada.',
+                analogy: {
+                  image:
+                    'Como una sala llena de brujulas. Si estan emparejadas apuntando en sentidos ' +
+                    'opuestos, de lejos no se nota nada; si sobran algunas sueltas, la sala entera ' +
+                    'responde al acercar un iman.',
+                  limit:
+                    'Una brujula apunta a algun sitio siempre. El momento del electron no tiene una ' +
+                    'direccion definida hasta que se mide, y la cancelacion de dos espines opuestos no es ' +
+                    'geometrica sino cuantica.',
+                },
+                demo: magnetismDemo(),
+                worked: {
+                  question: '¿Es el ion Fe³⁺ mas o menos paramagnetico que el Fe²⁺?',
+                  steps: [
+                    {
+                      text: 'Se parte del hierro neutro y se quitan electrones, primero los del 4s.',
+                      math: 'Fe [Ar] 3d⁶ 4s² → Fe²⁺ [Ar] 3d⁶',
+                    },
+                    {
+                      text: 'Con seis electrones en cinco orbitales d, por Hund hay uno doble y cuatro simples.',
+                      math: 'Fe²⁺ 3d [↑↓][↑ ][↑ ][↑ ][↑ ] → 4 desapareados',
+                    },
+                    {
+                      text: 'El Fe³⁺ pierde uno mas, y el que se va es justo el que estaba emparejado.',
+                      math: 'Fe³⁺ [Ar] 3d⁵ → [↑ ][↑ ][↑ ][↑ ][↑ ]',
+                    },
+                    {
+                      text: 'Quedan cinco orbitales con un electron cada uno: el maximo posible en el bloque d.',
+                      math: 'Fe³⁺ → 5 desapareados',
+                    },
+                  ],
+                  answer:
+                    'Mas. El Fe³⁺ tiene CINCO desapareados frente a los cuatro del Fe²⁺: quitar un ' +
+                    'electron ha aumentado el magnetismo, que es justo lo contrario de lo que sugiere la ' +
+                    'intuicion. La subcapa semillena 3d⁵ es ademas especialmente estable, y por eso el ' +
+                    'hierro(III) es tan comun.',
+                },
+                check: [
+                  {
+                    question:
+                      'El cinc y el cobre son vecinos en la tabla. ¿Cual de los dos responde a un iman y ' +
+                      'por que?',
+                    answer:
+                      'El cobre, aunque muy poco. Su configuracion es [Ar] 3d¹⁰ 4s¹: el 3d esta completo y ' +
+                      'aparea todos sus electrones, pero queda ese 4s¹ solitario — un electron ' +
+                      'desapareado, luego paramagnetico. El cinc es [Ar] 3d¹⁰ 4s²: absolutamente todo ' +
+                      'apareado, cero desapareados, diamagnetico. Un electron de diferencia cambia la ' +
+                      'respuesta.',
+                  },
+                  {
+                    question:
+                      'Si el hierro metalico se pega a un iman, ¿por que no le pasa lo mismo a una ' +
+                      'disolucion de una sal de hierro(III), que tiene cinco electrones desapareados por ion?',
+                    answer:
+                      'Porque son dos fenomenos distintos. La disolucion SI es paramagnetica y una balanza ' +
+                      'lo detecta, pero el efecto es debilisimo: cada ion responde por su cuenta y la ' +
+                      'agitacion termica los desordena. En el hierro solido los momentos se alinean unos ' +
+                      'con otros y actuan en bloque — eso es el ferromagnetismo, y es una propiedad del ' +
+                      'SOLIDO, no del atomo suelto.',
+                  },
+                ],
+                connects: [
+                  { label: '2.11.1.3 De donde salen los desapareados', topic: '2.11.1.3' },
+                  { label: '2.11 Las propiedades periodicas', topic: '2.11' },
+                ],
+              },
+            ],
           },
         ],
       },

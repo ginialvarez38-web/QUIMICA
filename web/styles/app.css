@@ -3406,6 +3406,122 @@ button { cursor: pointer; border: none; background: none; }
 .methods-table td { font-family: var(--sans); }
 .method-example { color: var(--text-muted); min-width: 210px; }
 
+/* --- 2.11 Estructura electronica ---------------------------------------- */
+
+/* La tabla de numeros cuanticos es larga (un atomo con 7 electrones son 7
+   filas) y lo unico que hay que ver es que NINGUNA se repite. Se compacta
+   para que quepa entera sin desplazarse: el argumento es visual. */
+.quantum-table th,
+.quantum-table td { padding: 4px 10px; font-size: 12px; }
+.q-spin { white-space: nowrap; }
+
+/* Las anomalias del llenado (Cr, Cu...) se senalan en lugar de corregirse:
+   una regla que falla y lo dice ensena mas que una que nunca falla. */
+.demo-table tr.is-anomalous > * { border-bottom-color: transparent; }
+.demo-table tr.is-anomalous th,
+.demo-table tr.is-anomalous td { background: color-mix(in srgb, var(--hazard-special) 9%, transparent); }
+.anomaly-note td {
+  font-family: var(--sans) !important;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--hazard-special) 9%, transparent);
+  padding-top: 0;
+}
+.anomaly-note strong { color: var(--text); }
+
+.config-cell { white-space: nowrap; }
+
+/* El diagrama de casillas ya viene formateado del motor con espacios
+   significativos: hace falta una fuente de ancho fijo y respetar el texto tal
+   cual, o [↑ ] y [↑↓] dejarian de alinearse. */
+.box-diagram {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.75;
+  white-space: pre;
+  color: var(--text);
+}
+.filling-table td { vertical-align: middle; }
+.unpaired-count { text-align: center; }
+.unpaired-count strong { font-size: 16px; }
+
+.magnet-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.magnet-tag.is-paramagnetico {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.magnet-tag.is-diamagnetico {
+  color: var(--text-muted);
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+/* Las tendencias periodicas se leen mejor como barras que como numeros: lo
+   que se quiere ver es la PENDIENTE, y una columna de cifras no la ensena.
+   El ancho sale del dato dividido por el mayor de la serie — no hay ninguna
+   escala elegida a ojo para que la figura quede convincente. */
+.trend-block + .trend-block { margin-top: 18px; }
+.trend-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.trend-cell {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* La PISTA da el ancho de referencia. Sin ella, el tanto por ciento de la
+   barra se medía contra el contenido de la celda —que depende del texto— y
+   ademas un `max-width` recortaba por igual todo lo que pasara del 60 %: los
+   siete radios del periodo 3 salian con la barra identica. */
+.trend-track {
+  display: inline-block;
+  flex: 0 0 76px;
+  width: 76px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.trend-bar {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.trend-bar.is-en { background: color-mix(in srgb, var(--violet) 60%, transparent); }
+.trend-value { margin-left: 8px; font-size: 11.5px; color: var(--text-muted); }
+
+/* El hueco declarado (§32). Se marca distinto de una nota para que no se lea
+   como un comentario mas: es una cosa que la aplicacion NO sabe hacer. */
+.demo-gap {
+  margin: 14px 0 0;
+  padding: 9px 12px;
+  border-left: 3px solid var(--text-faint);
+  border-radius: 0 6px 6px 0;
+  background: var(--surface-2);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+.demo-gap strong { color: var(--text); }
+
 @media (max-width: 900px) {
   /* El indice pasa a ser una tira que se desplaza en horizontal por encima
      del texto: en vertical se comeria media pantalla. */
