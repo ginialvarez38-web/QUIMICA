@@ -519,13 +519,17 @@ export class MoleculeRenderer {
 
     structure.atoms.forEach((atom, i) => {
       const element = getElement(atom.symbol);
-      const color = hexToRgb(element?.cpkColor ?? '#B0B7C3');
+      // El radio y el color impuestos mandan sobre los del elemento: los usan
+      // las escenas didacticas, donde una esfera puede ser un nucleo o una
+      // particula generica y no el atomo de ningun elemento.
+      const color = hexToRgb(atom.color ?? element?.cpkColor ?? '#B0B7C3');
       const base =
-        representation === 'space-filling'
+        atom.radius ??
+        (representation === 'space-filling'
           ? atomRadius(atom.symbol, 'vdw')
           : representation === 'wireframe'
             ? atomRadius(atom.symbol, 'covalent') * 0.16
-            : atomRadius(atom.symbol, 'covalent') * 0.42;
+            : atomRadius(atom.symbol, 'covalent') * 0.42);
 
       centers[i * 3] = atom.position.x;
       centers[i * 3 + 1] = atom.position.y;

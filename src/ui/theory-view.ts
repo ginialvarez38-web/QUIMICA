@@ -15,6 +15,7 @@
 import type { TheoryTopic, TheoryDemo, Analogy, WorkedExample, SelfCheck } from '../teach/theory.js';
 import { SEPARATION_METHODS, AVOGADRO } from '../teach/theory.js';
 import { escapeHtml } from './dom.js';
+import { renderFigure } from './figure-3d.js';
 
 const num = (value: number, digits = 3): string =>
   value.toLocaleString('es-ES', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -316,6 +317,7 @@ function renderTopic<D>(topic: TheoryTopic<D>, depth: number, demoRenderer: (d: 
           ? `<div class="topic-pitfall"><span class="topic-key-label">Ojo</span>${escapeHtml(topic.pitfall)}</div>`
           : ''
       }
+      ${topic.figure ? renderFigure(topic.figure) : ''}
       ${topic.analogy ? renderAnalogy(topic.analogy) : ''}
       ${topic.demo ? demoRenderer(topic.demo) : ''}
       ${topic.id === '1.6.3' ? renderSeparationMethods() : ''}

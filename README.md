@@ -107,9 +107,9 @@ cada una por lo que se sabe de ella, no por si la aritmetica cuadra:
 ### `src/teach` — modo profesor, el guia y el temario
 
 `explain.ts` desarrolla una reaccion como una leccion. `theory.ts` es la
-unidad 1 (la materia) y `atom.ts` la unidad 2 (estructura atomica). `guide.ts`
-es el cerebro del avatar: mira en que punto esta el usuario y decide que
-decirle.
+unidad 1 (la materia) y `atom.ts` la unidad 2 (estructura atomica).
+`scenes.ts` son las figuras 3D que ilustran ambas. `guide.ts` es el cerebro del
+avatar: mira en que punto esta el usuario y decide que decirle.
 
 **El temario no se escribe: se calcula.** Donde una ley admite demostracion,
 se demuestra con los mismos motores que usa el resto de la aplicacion:
@@ -141,6 +141,7 @@ vigilan:
 | **Ejercicio resuelto** | Al menos tres pasos, y alguno ensena la operacion, no solo la describe. |
 | **Comprueba que lo has entendido** | La respuesta llega tapada, y tiene que razonar — una de dos palabras no pasa la prueba. |
 | **Se conecta con** | Los enlaces apuntan a apartados que existen. |
+| **Figura 3D** | Cada escena declara **en que miente el dibujo**. Sin ese campo, no compila. |
 
 La regla de las analogias es la que mas importa. Son la herramienta mas
 potente y mas peligrosa de la ensenanza: explican rapido y dejan una idea
@@ -152,6 +153,38 @@ orbitas, que es justo lo que la mecanica cuantica niega. Por eso el tipo
 Y las respuestas de autocomprobacion llegan ocultas por un motivo: leer la
 pregunta y la respuesta a la vez da sensacion de haber entendido sin haber
 recuperado nada de memoria.
+
+### Las figuras 3D del temario
+
+`scenes.ts` define **cuatro juegos con quince escenas**, que se dibujan con el
+mismo renderizador WebGL2 del visor de moleculas — no con imagenes:
+
+| Juego | Escenas | Donde |
+|---|---|---|
+| **La escala del atomo** | El nucleo, el atomo entero, lo que hay en medio | 2.1 Composicion del atomo |
+| **Los modelos atomicos** | Dalton, Thomson, Rutherford, Bohr, cuantico | 2.2.1.2 Modelos atomicos |
+| **Como esta la materia** | Sustancia pura, mezcla homogenea, mezcla heterogenea | 1.5 Sustancias puras |
+| **Cambio fisico y cambio quimico** | Hielo, agua, vapor, y la electrolisis | 1.7 Transformaciones quimicas |
+
+Los cinco modelos atomicos, uno por pestana, son el argumento entero de la
+unidad 2 en una sola figura: cada uno explica algo que el anterior no podia, y
+cada uno se rompe contra un experimento que el siguiente resuelve.
+
+**Toda escena declara su limite**, igual que las analogias y por la misma
+razon: un dibujo de un atomo *es* una analogia visual. Debajo de cada figura
+aparece en naranja *«El dibujo miente en esto: …»*. El modelo de Bohr con sus
+orbitas es probablemente la imagen que mas ideas falsas ha dejado en la
+quimica, y aqui se dibuja **con** la advertencia de que las orbitas no existen.
+
+Dos decisiones tecnicas las sostienen. Un navegador limita los contextos WebGL
+simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos en
+silencio, dejando lienzos en negro; asi que el contexto **se crea cuando la
+figura entra en pantalla** (`IntersectionObserver`) y **se libera al abandonar
+el modo**. Y se dibuja **bajo demanda**, no en un bucle: las escenas son
+estaticas, y mantener quince bucles de animacion calentaria el portatil de un
+estudiante para no ensenar nada nuevo.
+
+Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.
 
 El guia **no sabe quimica**. Ninguna de sus frases afirma nada que no venga de
 un motor, y cada pista muestra su procedencia. Cuando el motor no sabe algo, el

@@ -406,9 +406,46 @@ export function guide(ctx: GuideContext): GuideMessage {
         hints: [
           { text: 'Usa el indice de la izquierda para saltar a un apartado.', from: 'Temario' },
           {
+            text: 'Las figuras 3D se giran con el dedo o el raton, y cada pestana cambia de escena.',
+            from: 'Figuras del temario',
+          },
+          {
+            text: 'Debajo de cada figura, el recuadro naranja dice en que MIENTE el dibujo. Leelo: un dibujo de quimica siempre simplifica.',
+            from: 'Figuras del temario',
+          },
+          {
             text: 'El apartado 1.6 dice abiertamente lo que este sandbox NO tiene: modelo de mezclas.',
             from: 'Temario',
           },
+        ],
+        question: null,
+      };
+
+    /*
+     * La unidad 2 tenia que caer aqui y no caia: sin este caso la pestana
+     * Atomo llegaba al `default`, y el avatar se abria para ensenar un panel
+     * VACIO. Un ayudante que se abre y no dice nada ensena a no volver a
+     * pulsarlo — el mismo dano que hacian las pestanas muertas del inspector.
+     */
+    case 'atomo':
+      return {
+        mood: 'idle',
+        headline: 'La unidad 2, con los nucleidos reales',
+        body:
+          'Los isotopos, isobaros e isotonos de esta unidad no son ejemplos inventados: salen de la tabla ' +
+          'de nucleidos (AME2020 / IUPAC 2021). La abundancia isotopica se promedia delante de ti y se ' +
+          'compara con el peso atomico oficial.',
+        hints: [
+          { text: 'Empieza por 2.1: la figura de escala explica por que un atomo es sobre todo vacio.', from: 'Temario' },
+          {
+            text: 'En 2.2.1.2 los cinco modelos atomicos estan en 3D, uno por pestana. Girar la figura con el dedo o el raton ensena que la nube no es plana.',
+            from: 'Figuras del temario',
+          },
+          {
+            text: 'El modelo de Bohr con sus orbitas es la imagen que mas ideas falsas ha dejado en quimica. Lee su recuadro naranja.',
+            from: 'Figuras del temario',
+          },
+          { text: 'Pulsa una casilla de la tabla periodica para ver su grupo, periodo y bloque.', from: 'Tabla periodica' },
         ],
         question: null,
       };

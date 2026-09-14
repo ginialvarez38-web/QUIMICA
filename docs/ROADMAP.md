@@ -15,7 +15,7 @@ No hay nada marcado como hecho que no lo este.
 | 1 | Concepto central: cadena de transformaciones | **Hecho** | `engine/graph.ts`. La cadena Ca → CaO → Ca(OH)₂ → CaCO₃ → CaCl₂ sale del grafo. |
 | 2 | Objetivo educativo: interpretar, no listar | **Hecho** | `teach/explain.ts` y las explicaciones de `data/reactions.ts`. |
 | 3 | Interfaz: biblioteca con buscador | **Hecho** | `data/search.ts`, 320 entradas. Las 14 categorias del brief estan. |
-| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
+| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. El mismo renderizador dibuja las **quince escenas didacticas** del temario (`teach/scenes.ts`). **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
 | 5 | Constructor de compuestos | **Parcial** | `core/build/ionicFormula.ts` genera la formula con su derivacion y la ficha completa. **Falta:** el arrastrar y soltar sobre el lienzo 3D. |
 | 6 | Binarios, ternarios y cuaternarios | **Hecho** | `core/formula/composition.ts`. Cuenta elementos, no atomos. Ver la nota sobre NH₄NO₃ en el README. |
 | 7 | Generador de formulas | **Hecho** | Seis pasos de derivacion, incluida la comprobacion `2(+3) + 3(−2) = 0`. |
@@ -189,6 +189,37 @@ Dalton no explica la electricidad → Thomson no sobrevive a la lamina de oro �
 Rutherford es inestable segun su propia fisica → Bohr solo vale para el
 hidrogeno → modelo cuantico. Y de todos sobrevive algo: el de Dalton, de 1803,
 sigue siendo el que se usa para ajustar una ecuacion.
+
+## Las figuras 3D del temario (§4)
+
+`teach/scenes.ts` y `ui/figure-3d.ts`. Cuatro juegos, quince escenas, dibujadas
+con el renderizador WebGL2 del visor — no hay ni una imagen.
+
+| Juego | Escenas | Apartado |
+|---|---|---|
+| La escala del atomo | nucleo · atomo entero · el vacio de en medio | 2.1 |
+| Los modelos atomicos | Dalton · Thomson · Rutherford · Bohr · cuantico | 2.2.1.2 |
+| Como esta la materia | sustancia pura · mezcla homogenea · mezcla heterogenea | 1.5 |
+| Cambio fisico y quimico | hielo · agua · vapor · electrolisis | 1.7 |
+
+**Toda escena declara en que MIENTE el dibujo**, y el tipo lo exige: sin ese
+campo no compila. Es la misma regla de las analogias, porque un dibujo de un
+atomo *es* una analogia visual. El modelo de Bohr se dibuja con la advertencia
+de que sus orbitas no existen.
+
+Dos restricciones reales dan forma al modulo. Un navegador limita los contextos
+WebGL simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos
+en silencio, dejando lienzos negros; por eso el contexto se crea al entrar la
+figura en pantalla (`IntersectionObserver`) y se libera al salir del modo. Y se
+dibuja bajo demanda, no en bucle: son escenas estaticas, y quince bucles de
+animacion solo calentarian el portatil.
+
+Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.
+
+**Hueco declarado:** las escenas son ILUSTRACIONES, no simulaciones. Las
+posiciones de una mezcla o de una nube electronica salen de un generador
+pseudoaleatorio con semilla fija — reproducibles, pero no calculadas por
+ninguna fisica. Las moleculas reales del visor 3D si vienen de VSEPR.
 
 ## El guia
 

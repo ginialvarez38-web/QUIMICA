@@ -451,6 +451,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
           'Un atomo tiene un NUCLEO diminuto con protones (carga +1) y neutrones (sin carga), y una ' +
           'CORTEZA donde estan los electrones (carga −1). El nucleo concentra casi toda la masa; la ' +
           'corteza, casi todo el volumen.',
+        figure: 'escala',
         keyIdea:
           'Un atomo es, sobre todo, ESPACIO VACIO. El nucleo ocupa una billonesima parte del volumen y ' +
           'concentra el 99,97 % de la masa.',
@@ -547,6 +548,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
                   'Un modelo no se abandona por ser «falso»: se abandona cuando aparece un experimento ' +
                   'que no puede explicar. Y el modelo viejo sigue sirviendo dentro de sus limites — el ' +
                   'de Dalton, de 1803, es el que usas para ajustar una ecuacion.',
+                figure: 'modelos',
                 demo: modelsDemo(),
                 check: [
                   {

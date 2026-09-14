@@ -32,6 +32,7 @@ import { unitMateria } from '../teach/theory.js';
 import { renderTheory } from './theory-view.js';
 import { unitAtomo } from '../teach/atom.js';
 import { renderAtomUnit } from './atom-view.js';
+import { FigureManager } from './figure-3d.js';
 
 type Mode = 'build' | 'react' | 'tabla' | 'teoria' | 'atomo' | 'routes' | 'lab';
 type Tab = 'ficha' | 'estructura' | 'analisis' | 'balance' | 'profesor';
@@ -835,6 +836,9 @@ function setMode(mode: Mode): void {
   $('#combos').hidden = mode !== 'tabla';
   $('#theory-panel').hidden = mode !== 'teoria';
   $('#atom-panel').hidden = mode !== 'atomo';
+  if (!READING_MODES.has(mode)) {
+    for (const manager of figureManagers.values()) manager.dispose();
+  }
   $('#viewport').hidden = mode === 'tabla' || READING_MODES.has(mode);
 
   /*
@@ -881,10 +885,12 @@ function setMode(mode: Mode): void {
       // El temario se construye una vez: las demostraciones se calculan al
       // vuelo y no cambian mientras no cambien los datos.
       if (!$('#theory-panel').innerHTML) $('#theory-panel').innerHTML = renderTheory(unitMateria());
+      activateFigures('#theory-panel');
       break;
 
     case 'atomo':
       if (!$('#atom-panel').innerHTML) $('#atom-panel').innerHTML = renderAtomUnit(unitAtomo());
+      activateFigures('#atom-panel');
       break;
 
     case 'routes':
@@ -912,6 +918,30 @@ function setMode(mode: Mode): void {
  * entonces recorrer un mapa ya calculado, que es instantaneo; recalcular en
  * cada tecla costaria 150 ms y el filtro se sentiria pegajoso.
  */
+/*
+ * Las figuras 3D del temario.
+ *
+ * Cada panel tiene su gestor, y solo el del modo VISIBLE esta vigilando. El
+ * motivo es el limite de contextos WebGL del navegador: son unos dieciseis, y
+ * pasarse deja lienzos en negro sin avisar. Al salir de una unidad se sueltan
+ * sus contextos, de modo que nunca hay mas de los que se estan mirando.
+ */
+const figureManagers = new Map<string, FigureManager>();
+
+function activateFigures(panelSelector: string): void {
+  for (const [selector, manager] of figureManagers) {
+    if (selector !== panelSelector) manager.dispose();
+  }
+
+  let manager = figureManagers.get(panelSelector);
+  if (!manager) {
+    manager = new FigureManager($(panelSelector), CANVAS_BACKGROUND[resolveTheme()]);
+    figureManagers.set(panelSelector, manager);
+  }
+  manager.setBackground(CANVAS_BACKGROUND[resolveTheme()]);
+  manager.start();
+}
+
 function renderCombosView(): void {
   if (!state.combos) state.combos = buildCombinationTable();
   $('#combos-body').innerHTML = renderCombos(state.combos, state.combosFilters, state.combosSelected);
@@ -1388,6 +1418,13 @@ function wireEvents(): void {
     if (mode) setMode(mode as Mode);
   });
 
+  // Cambiar de vista dentro de una figura 3D.
+  delegate(panel, 'click', '[data-scene]', (_e, target) => {
+    const figure = target.closest<HTMLElement>('.figure3d');
+    const manager = figureManagers.get(panel === $('#theory-panel') ? '#theory-panel' : '#atom-panel');
+    if (figure && manager) manager.select(figure, target.dataset['scene']!);
+  });
+
   // Las celdas de la tabla periodica abren el elemento.
   delegate(panel, 'click', '[data-element]', (_e, target) => {
     setMode('react');
@@ -1494,6 +1531,8 @@ function wireEvents(): void {
       // persistira entre sesiones. No es motivo para romper nada.
     }
     renderer?.setOptions({ background: CANVAS_BACKGROUND[next] });
+    // Las figuras del temario tambien siguen al tema.
+    for (const manager of figureManagers.values()) manager.setBackground(CANVAS_BACKGROUND[next]);
   });
 
   // --- Panel movil -------------------------------------------------------

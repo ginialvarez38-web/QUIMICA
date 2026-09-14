@@ -3060,6 +3060,32 @@ button { cursor: pointer; border: none; background: none; }
     left: 10px;
     bottom: calc(58px + env(safe-area-inset-bottom, 0px) + 10px);
   }
+
+  /* En los modos de LECTURA el avatar flota sobre el texto y no hay donde
+     apartarlo: en movil la columna ocupa el ancho entero, asi que a izquierda
+     o a derecha siempre cae encima de algo. Lo que se veia tapado en el iPhone
+     SE era justamente el recuadro «El dibujo miente en esto» de una figura —
+     la linea que mas empeno he puesto en que nadie se salte.
+
+     Como apartarlo no es posible, se vuelve TRANSLUCIDO mientras esta plegado
+     y no tiene nada urgente que decir: el texto se lee a traves de el. Al
+     tocarlo, al enfocarlo con el teclado, al abrirse o cuando avisa de algo
+     (`warning` / `asking`) recupera la opacidad entera, porque entonces la
+     pieza importante es el.
+
+     No se usa `display: none`: el guia de estas dos pestanas SI tiene cosas
+     que decir — como girar las figuras y que el recuadro naranja existe — y
+     esconderlo seria cambiar un estorbo por una perdida. */
+  .guide[data-anchor='right'][data-open='false'][data-mood='idle'] .guide-avatar {
+    opacity: 0.45;
+    transition: opacity 140ms ease;
+  }
+  .guide[data-anchor='right'][data-open='false'][data-mood='idle'] .guide-avatar:hover,
+  .guide[data-anchor='right'][data-open='false'][data-mood='idle'] .guide-avatar:focus-visible,
+  .guide[data-anchor='right'][data-open='false'][data-mood='idle'] .guide-avatar:active {
+    opacity: 1;
+  }
+
   .guide-avatar { width: 50px; height: 50px; }
   .guide-avatar-svg { width: 38px; height: 41px; }
   .guide-panel { max-height: 54vh; }
@@ -3824,4 +3850,177 @@ button { cursor: pointer; border: none; background: none; }
   white-space: pre-wrap;
   overflow-x: visible;
   line-height: 1.7;
+}
+
+/* ==========================================================================
+   FIGURAS 3D DEL TEMARIO
+   ==========================================================================
+
+   El lienzo nace vacio y el contexto WebGL llega cuando la figura entra en
+   pantalla: un navegador solo admite del orden de dieciseis contextos, y
+   pasarse deja lienzos en negro sin avisar.
+   ========================================================================== */
+
+.figure3d {
+  margin: 14px 0 0;
+  padding: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.figure3d-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px 10px;
+}
+
+.figure3d-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.figure3d-title::before { content: '◈ '; color: var(--accent); }
+
+.figure3d-intro {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* --- Selector de vista --------------------------------------------------- */
+
+.figure3d-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 14px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.figure3d-tabs::-webkit-scrollbar { display: none; }
+
+.figure3d-tab {
+  flex-shrink: 0;
+  padding: 5px 11px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.figure3d-tab:hover { color: var(--text); }
+
+.figure3d-tab[aria-selected='true'] {
+  color: var(--on-accent, #fff);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* --- El lienzo ----------------------------------------------------------- */
+
+.figure3d-stage {
+  position: relative;
+  /* Alto fijo: la figura no debe reflotar el texto al aparecer. */
+  height: 300px;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  /* El gesto de girar es del lienzo, no de la pagina. */
+  touch-action: none;
+}
+
+.figure3d-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.figure3d-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+/* Cuando el contexto ya existe, el aviso sobra. */
+.figure3d.is-ready .figure3d-placeholder { display: none; }
+.figure3d.is-unavailable .figure3d-stage { height: auto; padding: 24px 16px; }
+.figure3d.is-unavailable .figure3d-canvas,
+.figure3d.is-unavailable .figure3d-hint { display: none; }
+.figure3d-placeholder.is-error { position: static; color: var(--text-muted); }
+
+.figure3d-hint {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  font-size: 10px;
+  color: var(--text-faint);
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* El aviso nombra el mando que el aparato tiene de verdad: rueda donde hay
+   raton, pellizco donde se toca la pantalla. `hover: none` es la prueba que
+   distingue las dos cosas sin adivinar por el ancho — una tableta con raton
+   sigue siendo raton. */
+.figure3d-hint-touch { display: none; }
+@media (hover: none) {
+  .figure3d-hint-mouse { display: none; }
+  .figure3d-hint-touch { display: inline; }
+}
+
+.figure3d.is-ready .figure3d-stage { cursor: grab; }
+.figure3d.is-ready .figure3d-stage:active { cursor: grabbing; }
+
+/* --- Pie: que mirar, y donde el dibujo miente ---------------------------- */
+
+.figure3d-caption {
+  margin: 0;
+  padding: 11px 14px 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+/*
+ * El limite va SIEMPRE con la figura, por la misma razon que el de las
+ * analogias: un dibujo de un atomo es una analogia visual, y el modelo de Bohr
+ * con sus orbitas es probablemente la imagen que mas ideas falsas ha dejado en
+ * toda la quimica.
+ */
+.figure3d-limit {
+  margin: 8px 14px 14px;
+  padding: 9px 11px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--hazard-danger) 8%, transparent);
+  border-left: 3px solid var(--hazard-danger);
+  border-radius: var(--radius-sm);
+}
+
+.figure3d-limit strong { color: var(--text); }
+
+@media (max-width: 900px) {
+  .figure3d-stage { height: 240px; }
+  .figure3d-head, .figure3d-tabs { padding-left: 11px; padding-right: 11px; }
+  .figure3d-caption { padding-left: 11px; padding-right: 11px; }
+  .figure3d-limit { margin-left: 11px; margin-right: 11px; }
 }

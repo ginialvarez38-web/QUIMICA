@@ -522,6 +522,14 @@ export interface TheoryTopic<D = TheoryDemo> {
   readonly check?: readonly SelfCheck[];
   /** Con que otros apartados se conecta esto. */
   readonly connects?: readonly { readonly label: string; readonly topic?: string; readonly mode?: string }[];
+  /**
+   * Identificador de un conjunto de escenas 3D (ver `teach/scenes.ts`).
+   *
+   * Solo se pone donde lo que se explica es ESPACIAL y el texto no puede con
+   * ello. El numero de Avogadro no gana nada dibujado; el reparto de las
+   * particulas en una mezcla, todo.
+   */
+  readonly figure?: string;
   /** Demostracion calculada, cuando la hay. */
   readonly demo?: D | null;
   /** Lo que este motor NO cubre de este apartado (§32). */
@@ -677,6 +685,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           'Una sustancia pura tiene composicion FIJA y propiedades constantes. Hay dos clases: los ' +
           'elementos (un solo tipo de atomo) y los compuestos (varios, en proporcion fija). Una ' +
           'sustancia pura funde y hierve a una temperatura definida, no en un intervalo.',
+        figure: 'materia',
         keyIdea:
           'El criterio practico: el agua pura hierve a 100 °C exactos. El agua salada empieza a hervir ' +
           'por encima y la temperatura va SUBIENDO mientras hierve. Ese intervalo delata la mezcla.',
@@ -834,6 +843,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           'En un cambio FISICO la sustancia sigue siendo la misma: cambia de estado, de forma o de ' +
           'tamano. En un cambio QUIMICO se rompen y se forman enlaces, y aparecen sustancias nuevas ' +
           'con propiedades distintas.',
+        figure: 'cambio',
         keyIdea:
           'La prueba: ¿se puede deshacer sin una reaccion? El hielo que se derrite sigue siendo agua ' +
           '(fisico). El papel que arde no vuelve a ser papel (quimico).',

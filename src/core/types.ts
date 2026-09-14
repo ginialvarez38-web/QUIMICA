@@ -212,6 +212,17 @@ export interface StructureAtom {
   readonly oxidationState?: number;
   /** Pares libres para el modo Lewis. */
   readonly lonePairs?: number;
+  /**
+   * Radio y color impuestos, en lugar de los del elemento.
+   *
+   * Existen para las ESCENAS DIDACTICAS, no para las moleculas. Un nucleo
+   * atomico, un electron o una particula de una mezcla no son atomos de ningun
+   * elemento concreto, asi que no se les puede sacar el radio de una tabla de
+   * radios covalentes ni el color de la paleta CPK. Cuando faltan —que es el
+   * caso de toda molecula real— el renderizador sigue usando los del elemento.
+   */
+  readonly radius?: number;
+  readonly color?: string;
 }
 
 export interface Vec3 {

@@ -31,6 +31,14 @@ import {
   unitAtomo, abundanceDemo, compositionDemo, isobarsDemo, isotonesDemo, periodicStatsDemo, modelsDemo,
 } from '../src/teach/atom.js';
 import type { TheoryTopic } from '../src/teach/theory.js';
+import { allSceneSets, sceneSet } from '../src/teach/scenes.js';
+
+/** Recorre un temario en profundidad. Lo usan varias pruebas. */
+function walkTopics<D>(t: TheoryTopic<D>, out: TheoryTopic<D>[] = []): TheoryTopic<D>[] {
+  out.push(t);
+  for (const c of t.children ?? []) walkTopics(c, out);
+  return out;
+}
 import { isotopesOf, isobarsOf, elementsWithIsotopes } from '../src/data/isotopes.js';
 import { ELEMENTS } from '../src/data/elements.js';
 import { getElement } from '../src/data/elements.js';
@@ -957,12 +965,41 @@ describe('el guia', () => {
   test('cada pista declara de que motor sale', () => {
     // Sin procedencia, el guia seria una voz sin respaldo, y el estudiante no
     // podria distinguir lo que afirma un motor de lo que suena bien.
-    for (const mode of ['build', 'react', 'tabla', 'routes']) {
+    for (const mode of ['build', 'react', 'tabla', 'teoria', 'atomo', 'routes']) {
       const message = guide({ ...base, mode });
       for (const hint of message.hints) {
         assert.ok(hint.from.length > 0, `${mode}: pista sin procedencia`);
         assert.ok(hint.text.length > 0);
       }
+    }
+  });
+
+  test('el guia tiene algo que decir en TODOS los modos de la aplicacion', () => {
+    /*
+     * El fallo que motivo la prueba: la pestana Atomo no tenia caso propio y
+     * caia en el `default`, asi que el avatar se abria y ensenaba un panel
+     * vacio — sin titulo, sin texto y sin pistas. Un control que se pulsa y no
+     * hace nada ensena a desconfiar de todos los demas, que es el mismo dano
+     * que hacian las pestanas muertas del inspector.
+     *
+     * La lista es la de `Mode` en la interfaz. Si manana se anade un modo y no
+     * se le escribe guia, esta prueba lo dice antes que el usuario.
+     */
+    for (const mode of ['build', 'react', 'tabla', 'teoria', 'atomo', 'routes', 'lab']) {
+      const message = guide({ ...base, mode });
+      assert.ok(message.headline.length > 0, `${mode}: el guia se abre sin titulo`);
+      assert.ok(message.body.length > 0, `${mode}: el guia se abre sin cuerpo`);
+    }
+  });
+
+  test('en los modos de lectura el guia orienta sobre las figuras 3D', () => {
+    // Las figuras se giran y tienen pestanas, y eso no se adivina mirandolas.
+    // Ademas el recuadro del limite es lo que mas empeno pone el temario en
+    // que nadie se salte, asi que el guia lo nombra.
+    for (const mode of ['teoria', 'atomo']) {
+      const hints = guide({ ...base, mode }).hints.map((h) => h.text.toLowerCase()).join(' ');
+      assert.ok(hints.includes('girar') || hints.includes('gira'), `${mode}: no dice como girar la figura`);
+      assert.ok(hints.includes('miente') || hints.includes('naranja'), `${mode}: no manda leer el limite`);
     }
   });
 
@@ -1481,5 +1518,123 @@ describe('el contrato didactico de las dos unidades', () => {
         (t.worked ? 1 : 0) + (t.check ? 1 : 0) + (t.demo ? 1 : 0);
       assert.ok(extras >= 2, `${t.id} «${t.title}» solo tiene definicion`);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('las figuras 3D del temario', () => {
+  const sets = allSceneSets();
+
+  test('hay figura solo donde lo explicado es espacial', () => {
+    // Cuatro conjuntos, y ninguno es decoracion: escala, modelos atomicos,
+    // reparto de particulas en las mezclas, y antes/despues de un cambio.
+    assert.deepEqual(
+      sets.map((s) => s.id).sort(),
+      ['cambio', 'escala', 'materia', 'modelos'],
+    );
+  });
+
+  test('TODA escena declara donde el dibujo miente', () => {
+    /*
+     * Misma regla que las analogias del temario, y por la misma razon: un
+     * dibujo de un atomo ES una analogia visual. El modelo de Bohr con sus
+     * orbitas es probablemente la imagen que mas ideas falsas ha dejado en
+     * toda la quimica, y aparece aqui.
+     */
+    for (const set of sets) {
+      for (const scene of set.scenes) {
+        assert.ok(scene.limit.length > 50, `${set.id}/${scene.id}: limite ausente o escueto`);
+        assert.ok(scene.caption.length > 40, `${set.id}/${scene.id}: pie escueto`);
+      }
+    }
+  });
+
+  test('el dibujo de Bohr avisa de que las orbitas no existen', () => {
+    const bohr = sets.find((s) => s.id === 'modelos')!.scenes.find((s) => s.id === 'bohr')!;
+    assert.match(bohr.limit, /NO recorren orbitas|no tienen trayectoria/i);
+  });
+
+  test('las estructuras son validas: los enlaces apuntan a atomos que existen', () => {
+    for (const set of sets) {
+      for (const scene of set.scenes) {
+        const n = scene.structure.atoms.length;
+        assert.ok(n > 0, `${set.id}/${scene.id}: escena vacia`);
+        for (const bond of scene.structure.bonds) {
+          assert.ok(bond.a >= 0 && bond.a < n, `${set.id}/${scene.id}: enlace a=${bond.a} fuera de rango`);
+          assert.ok(bond.b >= 0 && bond.b < n, `${set.id}/${scene.id}: enlace b=${bond.b} fuera de rango`);
+          assert.notEqual(bond.a, bond.b, `${set.id}/${scene.id}: enlace de un atomo consigo mismo`);
+        }
+      }
+    }
+  });
+
+  test('cada esfera lleva radio y color propios', () => {
+    // Un nucleo o una particula generica no son atomos de ningun elemento, asi
+    // que no se les puede sacar el radio de una tabla de radios covalentes ni
+    // el color de la paleta CPK.
+    for (const set of sets) {
+      for (const scene of set.scenes) {
+        for (const atom of scene.structure.atoms) {
+          assert.ok(typeof atom.radius === 'number' && atom.radius > 0, `${set.id}/${scene.id}: sin radio`);
+          assert.match(atom.color ?? '', /^#[0-9a-f]{6}$/i, `${set.id}/${scene.id}: sin color`);
+        }
+      }
+    }
+  });
+
+  test('las escenas no cambian entre visitas', () => {
+    /*
+     * Las de mezclas usan posiciones «al azar», pero con semilla fija: si
+     * cambiaran a cada repintado, dos personas mirando la misma figura verian
+     * cosas distintas y no se podria hablar de ella.
+     */
+    const primera = sceneSet('materia')!.scenes[1]!.structure.atoms.map((a) => a.position.x);
+    const segunda = sceneSet('materia')!.scenes[1]!.structure.atoms.map((a) => a.position.x);
+    assert.deepEqual(primera, segunda);
+  });
+
+  test('la mezcla homogenea y la heterogenea tienen las MISMAS particulas', () => {
+    // Es lo que hace la comparacion valida: lo unico que cambia es el reparto.
+    const materia = sceneSet('materia')!;
+    const homogenea = materia.scenes.find((s) => s.id === 'homogenea')!;
+    const heterogenea = materia.scenes.find((s) => s.id === 'heterogenea')!;
+    assert.equal(homogenea.structure.atoms.length, heterogenea.structure.atoms.length);
+    // Las dos usan dos colores; la diferencia esta en donde cae cada uno.
+    for (const escena of [homogenea, heterogenea]) {
+      assert.equal(new Set(escena.structure.atoms.map((a) => a.color)).size, 2, escena.id);
+    }
+  });
+
+  test('el cambio quimico conserva los atomos, y el fisico las moleculas', () => {
+    const cambio = sceneSet('cambio')!;
+    const count = (id: string, symbol: string): number =>
+      cambio.scenes.find((s) => s.id === id)!.structure.atoms.filter((a) => a.symbol === symbol).length;
+
+    // Quimico: 8 H y 4 O antes, y los mismos despues. Es la conservacion de
+    // la materia dibujada.
+    assert.equal(count('antes', 'H'), 8);
+    assert.equal(count('antes', 'O'), 4);
+    assert.equal(count('despues', 'H'), 8);
+    assert.equal(count('despues', 'O'), 4);
+
+    // Fisico: lo que se conserva son los ENLACES. Cada molecula de agua tiene
+    // dos, y ninguno se rompe al pasar de hielo a vapor.
+    const hielo = cambio.scenes.find((s) => s.id === 'hielo')!.structure;
+    const vapor = cambio.scenes.find((s) => s.id === 'vapor')!.structure;
+    assert.equal(hielo.bonds.length, (hielo.atoms.length / 3) * 2);
+    assert.equal(vapor.bonds.length, (vapor.atoms.length / 3) * 2);
+  });
+
+  test('los apartados que llevan figura son los espaciales', () => {
+    const conFigura = [...walkTopics(unitMateria()), ...walkTopics(unitAtomo())]
+      .filter((t) => t.figure)
+      .map((t) => `${t.id}:${t.figure}`);
+    assert.deepEqual(conFigura.sort(), [
+      '1.5:materia',   // puro / homogeneo / heterogeneo
+      '1.7:cambio',    // fisico / quimico
+      '2.1:escala',    // el atomo es sobre todo vacio
+      '2.2.1.2:modelos',
+    ]);
   });
 });
