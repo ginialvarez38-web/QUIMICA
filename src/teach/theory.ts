@@ -565,6 +565,24 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         pitfall:
           'Confundir masa con peso. La masa es la cantidad de materia y no cambia; el peso es la fuerza ' +
           'con que la gravedad tira de ella, y en la Luna seria seis veces menor con la misma masa.',
+        check: [
+          {
+            question: '¿Es materia la luz? ¿Y el calor? ¿Y el aire?',
+            answer:
+              'El aire si: tiene masa —un metro cubico pesa unos 1,2 kg— y ocupa volumen. La luz y el ' +
+              'calor no: son formas de ENERGIA, no tienen masa ni ocupan sitio. El criterio no es que se ' +
+              'pueda tocar ni que se vea, es masa y volumen a la vez.',
+          },
+          {
+            question:
+              'Un astronauta de 70 kg viaja a la Luna. ¿Que cambia, su masa o su peso? ¿Y cuanta materia ' +
+              'tiene alli?',
+            answer:
+              'Cambia el PESO, que alli es unas seis veces menor porque la gravedad lunar es mas debil. ' +
+              'La masa sigue siendo 70 kg y la cantidad de materia es exactamente la misma: no ha perdido ' +
+              'ni un atomo. El peso es una fuerza y depende de donde estes; la masa, no.',
+          },
+        ],
       },
       {
         id: '1.2',
@@ -882,6 +900,18 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         keyIdea:
           'El orden historico importa: primero se midio, despues se explico. Las leyes son hechos ' +
           'medidos; la teoria atomica es la explicacion que se invento para que cuadraran.',
+        check: [
+          {
+            question:
+              'Las cinco leyes se descubrieron antes de que nadie hubiera visto un atomo. ¿Como es ' +
+              'posible, y que relacion tienen con la teoria atomica?',
+            answer:
+              'Porque son resultados de PESAR y MEDIR, no de observar atomos: se midieron masas y ' +
+              'volumenes en reacciones reales. Dalton hizo lo contrario de lo que suele imaginarse: no ' +
+              'dedujo las leyes de su teoria, sino que invento la teoria atomica PARA EXPLICAR unas leyes ' +
+              'que ya estaban medidas. Los hechos venian primero.',
+          },
+        ],
         children: [
           {
             id: '1.8.1',
@@ -935,6 +965,18 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
             pitfall:
               'Es lo que separa un compuesto de una mezcla: una disolucion de sal admite cualquier ' +
               'proporcion, un compuesto no.',
+            check: [
+              {
+                question:
+                  'Tienes 100 g de agua de lluvia y 5 g de agua destilada de laboratorio. ¿En cual hay ' +
+                  'mayor porcentaje de oxigeno?',
+                answer:
+                  'En ninguna: en las dos es el 88,81 %. Eso es exactamente lo que dice la ley de Proust ' +
+                  '— la proporcion no depende del origen ni de la cantidad. Lo que si cambia es la masa ' +
+                  'ABSOLUTA de oxigeno: 88,81 g en la primera y 4,44 g en la segunda. Proporcion y ' +
+                  'cantidad son cosas distintas.',
+              },
+            ],
             demo: definiteProportionsDemo('H2O'),
           },
           {
@@ -960,7 +1002,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
             check: [
               {
                 question:
-                  'Por que la ley de las proporciones multiples fue LA prueba de que existen los atomos?',
+                  '¿Por que la ley de las proporciones multiples fue LA prueba de que existen los atomos?',
                 answer:
                   'Porque una razon de 1:2 exacta no tiene explicacion si la materia es continua. Si ' +
                   'pudieras coger cualquier cantidad de oxigeno, las razones saldrian numeros ' +
@@ -982,6 +1024,18 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
             pitfall:
               'Solo vale para gases y solo si estan en las mismas condiciones. Con solidos o liquidos no ' +
               'se cumple.',
+            check: [
+              {
+                question:
+                  'Un litro de nitrogeno reacciona con tres de hidrogeno y da dos de amoniaco. ' +
+                  '¿Por que no salen cuatro, si entraron cuatro?',
+                answer:
+                  'Porque los volumenes de gas NO se conservan: lo que se conserva son los atomos. Cuatro ' +
+                  'volumenes de moleculas de reactivo se reorganizan en dos volumenes de moleculas de ' +
+                  'producto, y en cada molecula de amoniaco caben mas atomos que en una de hidrogeno. La ' +
+                  'masa sigue siendo la misma; el numero de moleculas, no.',
+              },
+            ],
             demo: gayLussacDemo('haber-bosch'),
           },
           {
@@ -997,6 +1051,18 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
             pitfall:
               'Se llama PRINCIPIO porque cuando se enuncio era una hipotesis sin demostrar. Tardo casi ' +
               'cincuenta anos en ser aceptado, hasta que Cannizzaro lo defendio en 1860.',
+            check: [
+              {
+                question:
+                  'Un globo con un litro de hidrogeno y otro con un litro de dioxido de carbono, a la ' +
+                  'misma presion y temperatura. ¿Cual tiene mas moleculas? ¿Cual pesa mas?',
+                answer:
+                  'Tienen el MISMO numero de moleculas: eso es el principio de Avogadro, y resulta ' +
+                  'chocante precisamente porque el sentido comun dice que en algo tan ligero como el ' +
+                  'hidrogeno «cabe mas». Pesa mucho mas el del CO₂, porque cada una de sus moleculas es ' +
+                  'unas 22 veces mas pesada. Igual numero, masas distintas.',
+              },
+            ],
           },
         ],
       },
@@ -1014,6 +1080,18 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           'No es un numero magico de la naturaleza: es un factor de conversion elegido para que la masa ' +
           'de un mol en gramos coincida con la masa atomica en unidades de masa atomica. Se escogio para ' +
           'que las cuentas salieran comodas.',
+        check: [
+          {
+            question:
+              '¿Por que el numero de Avogadro vale 6,022·10²³ y no, por ejemplo, 10²⁴ redondo, que seria ' +
+              'mas comodo?',
+            answer:
+              'Porque no se eligio el numero: se eligio la CONDICION de que un mol de atomos pesara en ' +
+              'gramos lo mismo que un atomo pesa en unidades de masa atomica. Fijada esa condicion, el ' +
+              'numero sale el que sale. Desde 2019 se ha invertido la definicion —el valor es exacto y ' +
+              'define el mol— pero se conservo la cifra que ya se usaba para no romper un siglo de datos.',
+          },
+        ],
       },
       {
         id: '1.10',
@@ -1044,7 +1122,10 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
               text: 'La trampa habitual es responder 2 × 6,022·10²³. Eso son las MOLECULAS, no los atomos — y ni siquiera todos los atomos, que serian 7 por molecula.',
             },
           ],
-          answer: '4,818·10²⁴ atomos de oxigeno.',
+          answer:
+            '4,818·10²⁴ atomos de oxigeno. Lo que hay que llevarse no es la cifra sino el factor 4: el ' +
+            'mol cuenta lo que le digas que cuente, y «moles de H₂SO₄» y «moles de atomos de O» son ' +
+            'cantidades distintas que se relacionan por los subindices de la formula.',
         },
         check: [
           {
@@ -1070,6 +1151,19 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         pitfall:
           '«Peso atomico» es el nombre tradicional, pero es una MASA, no un peso: no depende de la ' +
           'gravedad. La IUPAC recomienda decir masa atomica relativa.',
+        check: [
+          {
+            question:
+              'Si ningun atomo de cloro pesa 35,45 u, ¿que sentido tiene ese numero y cuando conviene ' +
+              'usarlo?',
+            answer:
+              'Es una MEDIA ponderada: cada atomo pesa 35 u o 37 u, pero en cualquier muestra real hay ' +
+              'los dos mezclados en proporcion fija, y la media de esa mezcla es 35,45. Sirve para ' +
+              'trabajar con cantidades macroscopicas —un mol, un gramo, una reaccion— donde siempre hay ' +
+              'trillones de atomos. Para hablar de UN atomo concreto no vale: ahi hay que decir de que ' +
+              'isotopo se trata.',
+          },
+        ],
       },
       {
         id: '1.12',
@@ -1097,7 +1191,10 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
               text: 'Se dice «unidades formula» y no «moleculas» porque el NaOH es ionico: no existen moleculas de NaOH, sino una red de iones Na⁺ y OH⁻.',
             },
           ],
-          answer: '0,625 mol, es decir 3,76·10²³ unidades formula.',
+          answer:
+            '0,625 mol, es decir 3,76·10²³ unidades formula. Fijate en que se dice «unidades formula» y ' +
+            'no «moleculas»: el carbonato de calcio es un solido ionico y no tiene moleculas sueltas. ' +
+            'La cuenta es la misma; el nombre de lo que cuentas, no.',
         },
         check: [
           {

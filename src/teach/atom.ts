@@ -791,6 +791,18 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         keyIdea:
           'La quimica la hacen los electrones; la identidad, los protones. Por eso un ion sigue siendo ' +
           'el mismo elemento aunque reaccione de otro modo.',
+        check: [
+          {
+            question:
+              'El sodio metalico arde en el agua y el ion Na⁺ del salero no hace nada. Si son el mismo ' +
+              'elemento, ¿por que se comportan de forma tan distinta?',
+            answer:
+              'Porque lo que cambia es la CORTEZA, que es donde se hace la quimica. El sodio metalico ' +
+              'tiene un electron de valencia suelto y lo cede con facilidad — de ahi la violencia. El ' +
+              'Na⁺ ya lo ha cedido y le queda una capa completa: no tiene nada que ofrecer. El nucleo es ' +
+              'identico en los dos, once protones, y por eso los dos siguen siendo sodio.',
+          },
+        ],
         children: [
           {
             id: '2.2.1',
@@ -798,6 +810,19 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
             body:
               'Nada de esto se vio: se dedujo de experimentos. El orden importa, porque cada modelo ' +
               'nacio para explicar algo que el anterior no podia.',
+            check: [
+              {
+                question:
+                  'Nadie ha visto nunca un atomo con sus partes. ¿Como se puede afirmar entonces que ' +
+                  'tiene un nucleo diminuto y cargado?',
+                answer:
+                  'Por lo que hacen las cosas al chocar con el. En la lamina de oro, unas pocas ' +
+                  'particulas alfa de cada diez mil rebotaban hacia atras: para desviar asi algo tan ' +
+                  'rapido hace falta concentrar mucha carga y mucha masa en muy poco sitio, y para que ' +
+                  'solo le pase a unas pocas, ese sitio tiene que ser diminuto. La conclusion no sale de ' +
+                  'ver el nucleo, sale de MEDIR angulos de desvio y descartar lo que no los explica.',
+              },
+            ],
             children: [
               {
                 id: '2.2.1.1',
@@ -891,6 +916,19 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         pitfall:
           'De ahi que los elementos pesados sean radiactivos: llega un punto en que ninguna proporcion ' +
           'de neutrones basta para contener la repulsion, y el nucleo se rompe.',
+        check: [
+          {
+            question:
+              'Dos protones juntos se repelen con una fuerza enorme. ¿Por que no sale disparado cualquier ' +
+              'nucleo que tenga mas de uno?',
+            answer:
+              'Porque a distancias nucleares actua otra fuerza mucho mas intensa: la interaccion nuclear ' +
+              'FUERTE, que atrae a los nucleones entre si y no distingue si tienen carga o no. Su alcance ' +
+              'es cortisimo, asi que solo cuenta entre vecinos inmediatos, mientras que la repulsion ' +
+              'electrica llega a todo el nucleo. De ese pulso sale todo lo demas: por eso hacen falta ' +
+              'cada vez mas neutrones segun crece Z, y por eso los nucleos muy grandes acaban rompiendose.',
+          },
+        ],
         demo: compositionDemo(),
       },
       {
@@ -953,7 +991,10 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
               math: '(+26) + (−23) = +3 ✓',
             },
           ],
-          answer: '26 protones, 30 neutrones y 23 electrones.',
+          answer:
+            '26 protones, 30 neutrones y 23 electrones. Los tres numeros salen de sitios distintos: los ' +
+            'protones son Z y no cambian nunca —si cambiaran ya no seria hierro—, los neutrones son la ' +
+            'resta A − Z, y los electrones son los unicos que la carga modifica.',
         },
         check: [
           {
@@ -1008,6 +1049,18 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         keyIdea:
           'Iso-baro: «mismo peso». No confundir con isotopo: ahi lo que coincide es el elemento, aqui ' +
           'lo que coincide es A y el elemento es distinto.',
+        check: [
+          {
+            question:
+              'El ⁴⁰Ar, el ⁴⁰K y el ⁴⁰Ca pesan practicamente lo mismo. ¿Por que uno es un gas inerte, ' +
+              'otro un metal reactivo y el tercero el metal de los huesos?',
+            answer:
+              'Porque pesar lo mismo no tiene nada que ver con comportarse igual. Lo que comparten es A ' +
+              '—40 nucleones— pero su Z es 18, 19 y 20: tienen 18, 19 y 20 protones, y por tanto 18, 19 ' +
+              'y 20 electrones. La quimica la deciden los electrones, no la masa. Son tres elementos ' +
+              'distintos que da la casualidad de que pesan igual.',
+          },
+        ],
         demo: isobarsDemo(),
       },
       {
@@ -1019,6 +1072,19 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         keyIdea:
           'Los tres «iso» se distinguen por lo que comparten: isotopos comparten Z (protones), isobaras ' +
           'comparten A (nucleones), isotonos comparten N (neutrones).',
+        check: [
+          {
+            question:
+              'Sin mirar la tabla: ¿que comparten dos isotopos, dos isobaras y dos isotonos? ¿Y cual de ' +
+              'los tres parentescos hace que dos nucleidos sean el mismo elemento?',
+            answer:
+              'Los isotopos comparten Z, los isobaros comparten A y los isotonos comparten N = A − Z. ' +
+              'Solo el primero implica ser el mismo elemento, porque la identidad quimica la fija el ' +
+              'numero de protones y nada mas. Un truco para no mezclarlos: isoTOpo lleva la P de ' +
+              'Protones escondida en «mismo elemento», isoBAro viene de «baros», peso, que es A, y a los ' +
+              'isotonos les queda lo que sobra, los neutrones.',
+          },
+        ],
         demo: isotonesDemo(),
       },
       {
@@ -1086,6 +1152,19 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         keyIdea:
           'La periodicidad tiene causa: las propiedades se repiten porque se repite la CONFIGURACION de ' +
           'la capa de valencia. La tabla es la estructura electronica dibujada en dos dimensiones.',
+        check: [
+          {
+            question:
+              'Mendeleiev dejo HUECOS en su tabla en lugar de juntar los elementos que conocia. ' +
+              '¿Por que fue eso lo que convirtio su tabla en ciencia y no en una lista?',
+            answer:
+              'Porque un hueco es una PREDICCION comprobable. Al dejarlo, estaba afirmando que existia un ' +
+              'elemento aun sin descubrir, y ademas se atrevio a decir cuanto pesaria y como se ' +
+              'comportaria, deduciendolo de sus vecinos. Cuando aparecieron el galio, el escandio y el ' +
+              'germanio y encajaron con lo predicho, la tabla dejo de ser una clasificacion comoda y paso ' +
+              'a ser una teoria que habia arriesgado algo y habia acertado.',
+          },
+        ],
         demo: periodicStatsDemo(),
         children: [
           {

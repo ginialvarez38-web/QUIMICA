@@ -47,7 +47,7 @@ No hay nada marcado como hecho que no lo este.
 | 33 | Cuatro niveles de visualizacion | **Parcial** | El nivel macro (apariencia, observaciones), el molecular y el atomico estan. **Falta:** el nivel electronico animado y el conmutador durante la reaccion. |
 | 34 | Modo profesor | **Hecho** | Las diez preguntas, para cualquier reaccion. |
 | 35 | Modo examen | **Pendiente** | El generador de ejercicios. Los datos necesarios (dificultad, conceptos por reaccion) ya se almacenan. |
-| 36 | Sistema de progresion | **Parcial** | Cada reaccion lleva nivel de dificultad 1–5 y sus conceptos. **Falta:** los 15 niveles y el seguimiento del alumno. |
+| 36 | Sistema de progresion | **Parcial** | Cada reaccion lleva nivel de dificultad 1–5 y sus conceptos, y el temario tiene **65 tarjetas de repaso** con progreso guardado (`teach/flashcards.ts`). **Falta:** los 15 niveles, el seguimiento del alumno y la repeticion espaciada. |
 | 37 | Simulacion industrial | **Pendiente** | Hay reacciones industriales curadas con sus condiciones reales (contacto, Haber-Bosch, alto horno, calcinacion); falta el modelo de operaciones unitarias. |
 | 38 | Rendimiento y realismo | **Parcial** | El calculo ideal esta; el rendimiento porcentual tambien. **Falta:** el modo de simulacion realista con perdidas y equilibrio. |
 | 39 | Arquitectura tecnica | **Hecho** | Modular, con el motor utilizable sin interfaz. |
@@ -189,6 +189,28 @@ Dalton no explica la electricidad → Thomson no sobrevive a la lamina de oro �
 Rutherford es inestable segun su propia fisica → Bohr solo vale para el
 hidrogeno → modelo cuantico. Y de todos sobrevive algo: el de Dalton, de 1803,
 sigue siendo el que se usa para ajustar una ecuacion.
+
+## Tarjetas de repaso (§36)
+
+`teach/flashcards.ts` y la pestana «Tarjetas» de cada apartado. **65 tarjetas
+para 41 apartados**, y ninguna escrita aparte: se DERIVAN de la
+autocomprobacion (`check`, 53) y del ejercicio resuelto (`worked`, 12) que el
+temario ya tenia. Los 13 apartados que no daban ninguna se resolvieron
+escribiendoles la autocomprobacion que les faltaba, no inventando una tarjeta
+suelta — asi no puede existir una tarjeta que el temario no diga.
+
+Una prueba exige que todo apartado produzca al menos una, y otras vigilan que
+los identificadores sean unicos y estables (con ellos se guarda el progreso),
+que barajar conserve el mazo entero y que ninguna pregunta se quede sin su «¿».
+
+Se repasa por apartado o con el mazo de la unidad, que baraja y descuenta lo ya
+sabido. El progreso vive en `localStorage` del navegador de quien estudia, con
+todos los accesos envueltos en `try`.
+
+**Hueco declarado:** no hay repeticion espaciada. Se guarda si una tarjeta se
+sabe o no, no cuando toca volver a verla: no hay intervalos, ni curva de
+olvido, ni historial de aciertos. Un mazo que descuenta lo sabido no es un
+algoritmo de memoria, y no se presenta como tal.
 
 ## Las figuras 3D del temario (§4)
 

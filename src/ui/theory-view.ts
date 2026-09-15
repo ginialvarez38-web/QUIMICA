@@ -31,10 +31,12 @@
  * motores que usa el resto de la aplicacion, no una tabla escrita a mano.
  */
 
-import type { TheoryTopic, TheoryDemo, Analogy, WorkedExample, SelfCheck } from '../teach/theory.js';
+import type { TheoryTopic, TheoryDemo, Analogy, WorkedExample } from '../teach/theory.js';
 import { SEPARATION_METHODS, AVOGADRO } from '../teach/theory.js';
 import { escapeHtml } from './dom.js';
 import { renderFigure } from './figure-3d.js';
+import type { FlashCard } from '../teach/flashcards.js';
+import { cardsOf, deckOf, progressOf } from '../teach/flashcards.js';
 
 const num = (value: number, digits = 3): string =>
   value.toLocaleString('es-ES', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -272,30 +274,6 @@ function renderWorked(worked: WorkedExample): string {
     </div>`;
 }
 
-/**
- * Autocomprobacion con la respuesta tapada.
- *
- * Se usa <details> del propio navegador en lugar de JavaScript: funciona sin
- * guion, es accesible de serie y el navegador ya sabe abrirlo con el teclado.
- */
-function renderCheck(checks: readonly SelfCheck[]): string {
-  return `
-    <div class="topic-check">
-      <span class="topic-key-label">Comprueba que lo has entendido</span>
-      ${checks
-        .map(
-          (c) => `
-          <details class="check-item">
-            <summary>${escapeHtml(c.question)}</summary>
-            <div class="check-answer">${escapeHtml(c.answer)}</div>
-          </details>`,
-        )
-        .join('')}
-      <p class="check-note">Intenta responder ANTES de abrir. Leer la respuesta sin haberlo intentado
-      da sensacion de haber entendido sin haber recuperado nada de memoria.</p>
-    </div>`;
-}
-
 function renderConnects(
   connects: readonly { readonly label: string; readonly topic?: string; readonly mode?: string }[],
 ): string {
@@ -326,8 +304,28 @@ function renderConnects(
  * asi cambiar de pestana no reconstruye nada, y los <details> de la
  * autocomprobacion conservan si estaban abiertos.
  */
-function renderMore<D>(topic: TheoryTopic<D>): string {
+function renderMore<D>(
+  topic: TheoryTopic<D>,
+  cards: readonly FlashCard[],
+  known: ReadonlySet<string>,
+): string {
   const parts: { id: string; label: string; html: string }[] = [];
+
+  /*
+   * Las tarjetas van LAS PRIMERAS, y no por capricho.
+   *
+   * La pestana que se abre por defecto es la primera, asi que al terminar de
+   * leer un apartado lo que aparece es una pregunta — no el error tipico ni la
+   * analogia, que son mas texto para leer. Cerrar con una pregunta es lo unico
+   * de esta caja que obliga a recuperar algo de memoria.
+   */
+  if (cards.length > 0) {
+    parts.push({
+      id: 'tarjetas',
+      label: `Tarjetas · ${cards.length}`,
+      html: renderCards(cards, known),
+    });
+  }
 
   if (topic.pitfall) {
     parts.push({
@@ -338,9 +336,20 @@ function renderMore<D>(topic: TheoryTopic<D>): string {
   }
   if (topic.analogy) parts.push({ id: 'analogia', label: 'Imaginalo asi', html: renderAnalogy(topic.analogy) });
   if (topic.worked) parts.push({ id: 'ejercicio', label: 'Ejercicio resuelto', html: renderWorked(topic.worked) });
-  if (topic.check && topic.check.length > 0) {
-    parts.push({ id: 'comprueba', label: 'Compruebalo', html: renderCheck(topic.check) });
-  }
+
+  /*
+   * NO HAY PESTANA DE AUTOCOMPROBACION, y su ausencia es deliberada.
+   *
+   * Las tarjetas se derivan justamente de `check`, asi que poner las dos
+   * habria dejado LAS MISMAS PREGUNTAS en dos pestanas contiguas de la misma
+   * caja — la duplicacion mas descarada de toda la aplicacion, y en el sitio
+   * donde mas canta.
+   *
+   * Se queda la tarjeta porque hace todo lo que hacia la autocomprobacion —la
+   * respuesta llega tapada y hay que pedirla— y ademas dos cosas que la otra
+   * no hacia: recuerda si ya te la sabias y se puede repasar suelta, lejos del
+   * texto que la contesta.
+   */
 
   if (parts.length === 0) return '';
 
@@ -395,9 +404,12 @@ export function renderTopicPage<D>(
     readonly total: number;
     readonly previous?: TheoryTopic<D>;
     readonly next?: TheoryTopic<D>;
+    /** Lo que el lector ya marco como sabido, para pintar las tarjetas. */
+    readonly known: ReadonlySet<string>;
   },
   demoRenderer: (d: D) => string,
 ): string {
+  const cards = cardsOf(topic);
   return `
     <article class="topic" id="topic-${escapeHtml(topic.id)}" data-topic="${escapeHtml(topic.id)}">
       <p class="topic-crumb">
@@ -425,7 +437,7 @@ export function renderTopicPage<D>(
           : ''
       }
 
-      ${renderMore(topic)}
+      ${renderMore(topic, cards, context.known)}
 
       ${
         topic.tryIt
@@ -514,9 +526,11 @@ export function anyView<D>(view: UnitView<D>): AnyUnitView {
 export function renderTheoryShell(
   views: readonly AnyUnitView[],
   activeIndex: number,
+  known: ReadonlySet<string>,
 ): string {
   const active = views[activeIndex]!;
   const demos = countDemos(active.unit);
+  const deck = deckOf(active.unit);
 
   return `
     <div class="theory">
@@ -535,6 +549,7 @@ export function renderTheoryShell(
         <p class="toc-claim">
           <strong>${demos} apartados no se afirman: se calculan.</strong> ${escapeHtml(active.claim)}
         </p>
+        ${renderDeckBar(deck.length, progressOf(deck, known))}
         <!-- El plegado solo actua en movil; en escritorio el boton no se
              dibuja y la lista esta siempre abierta. -->
         <button class="toc-toggle" data-toc-toggle>
@@ -569,3 +584,69 @@ export { num, scientific };
 
 /** El numero de Avogadro, ya formateado, para quien lo necesite fuera. */
 export const AVOGADRO_TEXT = scientific(AVOGADRO);
+
+// ---------------------------------------------------------------------------
+// TARJETAS DE REPASO
+// ---------------------------------------------------------------------------
+
+/**
+ * Las tarjetas de un apartado, en la segunda capa.
+ *
+ * Una tarjeta no es la autocomprobacion con otro marco: cambia lo que se hace
+ * con ella. La autocomprobacion esta en medio del apartado, con el texto
+ * recien leido a dos centimetros — y responder con la explicacion a la vista
+ * no es recordar, es copiar. La tarjeta llega SOLA, sin contexto, y por eso
+ * obliga a recuperar de verdad.
+ *
+ * De ahi que la cara delantera no diga de que apartado viene cuando se repasa
+ * la unidad entera: saber que la pregunta es «de isotopos» ya es media
+ * respuesta.
+ */
+export function renderCards(cards: readonly FlashCard[], known: ReadonlySet<string>): string {
+  if (cards.length === 0) return '';
+
+  return `
+    <div class="cards" data-cards>
+      <div class="cards-head">
+        <span class="cards-count"><strong data-card-index>1</strong> de ${cards.length}</span>
+        <button class="cards-shuffle" data-card-shuffle>Barajar</button>
+      </div>
+      ${cards
+        .map(
+          (card, i) => `
+          <div class="card" data-card="${escapeHtml(card.id)}"${i === 0 ? '' : ' hidden'}>
+            <p class="card-front">${escapeHtml(card.front)}</p>
+            <div class="card-back" hidden>
+              <p>${escapeHtml(card.back)}</p>
+              <span class="card-source">${card.from === 'ejercicio' ? 'Ejercicio resuelto' : 'Autocomprobacion'} · ${escapeHtml(card.topicId)}</span>
+            </div>
+            <div class="card-actions">
+              <button class="button card-flip" data-card-flip>Ver la respuesta</button>
+              <div class="card-grade" hidden>
+                <button class="card-known${known.has(card.id) ? ' is-on' : ''}" data-card-grade="known">La sabia</button>
+                <button class="card-again" data-card-grade="again">Repasarla</button>
+              </div>
+            </div>
+          </div>`,
+        )
+        .join('')}
+      <p class="cards-done" hidden></p>
+    </div>`;
+}
+
+/**
+ * El mazo de la unidad entera, con lo que ya se sabe descontado.
+ *
+ * Repasar apartado por apartado tiene un limite: cada tarjeta llega rodeada de
+ * las de su tema, y acertar «isotonos» cuando acabas de leer sobre isotonos no
+ * demuestra gran cosa. El mazo mezcla las sesenta y cinco.
+ */
+export function renderDeckBar(total: number, known: number): string {
+  const pct = total === 0 ? 0 : Math.round((100 * known) / total);
+  return `
+    <button class="deck-bar" data-deck>
+      <span class="deck-label">Repasar con tarjetas</span>
+      <span class="deck-meter"><span class="deck-fill" style="width:${pct}%"></span></span>
+      <span class="deck-count">${known}/${total}</span>
+    </button>`;
+}

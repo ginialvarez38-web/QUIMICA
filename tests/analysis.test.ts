@@ -33,6 +33,7 @@ import {
 import type { TheoryTopic } from '../src/teach/theory.js';
 import { allSceneSets, sceneSet } from '../src/teach/scenes.js';
 import { flattenTopics } from '../src/ui/theory-view.js';
+import { cardsOf, deckOf, shuffle, progressOf } from '../src/teach/flashcards.js';
 import { radial, psi, sampleOrbital, radiusContaining } from '../src/teach/orbitals.js';
 
 /** Recorre un temario en profundidad. Lo usan varias pruebas. */
@@ -2069,5 +2070,128 @@ describe('el lector del temario', () => {
         assert.ok(sceneSet(topic.figure), `${topic.id}: figura «${topic.figure}» inexistente`);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('las tarjetas de repaso', () => {
+  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo()];
+
+  test('TODO apartado tiene al menos una tarjeta', () => {
+    /*
+     * La peticion era literal: una tarjeta por tema. Y es una regla que hay
+     * que vigilar, porque las tarjetas se DERIVAN — un apartado nuevo sin
+     * autocomprobacion ni ejercicio no daria error en ninguna parte: se
+     * quedaria sin tarjeta y nadie se enteraria hasta abrirlo.
+     */
+    for (const unidad of unidades) {
+      for (const topic of flattenTopics(unidad)) {
+        assert.ok(cardsOf(topic).length > 0, `${topic.id} «${topic.title}» se quedo sin tarjeta`);
+      }
+    }
+  });
+
+  test('ninguna tarjeta se inventa: todas salen del apartado', () => {
+    // Es la razon de que este modulo derive en lugar de guardar. Si una
+    // tarjeta pudiera existir sin estar en el temario, seria una segunda
+    // version de la misma quimica, libre de contradecir a la primera.
+    for (const unidad of unidades) {
+      for (const topic of flattenTopics(unidad)) {
+        const propias = [
+          ...(topic.check ?? []).map((c) => c.question),
+          ...(topic.worked ? [topic.worked.question] : []),
+        ];
+        for (const card of cardsOf(topic)) {
+          assert.ok(propias.includes(card.front), `${card.id}: su pregunta no esta en el apartado`);
+          assert.equal(card.topicId, topic.id);
+        }
+      }
+    }
+  });
+
+  test('los identificadores son unicos y estables', () => {
+    /*
+     * Con el id se guarda lo que el lector ya se sabe. Uno repetido haria que
+     * marcar una tarjeta marcara otra; uno que dependiera de la posicion se
+     * desplazaria entero al insertar una tarjeta en medio, y el progreso
+     * quedaria movido de sitio sin que nadie lo tocara.
+     */
+    const ids = unidades.flatMap((u) => deckOf(u).map((c) => c.id));
+    assert.equal(new Set(ids).size, ids.length, 'hay identificadores repetidos');
+    for (const id of ids) assert.match(id, /^[\d.]+#[ce]\d+$/, `id con forma rara: ${id}`);
+
+    // Y el mismo apartado da siempre los mismos ids, en el mismo orden.
+    const primera = deckOf(unitAtomo()).map((c) => c.id);
+    const segunda = deckOf(unitAtomo()).map((c) => c.id);
+    assert.deepEqual(primera, segunda);
+  });
+
+  test('una tarjeta pregunta algo y responde algo', () => {
+    // Una cara delantera de tres palabras no obliga a recordar nada, y una
+    // trasera de dos no explica: seria un cromo, no una tarjeta.
+    for (const unidad of unidades) {
+      for (const card of deckOf(unidad)) {
+        assert.ok(card.front.length > 25, `${card.id}: pregunta demasiado escueta`);
+        assert.ok(card.back.length > 60, `${card.id}: respuesta demasiado escueta`);
+        assert.notEqual(card.front, card.back, `${card.id}: la respuesta repite la pregunta`);
+      }
+    }
+  });
+
+  test('las preguntas estan escritas en espanol, con su signo de apertura', () => {
+    // Una «¿» que falta no rompe nada y se cuela sin que nadie la vea; en una
+    // tarjeta, que es una frase sola en medio de una pantalla, canta.
+    for (const unidad of unidades) {
+      for (const card of deckOf(unidad)) {
+        const q = card.front.trim();
+        if (!q.endsWith('?')) continue;
+        assert.ok(q.includes('¿'), `${card.id}: pregunta sin «¿» de apertura`);
+      }
+    }
+  });
+
+  test('barajar conserva el mazo entero', () => {
+    // Una baraja que pierde o duplica tarjetas es peor que no barajar: el
+    // lector creeria haber repasado algo que nunca vio.
+    const deck = deckOf(unitMateria());
+    for (const seed of [1, 7, 4242, 99991]) {
+      const mezclado = shuffle(deck, seed);
+      assert.equal(mezclado.length, deck.length);
+      assert.deepEqual(
+        [...mezclado].map((c) => c.id).sort(),
+        [...deck].map((c) => c.id).sort(),
+        `semilla ${seed}: el mazo cambio de contenido`,
+      );
+    }
+  });
+
+  test('la misma semilla da siempre el mismo orden, y semillas distintas no', () => {
+    const deck = deckOf(unitAtomo());
+    assert.deepEqual(shuffle(deck, 33).map((c) => c.id), shuffle(deck, 33).map((c) => c.id));
+    assert.notDeepEqual(shuffle(deck, 33).map((c) => c.id), shuffle(deck, 34).map((c) => c.id));
+  });
+
+  test('el recuento de sabidas no cuenta lo que no esta en el mazo', () => {
+    const deck = deckOf(unitMateria());
+    const known = new Set([deck[0]!.id, deck[1]!.id, '9.9.9#c0']);
+    assert.equal(progressOf(deck, known), 2, 'una tarjeta ajena al mazo no deberia sumar');
+    assert.equal(progressOf(deck, new Set()), 0);
+  });
+
+  test('el ejercicio resuelto va antes que las autocomprobaciones', () => {
+    // Es la que mas cuesta y la que se contesta calculando: llega primera, con
+    // la cabeza despejada.
+    for (const unidad of unidades) {
+      for (const topic of flattenTopics(unidad)) {
+        if (!topic.worked) continue;
+        assert.equal(cardsOf(topic)[0]!.from, 'ejercicio', `${topic.id}: el ejercicio no va primero`);
+      }
+    }
+  });
+
+  test('hay tarjetas suficientes para que el mazo signifique algo', () => {
+    const total = unidades.reduce((n, u) => n + deckOf(u).length, 0);
+    assert.ok(total >= 60, `solo ${total} tarjetas en total`);
   });
 });

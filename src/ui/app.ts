@@ -30,8 +30,12 @@ import { guide, type GuideMessage } from '../teach/guide.js';
 import { renderAvatar, renderGuidePanel } from './guide-view.js';
 import { unitMateria } from '../teach/theory.js';
 import {
-  renderTheoryShell, renderTopicPage, flattenTopics, materiaView, anyView, type AnyUnitView,
+  renderTheoryShell, renderTopicPage, flattenTopics, materiaView, anyView, renderCards, renderDeckBar,
+  type AnyUnitView,
 } from './theory-view.js';
+import {
+  cardsOf, deckOf, shuffle, loadProgress, saveProgress, progressOf, type FlashCard,
+} from '../teach/flashcards.js';
 import { unitAtomo } from '../teach/atom.js';
 import { atomoView } from './atom-view.js';
 import { FigureManager } from './figure-3d.js';
@@ -1110,6 +1114,23 @@ const THEORY_VIEWS: readonly AnyUnitView[] = [
   anyView(atomoView(unitAtomo())),
 ];
 
+/**
+ * Lo que el lector ya se sabe, cargado una vez al arrancar.
+ *
+ * Vive en el navegador de quien estudia y en ningun otro sitio. Se mantiene en
+ * memoria durante la sesion porque se consulta en cada repintado de apartado;
+ * al disco solo se baja cuando cambia.
+ */
+const cardsKnown: Set<string> = loadProgress();
+
+/** Refresca la barra del mazo sin rehacer el indice entero. */
+function refreshDeckBar(): void {
+  const bar = $('#theory-panel').querySelector<HTMLElement>('.deck-bar');
+  if (!bar) return;
+  const deck = deckOf(THEORY_VIEWS[state.theoryUnit]!.unit);
+  bar.outerHTML = renderDeckBar(deck.length, progressOf(deck, cardsKnown));
+}
+
 /** Los apartados de la unidad abierta, en orden de lectura. */
 function theoryTopics() {
   return flattenTopics(THEORY_VIEWS[state.theoryUnit]!.unit);
@@ -1128,7 +1149,7 @@ function renderTheoryPanel(rebuildShell = true): void {
   const topics = theoryTopics();
 
   if (rebuildShell || !panel.innerHTML) {
-    panel.innerHTML = renderTheoryShell(THEORY_VIEWS, state.theoryUnit);
+    panel.innerHTML = renderTheoryShell(THEORY_VIEWS, state.theoryUnit, cardsKnown);
   }
 
   // Un apartado sin elegir —o uno que no existe en esta unidad, al cambiar de
@@ -1148,6 +1169,7 @@ function renderTheoryPanel(rebuildShell = true): void {
         total: topics.length,
         previous: topics[index - 1],
         next: topics[index + 1],
+        known: cardsKnown,
       },
       view.demoRenderer,
     );
@@ -1169,6 +1191,89 @@ function renderTheoryPanel(rebuildShell = true): void {
   if (content) content.scrollTop = 0;
 
   activateFigures('#theory-panel');
+}
+
+/** Muestra una tarjeta y oculta las demas, dejandola sin destapar. */
+function showCard(deck: HTMLElement, card: HTMLElement | null): void {
+  const cards = [...deck.querySelectorAll<HTMLElement>('.card')];
+  for (const c of cards) c.hidden = c !== card;
+  if (!card) return;
+
+  // Cada tarjeta se presenta TAPADA. Sin esto, al volver a una ya vista se
+  // llegaba con la respuesta puesta y la pregunta dejaba de serlo.
+  card.querySelector<HTMLElement>('.card-back')!.hidden = true;
+  card.querySelector<HTMLElement>('.card-grade')!.hidden = true;
+  card.querySelector<HTMLElement>('.card-flip')!.hidden = false;
+
+  const index = deck.querySelector<HTMLElement>('[data-card-index]');
+  if (index) index.textContent = String(cards.indexOf(card) + 1);
+}
+
+/**
+ * Pasa a la siguiente tarjeta del mazo.
+ *
+ * Al llegar al final NO se cierra ni se vuelve a empezar en silencio: se dice
+ * cuantas quedaron por repasar. Quedarse en blanco o reiniciar sin avisar
+ * dejaria al lector sin saber si termino o si se le fue el dedo.
+ */
+function advanceCard(deck: HTMLElement, current: HTMLElement): void {
+  const cards = [...deck.querySelectorAll<HTMLElement>('.card')];
+  const next = cards[cards.indexOf(current) + 1];
+  if (next) {
+    showCard(deck, next);
+    return;
+  }
+
+  const pending = cards.filter((c) => !cardsKnown.has(c.dataset['card']!)).length;
+  const done = deck.querySelector<HTMLElement>('.cards-done');
+  if (done) {
+    done.hidden = false;
+    done.innerHTML =
+      pending === 0
+        ? '<strong>Vuelta completa.</strong> Te sabias las ' + cards.length + '.'
+        : '<strong>Vuelta completa.</strong> Marcaste ' + pending + ' de ' + cards.length +
+          ' para repasar. Baraja y vuelve a pasarlas.';
+  }
+  for (const c of cards) c.hidden = true;
+}
+
+/**
+ * El mazo de la unidad entera, sobre el temario.
+ *
+ * Va en una capa encima y no en un modo aparte: repasar es algo que se hace
+ * A RATOS mientras se estudia, y mandarte a otra pantalla —perdiendo el
+ * apartado que estabas leyendo— convierte un repaso de dos minutos en una
+ * decision. Al cerrarlo se sigue donde se estaba.
+ *
+ * Las que ya estan marcadas como sabidas se dejan fuera: repasar lo que ya se
+ * sabe es la forma mas comun de sentir que se estudia sin estudiar. Si no
+ * queda ninguna sin saber, se repasan todas — no tendria sentido abrir un mazo
+ * vacio.
+ */
+function openDeck(): void {
+  const unit = THEORY_VIEWS[state.theoryUnit]!.unit;
+  const all = deckOf(unit);
+  const pending = all.filter((c) => !cardsKnown.has(c.id));
+  const chosen: readonly FlashCard[] = pending.length > 0 ? pending : all;
+
+  const overlay = $('#deck-overlay');
+  overlay.innerHTML = `
+    <div class="deck-sheet" role="dialog" aria-modal="true" aria-label="Tarjetas de repaso">
+      <header class="deck-head">
+        <div>
+          <strong>Unidad ${escapeHtml(unit.id)} · ${escapeHtml(unit.title)}</strong>
+          <span class="deck-sub">${
+            pending.length > 0
+              ? `${chosen.length} tarjetas por repasar de ${all.length}`
+              : `Las ${all.length} estan marcadas como sabidas. Repaso completo.`
+          }</span>
+        </div>
+        <button class="deck-close" data-deck-close aria-label="Cerrar">×</button>
+      </header>
+      ${renderCards(shuffle(chosen, Date.now() & 0xffff), cardsKnown)}
+      <p class="cards-done" hidden></p>
+    </div>`;
+  overlay.hidden = false;
 }
 
 /** Abre un apartado por su identificador, cambiando de unidad si hace falta. */
@@ -1591,6 +1696,52 @@ function wireEvents(): void {
       panel.querySelector('.theory-toc')?.classList.remove('is-open');
     });
 
+    /*
+     * LAS TARJETAS.
+     *
+     * Toda la interaccion pasa por aqui y no por el HTML de la tarjeta, que se
+     * pinta una vez y no sabe nada: se muestran y se ocultan trozos ya
+     * dibujados. Asi volver a una tarjeta ya vista la encuentra como se dejo.
+     */
+    delegate(panel, 'click', '[data-card-flip]', (_e, target) => {
+      const card = target.closest<HTMLElement>('.card');
+      if (!card) return;
+      // Ver la respuesta y calificarla son el mismo gesto en dos tiempos: al
+      // destaparla desaparece el boton y aparecen las dos opciones, porque
+      // calificar antes de mirar no significa nada.
+      card.querySelector<HTMLElement>('.card-back')!.hidden = false;
+      card.querySelector<HTMLElement>('.card-grade')!.hidden = false;
+      target.hidden = true;
+    });
+
+    delegate(panel, 'click', '[data-card-grade]', (_e, target) => {
+      const card = target.closest<HTMLElement>('.card');
+      const deck = target.closest<HTMLElement>('[data-cards]');
+      if (!card || !deck) return;
+
+      const id = card.dataset['card']!;
+      if (target.dataset['cardGrade'] === 'known') cardsKnown.add(id);
+      else cardsKnown.delete(id);
+      saveProgress(cardsKnown);
+      refreshDeckBar();
+
+      advanceCard(deck, card);
+    });
+
+    delegate(panel, 'click', '[data-card-shuffle]', (_e, target) => {
+      const deck = target.closest<HTMLElement>('[data-cards]');
+      if (!deck) return;
+      const cards = [...deck.querySelectorAll<HTMLElement>('.card')];
+      // La semilla cambia en cada barajada; dentro de una, el orden es fijo.
+      for (const card of shuffle(cards, Date.now() & 0xffff)) deck.append(card);
+      deck.querySelector<HTMLElement>('.cards-done')!.hidden = true;
+      showCard(deck, deck.querySelector<HTMLElement>('.card'));
+    });
+
+    delegate(panel, 'click', '[data-deck]', () => {
+      openDeck();
+    });
+
     delegate(panel, 'click', '[data-toc-toggle]', () => {
       panel.querySelector('.theory-toc')?.classList.toggle('is-open');
     });
@@ -1655,6 +1806,58 @@ function wireEvents(): void {
     delegate(panel, 'click', '[data-element]', (_e, target) => {
       setMode('react');
       selectSubstance(target.dataset['element']!);
+    });
+  }
+
+  /*
+   * El mazo vive FUERA del panel del temario —es una capa sobre toda la
+   * aplicacion— asi que sus clics no llegan por la delegacion del panel y hay
+   * que registrarlos aparte. Es la clase de detalle que no da error: ' +
+   * simplemente el boton de cerrar no haria nada.
+   */
+  {
+    const overlay = $('#deck-overlay');
+    const close = () => { overlay.hidden = true; };
+
+    delegate(overlay, 'click', '[data-deck-close]', close);
+
+    // Pulsar fuera de la hoja cierra, que es lo que espera cualquiera.
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) close();
+    });
+
+    delegate(overlay, 'click', '[data-card-flip]', (_e, target) => {
+      const card = target.closest<HTMLElement>('.card');
+      if (!card) return;
+      card.querySelector<HTMLElement>('.card-back')!.hidden = false;
+      card.querySelector<HTMLElement>('.card-grade')!.hidden = false;
+      target.hidden = true;
+    });
+
+    delegate(overlay, 'click', '[data-card-grade]', (_e, target) => {
+      const card = target.closest<HTMLElement>('.card');
+      const deck = target.closest<HTMLElement>('[data-cards]');
+      if (!card || !deck) return;
+      const id = card.dataset['card']!;
+      if (target.dataset['cardGrade'] === 'known') cardsKnown.add(id);
+      else cardsKnown.delete(id);
+      saveProgress(cardsKnown);
+      refreshDeckBar();
+      advanceCard(deck, card);
+    });
+
+    delegate(overlay, 'click', '[data-card-shuffle]', (_e, target) => {
+      const deck = target.closest<HTMLElement>('[data-cards]');
+      if (!deck) return;
+      const cards = [...deck.querySelectorAll<HTMLElement>('.card')];
+      for (const card of shuffle(cards, Date.now() & 0xffff)) deck.append(card);
+      deck.querySelector<HTMLElement>('.cards-done')!.hidden = true;
+      showCard(deck, deck.querySelector<HTMLElement>('.card'));
+    });
+
+    // Escape cierra: es una capa modal y el teclado tiene que poder salir.
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !overlay.hidden) close();
     });
   }
 

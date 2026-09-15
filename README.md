@@ -164,7 +164,7 @@ vigilan:
 | **Ojo** | El error que casi todo el mundo comete ahi. |
 | **Imaginalo asi** | Toda analogia declara **donde deja de valer**. Sin el limite, no se admite. |
 | **Ejercicio resuelto** | Al menos tres pasos, y alguno ensena la operacion, no solo la describe. |
-| **Comprueba que lo has entendido** | La respuesta llega tapada, y tiene que razonar — una de dos palabras no pasa la prueba. |
+| **Tarjetas de repaso** | Toda pregunta y toda respuesta valen como tarjeta: al menos 25 y 60 caracteres, y la pregunta con su «¿». |
 | **Se conecta con** | Los enlaces apuntan a apartados que existen. |
 | **Figura 3D** | Cada escena declara **en que miente el dibujo**. Sin ese campo, no compila. |
 
@@ -178,6 +178,37 @@ orbitas, que es justo lo que la mecanica cuantica niega. Por eso el tipo
 Y las respuestas de autocomprobacion llegan ocultas por un motivo: leer la
 pregunta y la respuesta a la vez da sensacion de haber entendido sin haber
 recuperado nada de memoria.
+
+### Las tarjetas de repaso
+
+**65 tarjetas, y ninguna esta escrita aparte.** Lo evidente habria sido anadir
+un campo `flash` a cada apartado y redactar cien preguntas nuevas; habria sido
+crear una SEGUNDA version de una quimica que ya existe, libre de contradecir a
+la primera a partir del dia siguiente.
+
+Asi que se derivan de lo que el temario ya tenia en forma de pregunta y
+respuesta:
+
+| Origen | Tarjetas |
+|---|---|
+| `check` — la autocomprobacion de cada apartado | 53 |
+| `worked` — el enunciado y la respuesta del ejercicio resuelto | 12 |
+
+Las 13 que faltaban no se resolvieron inventando tarjetas sueltas, sino
+**escribiendo la autocomprobacion que le faltaba a esos 13 apartados**. Asi la
+tarjeta y el apartado no pueden separarse nunca: son la misma frase leida en
+dos sitios. Una prueba exige que **todo apartado produzca al menos una**.
+
+Y por eso **no hay pestana de «Compruebalo»**: seria la misma pregunta dos
+veces en la misma caja. Se queda la tarjeta, que hace lo mismo y ademas
+recuerda si ya te la sabias.
+
+Se repasan por apartado o en el mazo de la unidad entera, que baraja y deja
+fuera las ya sabidas — repasar lo que uno se sabe es la forma mas comun de
+sentir que se estudia sin estudiar. El progreso vive en `localStorage`, con
+todos los accesos envueltos: en una ventana privada `localStorage` no devuelve
+vacio, LANZA, y sin el envoltorio el temario reventaria por no poder guardar
+una marca de repaso.
 
 ### Las figuras 3D del temario
 
