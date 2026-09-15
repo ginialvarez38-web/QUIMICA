@@ -36,6 +36,8 @@ import {
 import {
   cardsOf, deckOf, shuffle, loadProgress, saveProgress, progressOf, type FlashCard,
 } from '../teach/flashcards.js';
+import { knowledgeTree, neighbours, type KnowledgeTree } from '../teach/tree.js';
+import { renderTree, renderLineage, renderPlanned } from './tree-view.js';
 import { unitAtomo } from '../teach/atom.js';
 import { atomoView } from './atom-view.js';
 import { FigureManager } from './figure-3d.js';
@@ -148,6 +150,18 @@ interface State {
   theoryUnit: number;
   /** Apartado que se esta leyendo. `null` = todavia ninguno, se abre el primero. */
   theoryTopic: string | null;
+  /** Temario (un apartado) o mapa (el arbol entero). */
+  theoryView: 'temario' | 'mapa';
+  /**
+   * Rama prevista abierta desde el mapa, si la hay.
+   *
+   * Hace falta como estado y no como un simple repintado suelto: sin el, tras
+   * abrir una rama prevista el conmutador se quedaba muerto. La vista seguia
+   * siendo «mapa», asi que pulsar «Mapa» no cambiaba nada y no habia forma de
+   * volver al dibujo salvo pasando por «Temario». Un boton que no hace nada
+   * ensena a no volver a pulsarlo.
+   */
+  theoryPlanned: string | null;
   routeFrom: string;
   routeTo: string;
   /** Constructor de compuestos (§5, §7): los dos iones que se combinan. */
@@ -174,6 +188,8 @@ const state: State = {
   guideAnswer: null,
   theoryUnit: 0,
   theoryTopic: null,
+  theoryView: 'temario',
+  theoryPlanned: null,
   routeFrom: 'Ca',
   routeTo: 'CaCO3',
   builder: { cation: null, anion: null },
@@ -1123,6 +1139,16 @@ const THEORY_VIEWS: readonly AnyUnitView[] = [
  */
 const cardsKnown: Set<string> = loadProgress();
 
+/**
+ * El arbol del conocimiento, construido una vez.
+ *
+ * Abarca las DOS unidades a la vez y las ramas previstas, asi que no depende
+ * de cual este abierta: cambiar de unidad no lo rehace. Es justamente lo que
+ * hace que se vean las aristas que cruzan de unidad — el 1.8.3 empujando a los
+ * modelos atomicos del 2.2.1.2— que leyendo no se ven nunca.
+ */
+const THEORY_TREE: KnowledgeTree = knowledgeTree(THEORY_VIEWS.map((v) => v.unit) as never[]);
+
 /** Refresca la barra del mazo sin rehacer el indice entero. */
 function refreshDeckBar(): void {
   const bar = $('#theory-panel').querySelector<HTMLElement>('.deck-bar');
@@ -1160,20 +1186,40 @@ function renderTheoryPanel(rebuildShell = true): void {
 
   const page = panel.querySelector<HTMLElement>('.topic-page');
   if (page) {
-    page.innerHTML = renderTopicPage(
-      topic,
-      {
-        unitId: view.unit.id,
-        unitTitle: view.unit.title,
-        position: index + 1,
-        total: topics.length,
-        previous: topics[index - 1],
-        next: topics[index + 1],
-        known: cardsKnown,
-      },
-      view.demoRenderer,
-    );
+    const planned = state.theoryPlanned
+      ? THEORY_TREE.nodes.find((n) => n.id === state.theoryPlanned)
+      : undefined;
+
+    if (planned) {
+      page.innerHTML = renderPlanned(planned);
+    } else if (state.theoryView === 'mapa') {
+      page.innerHTML = renderTree(THEORY_TREE, topic.id);
+    } else {
+      const { before, after } = neighbours(THEORY_TREE, topic.id);
+      page.innerHTML = renderTopicPage(
+        topic,
+        {
+          unitId: view.unit.id,
+          unitTitle: view.unit.title,
+          position: index + 1,
+          total: topics.length,
+          previous: topics[index - 1],
+          next: topics[index + 1],
+          known: cardsKnown,
+          lineage: renderLineage(before, after),
+        },
+        view.demoRenderer,
+      );
+    }
   }
+
+  // El conmutador de vista se marca aqui y no al pulsarlo: asi tambien queda
+  // bien cuando la vista cambia por otra via (abrir un nodo del mapa).
+  setPressed(
+    $$('.view-tab', panel),
+    (b) => b.dataset['view'] === state.theoryView,
+    'aria-selected',
+  );
 
   // El apartado en curso se marca en el indice y se trae a la vista: con
   // veintiun entradas, el que se esta leyendo puede quedar fuera de pantalla.
@@ -1690,6 +1736,8 @@ function wireEvents(): void {
 
     // El indice ABRE el apartado, no se limita a desplazarse hasta el.
     delegate(panel, 'click', '[data-toc]', (_e, target) => {
+      state.theoryView = 'temario';
+      state.theoryPlanned = null;
       openTopic(target.dataset['toc']!);
       // En movil el indice esta plegado: elegir un apartado lo cierra, o
       // taparia justo lo que acabas de pedir.
@@ -1742,12 +1790,44 @@ function wireEvents(): void {
       openDeck();
     });
 
+    delegate(panel, 'click', '[data-view]', (_e, target) => {
+      const next = target.dataset['view'] as 'temario' | 'mapa';
+      // Se comprueba tambien `theoryPlanned`: pulsar «Mapa» estando en la
+      // ficha de una rama prevista tiene que devolver al mapa, aunque la vista
+      // ya fuera «mapa».
+      if (next === state.theoryView && state.theoryPlanned === null) return;
+      state.theoryView = next;
+      state.theoryPlanned = null;
+      renderTheoryPanel(false);
+    });
+
+    /*
+     * Pulsar un nodo del mapa.
+     *
+     * Un apartado real abre el temario por el; una rama prevista NO puede
+     * abrirlo —no esta escrita— y en vez de no hacer nada, que ensenaria a
+     * desconfiar del mapa entero, ensena su ficha: que es, de que depende y
+     * que motor la sostiene ya.
+     */
+    delegate(panel, 'click', '[data-tree-node]', (_e, target) => {
+      const id = target.dataset['treeNode']!;
+      if (target.dataset['state'] === 'previsto') {
+        state.theoryPlanned = id;
+        renderTheoryPanel(false);
+        return;
+      }
+      state.theoryPlanned = null;
+      state.theoryView = 'temario';
+      openTopic(id);
+    });
+
     delegate(panel, 'click', '[data-toc-toggle]', () => {
       panel.querySelector('.theory-toc')?.classList.toggle('is-open');
     });
 
     // Anterior y siguiente.
     delegate(panel, 'click', '[data-goto]', (_e, target) => {
+      state.theoryPlanned = null;
       openTopic(target.dataset['goto']!);
     });
 

@@ -523,6 +523,24 @@ export interface TheoryTopic<D = TheoryDemo> {
   /** Con que otros apartados se conecta esto. */
   readonly connects?: readonly { readonly label: string; readonly topic?: string; readonly mode?: string }[];
   /**
+   * QUE HAY QUE ENTENDER ANTES DE ESTO.
+   *
+   * No es lo mismo que `connects`, y la diferencia es la que separa un indice
+   * de un arbol del conocimiento:
+   *
+   *   connects  es LATERAL y va en los dos sentidos. «Esto tambien te
+   *             interesa». El 2.11.1.1 enlaza al 2.11.1.3 y el 2.11.1.3
+   *             enlaza de vuelta.
+   *   requires  es DIRIGIDO y no admite vuelta. «Sin esto, lo de aqui no se
+   *             entiende». Si hubiera un ciclo no habria por donde empezar, y
+   *             hay una prueba que lo impide.
+   *
+   * De aqui sale el arbol de `teach/tree.ts`, que es donde se ve que la ley de
+   * las proporciones multiples (1.8.3) es lo que empuja a los modelos atomicos
+   * (2.2.1.2), aunque esten en unidades distintas y a cuarenta pantallas.
+   */
+  readonly requires?: readonly string[];
+  /**
    * Identificador de un conjunto de escenas 3D (ver `teach/scenes.ts`).
    *
    * Solo se pone donde lo que se explica es ESPACIAL y el texto no puede con
@@ -586,6 +604,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.2',
+        requires: ['1.1'],
         title: 'Propiedades',
         body:
           'Las propiedades EXTENSIVAS dependen de cuanta materia hay: masa, volumen, longitud. Las ' +
@@ -638,6 +657,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.3',
+        requires: ['1.1'],
         title: 'Elementos',
         body:
           'Un elemento es una sustancia formada por atomos con el MISMO numero atomico, es decir, con ' +
@@ -668,6 +688,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.4',
+        requires: ['1.3'],
         title: 'Compuestos',
         body:
           'Un compuesto es una sustancia formada por dos o mas elementos unidos QUIMICAMENTE en una ' +
@@ -698,6 +719,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.5',
+        requires: ['1.3', '1.4'],
         title: 'Sustancias puras',
         body:
           'Una sustancia pura tiene composicion FIJA y propiedades constantes. Hay dos clases: los ' +
@@ -727,6 +749,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.6',
+        requires: ['1.5'],
         title: 'Mezclas',
         body:
           'Una mezcla es la union FISICA de dos o mas sustancias que conservan sus propiedades. Ni hay ' +
@@ -770,6 +793,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         children: [
           {
             id: '1.6.1',
+            requires: ['1.6'],
             title: 'Homogeneas',
             body:
               'Se ve una sola fase: los componentes estan mezclados a escala molecular y no se ' +
@@ -794,6 +818,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           },
           {
             id: '1.6.2',
+            requires: ['1.6'],
             title: 'Heterogeneas',
             body:
               'Se distinguen dos o mas fases a simple vista o con microscopio. Agua con arena, aceite ' +
@@ -824,6 +849,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           },
           {
             id: '1.6.3',
+            requires: ['1.6.1', '1.6.2', '1.2'],
             title: 'Metodos de separacion',
             body:
               'Todo metodo aprovecha una PROPIEDAD FISICA en la que los componentes se diferencian. ' +
@@ -856,6 +882,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.7',
+        requires: ['1.4', '1.2'],
         title: 'Transformaciones quimicas',
         body:
           'En un cambio FISICO la sustancia sigue siendo la misma: cambia de estado, de forma o de ' +
@@ -893,6 +920,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.8',
+        requires: ['1.7'],
         title: 'Leyes de las reacciones quimicas',
         body:
           'Cinco leyes descubiertas entre 1789 y 1811, antes de que nadie hubiera visto un atomo. Son ' +
@@ -915,6 +943,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
         children: [
           {
             id: '1.8.1',
+            requires: ['1.8'],
             title: 'Ley de conservacion de la materia',
             body:
               'Lavoisier, 1789. En una reaccion quimica la masa total de los reactivos es igual a la de ' +
@@ -955,6 +984,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           },
           {
             id: '1.8.2',
+            requires: ['1.8'],
             title: 'Ley de las proporciones definidas',
             body:
               'Proust, 1799. Un compuesto puro siempre contiene los mismos elementos en la misma ' +
@@ -981,6 +1011,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           },
           {
             id: '1.8.3',
+            requires: ['1.8.2'],
             title: 'Ley de las proporciones multiples',
             body:
               'Dalton, 1803. Cuando dos elementos forman VARIOS compuestos distintos, las masas de uno ' +
@@ -1013,6 +1044,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           },
           {
             id: '1.8.4',
+            requires: ['1.8'],
             title: 'Ley de Gay-Lussac',
             body:
               'Gay-Lussac, 1808. Cuando los gases reaccionan entre si, los volumenes de reactivos y ' +
@@ -1040,6 +1072,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
           },
           {
             id: '1.8.5',
+            requires: ['1.8.4'],
             title: 'Principio de Avogadro',
             body:
               'Avogadro, 1811. Volumenes iguales de gases distintos, en las mismas condiciones de ' +
@@ -1068,6 +1101,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.9',
+        requires: ['1.8.5'],
         title: 'Numero de Avogadro',
         body:
           `N_A = ${AVOGADRO.toExponential(8).replace('e+', ' × 10^')} entidades por mol. Es el numero de ` +
@@ -1095,6 +1129,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.10',
+        requires: ['1.9'],
         title: 'Mol de atomos y mol de moleculas',
         body:
           'El mol cuenta ENTIDADES, y hay que decir de que. Un mol de moleculas de agua son 6,022·10²³ ' +
@@ -1140,6 +1175,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.11',
+        requires: ['1.9'],
         title: 'Peso atomico',
         body:
           'La masa atomica de un elemento es la masa MEDIA de sus atomos, ponderada por la abundancia ' +
@@ -1167,6 +1203,7 @@ export function unitMateria(): TheoryTopic<TheoryDemo> {
       },
       {
         id: '1.12',
+        requires: ['1.11', '1.10'],
         title: 'Peso molecular',
         body:
           'La masa molecular es la suma de las masas atomicas de todos los atomos de la formula. En ' +

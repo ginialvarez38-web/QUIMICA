@@ -33,7 +33,7 @@ No hay nada marcado como hecho que no lo este.
 | 19 | Condiciones de reaccion | **Parcial** | Las condiciones se almacenan, se muestran y distinguen lo termodinamicamente posible de lo cineticamente favorable. **Falta:** que el usuario las modifique y el motor recalcule. |
 | 20 | «¿Que puedo hacer con este compuesto?» | **Hecho** | `engine/predict.ts::reactionsAvailableFor`. Es la vista por defecto al elegir una sustancia. |
 | 21 | «¿Como llego a este compuesto?» | **Hecho** | `engine/graph.ts`. Dijkstra mas busqueda de rutas alternativas. |
-| 22 | Mapa de transformaciones | **Parcial** | El grafo, el vecindario y las rutas estan calculados y listados. **Falta:** el dibujo de la red como diagrama de nodos. |
+| 22 | Mapa de transformaciones | **Parcial** | El grafo, el vecindario y las rutas estan calculados y listados. El **arbol del conocimiento** del temario si se dibuja como diagrama de nodos por capas (`teach/tree.ts`). **Falta:** el mismo dibujo para la red de sustancias. |
 | 23 | Modo descubrimiento | **Hecho** | El guia pregunta «¿que tipo de reaccion crees que ocurre?» con dos reactivos en el banco y ANTES de predecir, nombrando solo las familias de los reactivos. Al responder muestra la explicacion del motor, se acierte o no. |
 | 24 | Sistema de advertencias | **Hecho** | Cuatro niveles con su codigo de color, en cada sustancia y cada reaccion. |
 | 25 | Laboratorio virtual | **Pendiente** | El material de vidrio y el trasvase. El modelo (`Container`) esta definido en `core/types.ts`. |
@@ -189,6 +189,36 @@ Dalton no explica la electricidad → Thomson no sobrevive a la lamina de oro �
 Rutherford es inestable segun su propia fisica → Bohr solo vale para el
 hidrogeno → modelo cuantico. Y de todos sobrevive algo: el de Dalton, de 1803,
 sigue siendo el que se usa para ajustar una ecuacion.
+
+## El arbol del conocimiento (§22, §36)
+
+`teach/tree.ts` y `ui/tree-view.ts`. 52 nodos, 72 aristas, 21 capas. Es el
+mapa de prerrequisitos del temario, no su indice: dice que hace falta entender
+antes de cada apartado, y donde encaja lo que aun no existe.
+
+La arista `requires` es nueva y DIRIGIDA. No se pudo derivar de `connects`,
+que es lateral y reciproco (16 de 41 apartados, y con pares en los dos
+sentidos que habrian creado ciclos). Una prueba comprueba que el grafo es
+aciclico: un ciclo ahi seria un temario sin punto de entrada.
+
+Las capas se calculan por CAMINO MAS LARGO, no por el mas corto: asi cada
+nodo cae despues de todo lo que necesita, y la altura dice cuantas cosas hay
+encadenadas antes. Dentro de cada capa, los nodos se ordenan por el baricentro
+de sus padres — una pasada, que es la que se nota.
+
+**Once ramas previstas**, colgadas de apartados reales, con lo que cada una ya
+tiene: enlace quimico (`lewis.ts`, `hybridization.ts`, `polarity.ts`),
+nomenclatura (`nomenclature/inorganic.ts`), fuerzas intermoleculares
+(`imf.ts`), reaccion (`predict.ts`, `balance.ts`), estequiometria
+(`stoichiometry.ts`), termoquimica (`energy.ts`), redox (`redox.ts`)...
+Ocho de las once tienen motor escrito y probado; tres —disoluciones,
+equilibrio, organica avanzada— son trabajo nuevo y lo dicen.
+
+**Hueco declarado:** el mapa dibuja dependencias DECLARADAS, no deducidas. Si
+alguien anade un apartado y no le escribe su `requires`, aparecera en la capa 0
+como si no necesitara nada. Las pruebas cazan las dependencias que apuntan a
+sitios inexistentes y los ciclos, pero no pueden cazar una dependencia que
+falta.
 
 ## Tarjetas de repaso (§36)
 

@@ -3476,6 +3476,190 @@ button { cursor: pointer; border: none; background: none; }
 .more-panel > .topic-worked > .topic-key-label,
 .more-panel > .topic-check > .topic-key-label { display: none; }
 
+/* --- El mapa del conocimiento -------------------------------------------- */
+
+.view-switch {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.view-tab {
+  flex: 1;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 520;
+  color: var(--text-muted);
+  transition: background 0.14s, color 0.14s;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab[aria-selected='true'] {
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.tree { max-width: none; }
+
+.tree-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 9px; height: 9px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+.legend-dot.unit-2 { background: var(--teal); }
+.legend-dot.is-planned { background: var(--surface-3); border: 1px dashed var(--text-faint); }
+.legend-line {
+  width: 18px; height: 0;
+  border-top: 2px solid var(--acid);
+}
+
+.tree-lead {
+  max-width: 78ch;
+  margin: 0 0 18px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+/* El lienzo tiene tamano fijo en px: lo calcula el trazador, y las flechas y
+   los nodos comparten ese sistema de coordenadas. En pantallas estrechas se
+   desplaza en horizontal dentro de su caja, no reflowea — un grafo por capas
+   reflowado deja de significar lo que significaba. */
+.tree-canvas { position: relative; }
+
+/* El lienzo se desplaza en horizontal siempre, no solo en movil: la fila mas
+   ancha del mapa tiene ocho nodos y se sale del ancho de lectura en cualquier
+   pantalla. Antes que estrechar los nodos hasta que no se distingan, se mueve
+   el dibujo. */
+.theory-content:has(.tree) { overflow-x: hidden; }
+.tree { overflow-x: auto; padding-bottom: 8px; }
+
+.tree-edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+
+.tree-edge {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+/* Las que saltan de unidad se marcan: son el motivo de que el mapa exista. */
+.tree-edge.is-cross { stroke: color-mix(in srgb, var(--acid) 62%, transparent); stroke-width: 2; }
+.tree-edge.is-planned { stroke-dasharray: 3 4; }
+.tree-edge.is-current { stroke: var(--accent); stroke-width: 2.5; }
+
+.tree-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+  overflow: hidden;
+  transition: border-color 0.14s, background 0.14s, transform 0.12s;
+}
+.tree-node:hover { background: var(--surface-2); transform: translateY(-1px); z-index: 2; }
+.tree-node.unit-2 { border-left-color: var(--teal); }
+/* Los subapartados se distinguen sin necesidad de sangrar: en un grafo por
+   capas la sangria no significa nada, porque la posicion ya la decide la
+   dependencia. */
+.tree-node.is-sub { border-left-style: dotted; }
+
+.tree-node.is-planned {
+  border-left-color: var(--text-faint);
+  border-style: dashed;
+  background: var(--surface-2);
+  opacity: 0.85;
+}
+.tree-node.is-current {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-line);
+  z-index: 3;
+}
+
+.tree-id {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+}
+.tree-title {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--text);
+  /* Tres lineas como mucho: un nodo que crece descuadra su capa entera. Con
+     dos se cortaban 19 de los 52 titulos, y «1.8.2 Ley de las» no dice nada. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tree-node.is-planned .tree-title { color: var(--text-muted); }
+
+/* La ficha de una rama prevista. */
+.planned-topic .topic-key code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--accent);
+}
+
+/* --- Antes de esto / esto abre ------------------------------------------- */
+
+.lineage {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 26px;
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.lineage-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.lineage-label {
+  flex: none;
+  min-width: 82px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.lineage-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lineage-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  transition: border-color 0.14s, color 0.14s;
+}
+.lineage-chip:hover { color: var(--text); border-color: var(--accent-line); }
+.lineage-chip.is-planned {
+  border-style: dashed;
+  color: var(--text-faint);
+}
+
 /* --- Tarjetas de repaso --------------------------------------------------- */
 
 /* La tarjeta es lo unico de la caja que no se lee: se contesta. Por eso va
@@ -4022,6 +4206,12 @@ button { cursor: pointer; border: none; background: none; }
   }
   .theory-toc.is-open .toc-list { display: flex; }
   .toc-item { width: auto; padding: 8px 10px; }
+
+  /* El mapa no se reflowea: se desplaza. Un grafo por capas recolocado para
+     caber deja de decir lo que decia. */
+  .tree-canvas { overflow-x: auto; }
+  .theory-content:has(.tree) { overflow-x: hidden; }
+  .lineage-label { min-width: 0; }
 
   .deck-overlay { padding: 12px; align-items: start; padding-top: 60px; }
   .deck-sheet { max-height: calc(100vh - 140px); padding: 14px; }

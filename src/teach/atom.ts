@@ -738,6 +738,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
     children: [
       {
         id: '2.1',
+        requires: ['1.1'],
         title: 'Composicion del atomo',
         body:
           'Un atomo tiene un NUCLEO diminuto con protones (carga +1) y neutrones (sin carga), y una ' +
@@ -783,6 +784,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.2',
+        requires: ['2.1'],
         title: 'Estructura nuclear y propiedades derivadas',
         body:
           'Del nucleo salen dos numeros que lo determinan todo: el numero atomico Z fija QUE elemento ' +
@@ -806,6 +808,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         children: [
           {
             id: '2.2.1',
+            requires: ['2.2'],
             title: 'Antecedentes historicos',
             body:
               'Nada de esto se vio: se dedujo de experimentos. El orden importa, porque cada modelo ' +
@@ -826,6 +829,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
             children: [
               {
                 id: '2.2.1.1',
+                requires: ['2.2.1'],
                 title: 'Naturaleza electrica de los atomos',
                 body:
                   'La electrolisis (Faraday, 1834) mostro que la materia y la electricidad estan ' +
@@ -856,6 +860,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
               },
               {
                 id: '2.2.1.2',
+                requires: ['2.2.1.1', '1.8.3'],
                 title: 'Modelos atomicos',
                 body:
                   'Cada modelo resolvio un problema del anterior y dejo otro abierto. Estudiarlos por ' +
@@ -904,6 +909,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.3',
+        requires: ['2.1'],
         title: 'Constitucion del nucleo',
         body:
           'El nucleo contiene protones y neutrones, llamados juntos NUCLEONES. Los protones se repelen ' +
@@ -933,6 +939,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.4',
+        requires: ['2.3'],
         title: 'Numero atomico (Z)',
         body:
           'Z es el numero de PROTONES del nucleo. Es la identidad del elemento: cambiarlo es cambiar de ' +
@@ -965,6 +972,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.5',
+        requires: ['2.4'],
         title: 'Numero masico (A)',
         body:
           'A = protones + neutrones, es decir, el numero de nucleones. Es un numero ENTERO y se refiere ' +
@@ -1008,6 +1016,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.6',
+        requires: ['2.5'],
         title: 'Isotopos',
         body:
           'Atomos del MISMO elemento (igual Z) con distinto numero de neutrones, y por tanto distinto A. ' +
@@ -1042,6 +1051,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.7',
+        requires: ['2.5'],
         title: 'Isobaras',
         body:
           'Nucleidos de elementos DISTINTOS (distinto Z) que tienen el mismo numero masico A. Son ' +
@@ -1065,6 +1075,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.8',
+        requires: ['2.5'],
         title: 'Isotonos',
         body:
           'Nucleidos de elementos distintos que tienen el mismo numero de NEUTRONES. Ni el elemento ni ' +
@@ -1089,6 +1100,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.9',
+        requires: ['2.6', '1.11'],
         title: 'Abundancia isotopica',
         body:
           'En la naturaleza cada elemento aparece como una mezcla de sus isotopos en proporciones ' +
@@ -1144,6 +1156,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       },
       {
         id: '2.10',
+        requires: ['2.4', '2.2.1.2'],
         title: 'Tabla periodica',
         body:
           'Los 118 elementos ordenados por numero atomico creciente y colocados de modo que los de ' +
@@ -1169,6 +1182,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         children: [
           {
             id: '2.10.1',
+            requires: ['2.10'],
             title: 'Clasificacion de los elementos',
             body:
               'Por comportamiento: METALES (ceden electrones, conducen, brillan, son ductiles), NO ' +
@@ -1201,6 +1215,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
           },
           {
             id: '2.10.2',
+            requires: ['2.10'],
             title: 'Grupos y periodos',
             body:
               'Los GRUPOS son las 18 columnas: sus elementos tienen la misma configuracion de valencia ' +
@@ -1262,6 +1277,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
       // ---------------------------------------------------------------------
       {
         id: '2.11',
+        requires: ['2.10.2'],
         title: 'Estructura electronica y propiedades periodicas',
         body:
           'Hasta aqui la tabla periodica era un hecho: los elementos se parecen por columnas y nadie ha ' +
@@ -1297,6 +1313,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
         children: [
           {
             id: '2.11.1',
+            requires: ['2.11', '2.2.1.2'],
             title: 'Electrones del atomo',
             body:
               'Los electrones no estan «dando vueltas». Ocupan ORBITALES: regiones del espacio donde la ' +
@@ -1335,6 +1352,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
             children: [
               {
                 id: '2.11.1.1',
+                requires: ['2.11.1'],
                 title: 'Numeros cuanticos',
                 body:
                   'Para senalar un electron dentro de un atomo hacen falta cuatro numeros, y ni uno mas: ' +
@@ -1413,6 +1431,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
               },
               {
                 id: '2.11.1.2',
+                requires: ['2.11.1.1'],
                 title: 'Configuracion electronica',
                 body:
                   'La configuracion electronica es la lista de que orbitales estan ocupados y con cuantos ' +
@@ -1475,6 +1494,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
               },
               {
                 id: '2.11.1.3',
+                requires: ['2.11.1.2'],
                 title: 'Principio de exclusion de Pauli · Regla de Hund · Principio de Aufbau',
                 body:
                   'Tres reglas, y cada una contesta a una pregunta distinta. AUFBAU: ¿en que orden se ' +
@@ -1558,6 +1578,7 @@ export function unitAtomo(): TheoryTopic<AtomDemo> {
               },
               {
                 id: '2.11.1.4',
+                requires: ['2.11.1.3'],
                 title: 'Propiedades magneticas',
                 body:
                   'Cada electron desapareado deja un momento magnetico sin compensar, y eso se puede ' +

@@ -179,6 +179,42 @@ Y las respuestas de autocomprobacion llegan ocultas por un motivo: leer la
 pregunta y la respuesta a la vez da sensacion de haber entendido sin haber
 recuperado nada de memoria.
 
+### El arbol del conocimiento
+
+El indice numerado dice DONDE ESTA un tema: el 2.7 va despues del 2.6 porque
+asi se numero. El arbol dice otra cosa y mas util: **que hace falta entender
+antes**. Son dos estructuras sobre el mismo material, y confundirlas es el
+motivo de que un temario se pueda leer entero sin ver nunca por que una cosa
+lleva a la otra.
+
+`teach/tree.ts` — **52 nodos, 72 aristas, 21 capas**. Se dibuja en la pestana
+**Mapa**, dentro de Teoria.
+
+| | |
+|---|---|
+| **De arriba abajo** | El orden en que se puede estudiar. Cada apartado cae por DEBAJO de todo lo que necesita, porque las capas se calculan por camino mas largo. |
+| **26 flechas naranjas** | Cruzan de una unidad a otra. Son las que no se ven leyendo: la ley de las proporciones multiples (1.8.3) es lo que empuja a los modelos atomicos (2.2.1.2), y estan a cuarenta pantallas. |
+| **11 nodos en gris** | Las ramas que aun no existen, colgando de lo que ya las sostiene. |
+
+**`requires` no es `connects`.** Se intento derivar el arbol de los enlaces que
+ya habia y no valia: `connects` es lateral y va en los dos sentidos —el
+2.11.1.1 enlaza al 2.11.1.3 y el 2.11.1.3 enlaza de vuelta— y un arbol con esa
+arista tendria un ciclo, es decir, tres apartados que no se pueden estudiar en
+ningun orden. Ademas solo cubria 16 de los 41. Asi que `requires` es una arista
+DIRIGIDA y nueva, y **hay una prueba que impide los ciclos**.
+
+**Las ramas previstas dicen que motor las sostiene ya.** Ocho de las once
+apuntan a codigo escrito y probado: `stoichiometry.ts` para la estequiometria,
+`lewis.ts` + `hybridization.ts` + `polarity.ts` para el enlace, `energy.ts`
+para la termoquimica, `redox.ts` para la electroquimica. Lo que les falta es el
+temario encima, no la quimica de debajo — y decirlo cambia lo que significa la
+casilla gris. Las que no tienen motor tambien lo dicen.
+
+Dentro de cada apartado, el arbol se ve sin salir a mirarlo: al pie hay una
+linea de **«antes de esto»** y **«esto abre»**, con las ramas previstas
+incluidas — que es la respuesta a «¿y esto para que me sirve?» cuando lo que
+sirve todavia no esta escrito.
+
 ### Las tarjetas de repaso
 
 **65 tarjetas, y ninguna esta escrita aparte.** Lo evidente habria sido anadir

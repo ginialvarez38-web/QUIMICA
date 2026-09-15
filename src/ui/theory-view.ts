@@ -406,6 +406,8 @@ export function renderTopicPage<D>(
     readonly next?: TheoryTopic<D>;
     /** Lo que el lector ya marco como sabido, para pintar las tarjetas. */
     readonly known: ReadonlySet<string>;
+    /** «Antes de esto» y «esto abre», ya dibujados. Sale del arbol. */
+    readonly lineage?: string;
   },
   demoRenderer: (d: D) => string,
 ): string {
@@ -447,6 +449,8 @@ export function renderTopicPage<D>(
           : ''
       }
       ${topic.connects && topic.connects.length > 0 ? renderConnects(topic.connects) : ''}
+
+      ${context.lineage ?? ''}
 
       <nav class="topic-nav" aria-label="Apartado anterior y siguiente">
         ${renderStep(context.previous, 'prev')}
@@ -550,6 +554,14 @@ export function renderTheoryShell(
           <strong>${demos} apartados no se afirman: se calculan.</strong> ${escapeHtml(active.claim)}
         </p>
         ${renderDeckBar(deck.length, progressOf(deck, known))}
+
+        <!-- Temario o mapa. El mapa no sustituye al indice: contesta otra
+             pregunta. El indice dice donde esta un tema; el mapa, que hace
+             falta antes y que se abre despues. -->
+        <div class="view-switch" role="tablist" aria-label="Como ver el temario">
+          <button class="view-tab" role="tab" data-view="temario" aria-selected="true">Temario</button>
+          <button class="view-tab" role="tab" data-view="mapa" aria-selected="false">Mapa</button>
+        </div>
         <!-- El plegado solo actua en movil; en escritorio el boton no se
              dibuja y la lista esta siempre abierta. -->
         <button class="toc-toggle" data-toc-toggle>

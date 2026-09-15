@@ -34,6 +34,7 @@ import type { TheoryTopic } from '../src/teach/theory.js';
 import { allSceneSets, sceneSet } from '../src/teach/scenes.js';
 import { flattenTopics } from '../src/ui/theory-view.js';
 import { cardsOf, deckOf, shuffle, progressOf } from '../src/teach/flashcards.js';
+import { knowledgeTree, plannedBranches, neighbours } from '../src/teach/tree.js';
 import { radial, psi, sampleOrbital, radiusContaining } from '../src/teach/orbitals.js';
 
 /** Recorre un temario en profundidad. Lo usan varias pruebas. */
@@ -2193,5 +2194,195 @@ describe('las tarjetas de repaso', () => {
   test('hay tarjetas suficientes para que el mazo signifique algo', () => {
     const total = unidades.reduce((n, u) => n + deckOf(u).length, 0);
     assert.ok(total >= 60, `solo ${total} tarjetas en total`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('el arbol del conocimiento', () => {
+  const units = [unitMateria(), unitAtomo()] as unknown as TheoryTopic<never>[];
+  const tree = knowledgeTree(units);
+  const ids = new Set(tree.nodes.map((n) => n.id));
+
+  test('no hay ciclos: siempre hay por donde empezar', () => {
+    /*
+     * LA prueba de este modulo.
+     *
+     * `requires` significa «esto va antes». Un ciclo ahi —A necesita B, B
+     * necesita C, C necesita A— no es un detalle de dibujo: es un temario sin
+     * punto de entrada, tres apartados que no se pueden estudiar en ningun
+     * orden. Y es facilisimo de introducir sin darse cuenta al anadir una
+     * dependencia «obvia» en el sentido contrario, que es justo lo que hace
+     * `connects` a todas horas.
+     */
+    const salientes = new Map<string, string[]>();
+    for (const edge of tree.edges) {
+      salientes.set(edge.from, [...(salientes.get(edge.from) ?? []), edge.to]);
+    }
+
+    const estado = new Map<string, 'abierto' | 'cerrado'>();
+    const camino: string[] = [];
+
+    const visitar = (id: string): string[] | null => {
+      if (estado.get(id) === 'cerrado') return null;
+      if (estado.get(id) === 'abierto') return [...camino.slice(camino.indexOf(id)), id];
+
+      estado.set(id, 'abierto');
+      camino.push(id);
+      for (const siguiente of salientes.get(id) ?? []) {
+        const ciclo = visitar(siguiente);
+        if (ciclo) return ciclo;
+      }
+      camino.pop();
+      estado.set(id, 'cerrado');
+      return null;
+    };
+
+    for (const node of tree.nodes) {
+      const ciclo = visitar(node.id);
+      assert.equal(ciclo, null, `ciclo: ${ciclo?.join(' → ')}`);
+    }
+  });
+
+  test('toda dependencia declarada apunta a algo que existe', () => {
+    // Una dependencia a un apartado inexistente no rompe nada: la arista
+    // simplemente no se dibuja, y el nodo aparece flotando en la capa 0 como
+    // si no necesitara nada. Silencioso y falso.
+    for (const node of tree.nodes) {
+      for (const required of node.requires) {
+        assert.ok(ids.has(required), `${node.id} depende de «${required}», que no existe`);
+        assert.notEqual(required, node.id, `${node.id} depende de si mismo`);
+      }
+    }
+  });
+
+  test('todo apartado del temario esta en el arbol, exactamente una vez', () => {
+    // El arbol se construye recorriendo las unidades, asi que no puede
+    // perderse ninguno — pero si puede duplicarse un identificador, y entonces
+    // dos apartados distintos compartirian nodo.
+    const delTemario = units.flatMap((u) => flattenTopics(u).map((t) => t.id));
+    for (const id of delTemario) {
+      assert.equal(
+        tree.nodes.filter((n) => n.id === id).length,
+        1,
+        `${id} no aparece exactamente una vez en el arbol`,
+      );
+    }
+    assert.equal(tree.nodes.length, delTemario.length + plannedBranches().length);
+  });
+
+  test('las capas respetan las dependencias: nada va antes de lo que necesita', () => {
+    /*
+     * Es la propiedad que hace que el mapa signifique algo. Si un nodo cayera
+     * en la misma capa que algo que necesita, o antes, el dibujo diria que se
+     * pueden estudiar a la vez — y estaria mintiendo sobre el orden.
+     */
+    const capaDe = new Map<string, number>();
+    tree.layers.forEach((capa, i) => capa.forEach((n) => capaDe.set(n.id, i)));
+
+    for (const edge of tree.edges) {
+      const antes = capaDe.get(edge.from)!;
+      const despues = capaDe.get(edge.to)!;
+      assert.ok(
+        antes < despues,
+        `${edge.from} (capa ${antes}) deberia ir antes que ${edge.to} (capa ${despues})`,
+      );
+    }
+  });
+
+  test('la capa 0 son los apartados que no necesitan nada previo', () => {
+    for (const node of tree.layers[0]!) {
+      assert.equal(
+        node.requires.filter((r) => ids.has(r)).length,
+        0,
+        `${node.id} esta en la capa 0 pero declara dependencias`,
+      );
+    }
+    // Y tiene que haber al menos uno, o no habria por donde entrar.
+    assert.ok(tree.layers[0]!.length > 0, 'ningun apartado de entrada');
+  });
+
+  test('las aristas que cruzan de unidad existen y estan marcadas', () => {
+    /*
+     * Son la razon de ser del mapa: leyendo el temario de arriba abajo no hay
+     * forma de ver que la ley de las proporciones multiples (1.8.3) es lo que
+     * empuja a los modelos atomicos (2.2.1.2), porque estan en unidades
+     * distintas y a cuarenta pantallas.
+     */
+    const cruzan = tree.edges.filter((e) => e.crossesUnit);
+    assert.ok(cruzan.length >= 3, `solo ${cruzan.length} aristas entre unidades`);
+    assert.ok(
+      cruzan.some((e) => e.from === '1.8.3' && e.to === '2.2.1.2'),
+      'falta la arista 1.8.3 → 2.2.1.2, que es el puente entre las dos unidades',
+    );
+    // Y ninguna marcada de mas.
+    for (const edge of tree.edges) {
+      const deVerdad = edge.from.split('.')[0] !== edge.to.split('.')[0];
+      assert.equal(edge.crossesUnit, deVerdad, `${edge.from} → ${edge.to}: marca equivocada`);
+    }
+  });
+
+  test('toda rama prevista cuelga de algo que ya existe', () => {
+    /*
+     * Una rama prevista que no dependa de nada real seria una nota suelta, no
+     * una ubicacion. El encargo era poder UBICAR los temas futuros, y ubicar
+     * significa engancharlos a algo.
+     */
+    const reales = new Set(units.flatMap((u) => flattenTopics(u).map((t) => t.id)));
+    const alcanzaAlgoReal = (id: string, visto = new Set<string>()): boolean => {
+      if (visto.has(id)) return false;
+      visto.add(id);
+      const node = tree.nodes.find((n) => n.id === id);
+      return (node?.requires ?? []).some((r) => reales.has(r) || alcanzaAlgoReal(r, visto));
+    };
+    for (const branch of plannedBranches()) {
+      assert.ok(branch.requires.length > 0, `${branch.title} no cuelga de nada`);
+      assert.ok(alcanzaAlgoReal(branch.id), `${branch.title} no llega a ningun apartado real`);
+    }
+  });
+
+  test('cada rama prevista dice que tiene y que le falta (§32)', () => {
+    for (const branch of plannedBranches()) {
+      assert.ok(branch.note && branch.note.length > 60, `${branch.title}: sin explicacion`);
+      assert.equal(branch.state, 'previsto');
+      // Si declara motor, que sea una ruta de fichero de verdad.
+      if (branch.engine) {
+        assert.match(branch.engine, /\.ts|\//, `${branch.title}: «${branch.engine}» no parece un modulo`);
+      }
+    }
+    // Y al menos varias tienen motor ya escrito: es lo que hace util el mapa.
+    assert.ok(
+      plannedBranches().filter((b) => b.engine).length >= 5,
+      'el mapa deberia senalar las ramas que ya tienen motor',
+    );
+  });
+
+  test('«antes de esto» y «esto abre» son coherentes entre si', () => {
+    // Si A abre B, B tiene que tener a A antes. Son la misma arista leida en
+    // los dos sentidos, y el pie del apartado las muestra por separado.
+    for (const node of tree.nodes) {
+      for (const after of neighbours(tree, node.id).after) {
+        assert.ok(
+          neighbours(tree, after.id).before.some((b) => b.id === node.id),
+          `${node.id} abre ${after.id}, pero ${after.id} no lo tiene antes`,
+        );
+      }
+    }
+  });
+
+  test('`requires` no es una copia de `connects`', () => {
+    /*
+     * Se intento derivar el arbol de `connects` y no valia: es lateral y va en
+     * los dos sentidos. Esta prueba fija esa distincion — si alguien empezara
+     * a rellenar `requires` copiando los `connects`, apareceria un par
+     * reciproco y el arbol tendria un ciclo.
+     */
+    const pares = new Set(tree.edges.map((e) => `${e.from}>${e.to}`));
+    for (const edge of tree.edges) {
+      assert.ok(
+        !pares.has(`${edge.to}>${edge.from}`),
+        `${edge.from} y ${edge.to} se necesitan mutuamente: eso es un «connects», no un «requires»`,
+      );
+    }
   });
 });
