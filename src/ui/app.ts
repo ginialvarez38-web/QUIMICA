@@ -40,6 +40,8 @@ import { knowledgeTree, neighbours, type KnowledgeTree } from '../teach/tree.js'
 import { renderTree, renderLineage, renderPlanned } from './tree-view.js';
 import { unitAtomo } from '../teach/atom.js';
 import { atomoView } from './atom-view.js';
+import { unitEnlace } from '../teach/bond.js';
+import { enlaceView } from './bond-view.js';
 import { FigureManager } from './figure-3d.js';
 
 type Mode = 'build' | 'react' | 'tabla' | 'teoria' | 'routes' | 'lab';
@@ -1128,6 +1130,7 @@ function currentGuide(): GuideMessage {
 const THEORY_VIEWS: readonly AnyUnitView[] = [
   anyView(materiaView(unitMateria())),
   anyView(atomoView(unitAtomo())),
+  anyView(enlaceView(unitEnlace())),
 ];
 
 /**

@@ -3476,6 +3476,102 @@ button { cursor: pointer; border: none; background: none; }
 .more-panel > .topic-worked > .topic-key-label,
 .more-panel > .topic-check > .topic-key-label { display: none; }
 
+/* --- Unidad 3: el enlace -------------------------------------------------- */
+
+/* La ruta que toma cada elemento: ceder, captar o compartir. Tres colores
+   porque son tres decisiones distintas, no tres grados de la misma. */
+.route-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 11px;
+  border: 1px solid transparent;
+}
+.route-tag.is-cede { color: var(--oxide); border-color: color-mix(in srgb, var(--oxide) 45%, transparent); background: color-mix(in srgb, var(--oxide) 12%, transparent); }
+.route-tag.is-capta { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.route-tag.is-comparte { color: var(--teal); border-color: color-mix(in srgb, var(--teal) 45%, transparent); background: color-mix(in srgb, var(--teal) 12%, transparent); }
+.route-tag.is-ya-lo-tiene { color: var(--text-faint); border-color: var(--border); background: var(--surface-2); }
+
+.bond-tag, .force-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 11px;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.bond-tag.is-apolar { color: var(--teal); border-color: color-mix(in srgb, var(--teal) 45%, transparent); background: color-mix(in srgb, var(--teal) 12%, transparent); }
+.bond-tag.is-polar { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.bond-tag.is-ionico { color: var(--oxide); border-color: color-mix(in srgb, var(--oxide) 45%, transparent); background: color-mix(in srgb, var(--oxide) 12%, transparent); }
+
+.force-tag.is-puente-hidrogeno { color: var(--acid); border-color: color-mix(in srgb, var(--acid) 45%, transparent); background: color-mix(in srgb, var(--acid) 12%, transparent); }
+.force-tag.is-dipolo-dipolo { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.force-tag.is-ion-dipolo { color: var(--violet); border-color: color-mix(in srgb, var(--violet) 45%, transparent); background: color-mix(in srgb, var(--violet) 12%, transparent); }
+
+.yesno {
+  display: inline-block;
+  min-width: 34px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-align: center;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--surface-2);
+}
+.yesno.is-true { color: var(--hazard-safe); background: color-mix(in srgb, var(--hazard-safe) 14%, transparent); }
+.yesno.is-false { color: var(--text-muted); }
+
+/*
+   LA TABLA DE DIPOLOS.
+
+   Las dos columnas que hay que comparar —«¿enlaces polares?» y «¿MOLECULA
+   polar?»— van pegadas y con fondo propio, porque el argumento entero del
+   apartado es que pueden no coincidir. Separadas por otras columnas, la
+   contradiccion no salta a la vista y la tabla se queda en un listado.
+*/
+.dipole-table .col-pair {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  text-align: center;
+}
+.dipole-table thead .col-pair { font-size: 10px; }
+
+/* Y la fila donde NO coinciden se marca: es la que ensena. */
+.dipole-table tr.is-contradiction th,
+.dipole-table tr.is-contradiction td {
+  background: color-mix(in srgb, var(--hazard-special) 11%, transparent);
+}
+.dipole-table tr.is-contradiction .col-pair {
+  background: color-mix(in srgb, var(--hazard-special) 18%, transparent);
+}
+
+.dipole-why td {
+  font-family: var(--sans) !important;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  padding-top: 0;
+}
+
+.lewis-line {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.refused-list { margin: 8px 0 10px; padding-left: 18px; }
+.refused-list li { margin-bottom: 5px; line-height: 1.6; }
+.refused-list strong { font-family: var(--mono); color: var(--text); }
+
+.coord-case + .coord-case { margin-top: 20px; }
+.check-cell { white-space: nowrap; }
+
 /* --- El mapa del conocimiento -------------------------------------------- */
 
 .view-switch {
@@ -3520,6 +3616,7 @@ button { cursor: pointer; border: none; background: none; }
   background: var(--accent);
 }
 .legend-dot.unit-2 { background: var(--teal); }
+.legend-dot.unit-3 { background: var(--violet); }
 .legend-dot.is-planned { background: var(--surface-3); border: 1px dashed var(--text-faint); }
 .legend-line {
   width: 18px; height: 0;
@@ -3576,6 +3673,7 @@ button { cursor: pointer; border: none; background: none; }
 }
 .tree-node:hover { background: var(--surface-2); transform: translateY(-1px); z-index: 2; }
 .tree-node.unit-2 { border-left-color: var(--teal); }
+.tree-node.unit-3 { border-left-color: var(--violet); }
 /* Los subapartados se distinguen sin necesidad de sangrar: en un grafo por
    capas la sangria no significa nada, porque la posicion ya la decide la
    dependencia. */

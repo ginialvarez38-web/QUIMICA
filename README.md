@@ -107,8 +107,9 @@ cada una por lo que se sabe de ella, no por si la aritmetica cuadra:
 ### `src/teach` — modo profesor, el guia y el temario
 
 `explain.ts` desarrolla una reaccion como una leccion. `theory.ts` es la
-unidad 1 (la materia) y `atom.ts` la unidad 2 (estructura atomica).
-`scenes.ts` son las figuras 3D que ilustran ambas. `guide.ts` es el cerebro del
+unidad 1 (la materia), `atom.ts` la unidad 2 (estructura atomica) y `bond.ts`
+la unidad 3 (el enlace quimico). `scenes.ts` son las figuras 3D que ilustran
+las tres. `guide.ts` es el cerebro del
 avatar: mira en que punto esta el usuario y decide que decirle.
 
 **El temario no se escribe: se calcula.** Donde una ley admite demostracion,
@@ -179,6 +180,42 @@ Y las respuestas de autocomprobacion llegan ocultas por un motivo: leer la
 pregunta y la respuesta a la vez da sensacion de haber entendido sin haber
 recuperado nada de memoria.
 
+### La unidad 3 es la que mas se calcula
+
+Las dos primeras unidades tenian que apoyarse en datos tabulados. Esta no: el
+Chemical Analysis Engine llevaba escrito y probado todo lo que la unidad
+explica, y lo DERIVA de la formula.
+
+| Apartado | Quien lo calcula |
+|---|---|
+| 3.1 Regla del octeto | `electronic.ts` — la valencia y la configuracion del ion; la ruta (ceder / captar / compartir) sale de una resta |
+| 3.2 El continuo de ΔEN | `polarity.ts::classifyBond`, el mismo clasificador que usa el analizador |
+| 3.2.1.2 y 3.2.2.4 Lewis | `lewis.ts` — cuenta electrones, elige centro, prueba ordenes y se queda con el de menor carga formal |
+| 3.2.2.5 Momentos dipolares | `polarity.ts` — **suma vectorial** sobre la geometria real |
+| 3.3 Fuerzas intermoleculares | `imf.ts` + puntos de ebullicion medidos del CRC Handbook |
+
+**La demostracion que no se puede hacer con texto** es la del apartado 3.2.2.5.
+El CO₂ tiene dos enlaces polares (ΔEN = 0,89) y momento dipolar **cero**; el
+agua tiene dos enlaces igual de polares y momento **1,52**. Dicho, suena a
+contradiccion; calculado sumando vectores sobre la geometria real, deja de
+haber nada que memorizar. La tabla marca en naranja las filas donde «¿enlaces
+polares?» y «¿MOLECULA polar?» no coinciden — son tres de ocho.
+
+**Y el motor se contrasta.** Predice cual de dos sustancias hierve mas alto y
+por que; despues se compara con el punto de ebullicion medido. Las cuatro
+comparaciones aciertan, incluida la del agua (100 °C) frente al sulfuro de
+hidrogeno (−60 °C) pese a que el agua pesa la mitad. Una prueba exige que
+ninguna prediccion falle: si fallara, se veria en la tabla.
+
+**Hueco declarado:** el enlace metalico NO tiene motor. No hay modelo de bandas
+ni de mar de electrones en ninguna capa, y el apartado 3.2.3 lo dice: explica
+el modelo con datos medidos de los elementos, pero no calcula nada sobre el
+enlace.
+
+Once figuras 3D sostienen la unidad, y varias usan la geometria de verdad del
+constructor VSEPR — el agua a 104,5°, no a ojo. Cuando la figura es el
+argumento, el angulo no se puede aproximar.
+
 ### El arbol del conocimiento
 
 El indice numerado dice DONDE ESTA un tema: el 2.7 va despues del 2.6 porque
@@ -194,18 +231,18 @@ lleva a la otra.
 |---|---|
 | **De arriba abajo** | El orden en que se puede estudiar. Cada apartado cae por DEBAJO de todo lo que necesita, porque las capas se calculan por camino mas largo. |
 | **26 flechas naranjas** | Cruzan de una unidad a otra. Son las que no se ven leyendo: la ley de las proporciones multiples (1.8.3) es lo que empuja a los modelos atomicos (2.2.1.2), y estan a cuarenta pantallas. |
-| **11 nodos en gris** | Las ramas que aun no existen, colgando de lo que ya las sostiene. |
+| **9 nodos en gris** | Las ramas que aun no existen, colgando de lo que ya las sostiene. |
 
 **`requires` no es `connects`.** Se intento derivar el arbol de los enlaces que
 ya habia y no valia: `connects` es lateral y va en los dos sentidos —el
 2.11.1.1 enlaza al 2.11.1.3 y el 2.11.1.3 enlaza de vuelta— y un arbol con esa
 arista tendria un ciclo, es decir, tres apartados que no se pueden estudiar en
-ningun orden. Ademas solo cubria 16 de los 41. Asi que `requires` es una arista
+ningun orden. Ademas solo cubria 33 de los 58. Asi que `requires` es una arista
 DIRIGIDA y nueva, y **hay una prueba que impide los ciclos**.
 
-**Las ramas previstas dicen que motor las sostiene ya.** Ocho de las once
+**Las ramas previstas dicen que motor las sostiene ya.** Seis de las nueve
 apuntan a codigo escrito y probado: `stoichiometry.ts` para la estequiometria,
-`lewis.ts` + `hybridization.ts` + `polarity.ts` para el enlace, `energy.ts`
+`nomenclature/inorganic.ts` para la nomenclatura, `energy.ts`
 para la termoquimica, `redox.ts` para la electroquimica. Lo que les falta es el
 temario encima, no la quimica de debajo — y decirlo cambia lo que significa la
 casilla gris. Las que no tienen motor tambien lo dicen.
@@ -248,7 +285,7 @@ una marca de repaso.
 
 ### Las figuras 3D del temario
 
-`scenes.ts` define **siete juegos con veintisiete escenas**, que se dibujan con el
+`scenes.ts` define **diecisiete juegos con cincuenta y dos escenas**, que se dibujan con el
 mismo renderizador WebGL2 del visor de moleculas — no con imagenes:
 
 | Juego | Escenas | Donde |
@@ -260,8 +297,19 @@ mismo renderizador WebGL2 del visor de moleculas — no con imagenes:
 | **La forma de un orbital** | Que es · n · l · m_l · los cinco d | 2.11.1 Electrones del atomo |
 | **Pauli y Hund en el espacio** | Vacios, Hund mal, Hund bien, Pauli | 2.11.1.3 Las tres reglas |
 | **Para / diamagnetismo** | Oxigeno, neon | 2.11.1.4 Propiedades magneticas |
+| **Por que ocho** | Neon la tiene llena, al sodio le sobra uno, al cloro le falta uno | 3.1 Regla del octeto |
+| **Las tres maneras de resolverlo** | Ionico, covalente, metalico | 3.2 Uniones interatomicas |
+| **El cristal, no la molecula** | Lo que la formula parece decir, lo que de verdad hay, que significa entonces | 3.2.1 Enlace ionico |
+| **Compartir, no partir** | Antes: cada uno con lo suyo; despues: la nube del medio | 3.2.2 Enlace covalente |
+| **De la estructura plana a la molecula** | Metano, amoniaco, agua, dioxido de carbono | 3.2.2.4 Formulas de Lewis |
+| **Enlace polar no es molecula polar** | CO₂, H₂O, CCl₄, CHCl₃ | 3.2.2.5 Polaridad y momentos dipolares |
+| **El mar de electrones** | La red y el mar; por que se dobla en vez de romperse | 3.2.3 Enlace metalico |
+| **Lo que pasa ENTRE moleculas** | Dentro y fuera de la molecula | 3.3 Uniones intermoleculares |
+| **La red que sostiene al agua** | Cuatro puentes por molecula | 3.3.1.2 Puentes de hidrogeno |
+| **Dipolos que duran un instante** | En promedio simetrica; en un instante, no | 3.3.1.3 Fuerzas de dispersion |
 
-Las tres ultimas no estan dibujadas: estan **calculadas**. Ver mas abajo.
+Las escenas de orbitales, llenado y magnetismo no estan dibujadas: estan
+**calculadas**. Ver mas abajo.
 
 Los cinco modelos atomicos, uno por pestana, son el argumento entero de la
 unidad 2 en una sola figura: cada uno explica algo que el anterior no podia, y
@@ -278,7 +326,7 @@ simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos en
 silencio, dejando lienzos en negro; asi que el contexto **se crea cuando la
 figura entra en pantalla** (`IntersectionObserver`) y **se libera al abandonar
 el modo**. Y se dibuja **bajo demanda**, no en un bucle: las escenas son
-estaticas, y mantener veintisiete bucles de animacion calentaria el portatil de un
+estaticas, y mantener cincuenta y dos bucles de animacion calentaria el portatil de un
 estudiante para no ensenar nada nuevo.
 
 Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.
@@ -474,7 +522,7 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**281 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+**350 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
 motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
 ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
 de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los

@@ -15,7 +15,7 @@ No hay nada marcado como hecho que no lo este.
 | 1 | Concepto central: cadena de transformaciones | **Hecho** | `engine/graph.ts`. La cadena Ca → CaO → Ca(OH)₂ → CaCO₃ → CaCl₂ sale del grafo. |
 | 2 | Objetivo educativo: interpretar, no listar | **Hecho** | `teach/explain.ts` y las explicaciones de `data/reactions.ts`. |
 | 3 | Interfaz: biblioteca con buscador | **Hecho** | `data/search.ts`, 320 entradas. Las 14 categorias del brief estan. |
-| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. El mismo renderizador dibuja las **veintisiete escenas didacticas** del temario (`teach/scenes.ts`). **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
+| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. El mismo renderizador dibuja las **cincuenta y dos escenas didacticas** del temario (`teach/scenes.ts`). **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
 | 5 | Constructor de compuestos | **Parcial** | `core/build/ionicFormula.ts` genera la formula con su derivacion y la ficha completa. **Falta:** el arrastrar y soltar sobre el lienzo 3D. |
 | 6 | Binarios, ternarios y cuaternarios | **Hecho** | `core/formula/composition.ts`. Cuenta elementos, no atomos. Ver la nota sobre NH₄NO₃ en el README. |
 | 7 | Generador de formulas | **Hecho** | Seis pasos de derivacion, incluida la comprobacion `2(+3) + 3(−2) = 0`. |
@@ -190,6 +190,29 @@ Rutherford es inestable segun su propia fisica → Bohr solo vale para el
 hidrogeno → modelo cuantico. Y de todos sobrevive algo: el de Dalton, de 1803,
 sigue siendo el que se usa para ajustar una ecuacion.
 
+## Teoria — Unidad 3: el enlace quimico
+
+`teach/bond.ts` y `ui/bond-view.ts`. Los diecisiete apartados de 3.1 a 3.3.1.3.
+
+Es la unidad que MAS se calcula de las tres, porque el motor de analisis ya
+estaba escrito: estructuras de Lewis derivadas (`lewis.ts`), geometria VSEPR
+(`hybridization.ts`), suma VECTORIAL de dipolos (`polarity.ts`) y fuerzas
+intermoleculares (`imf.ts`). Aqui casi no se afirma nada: se pregunta.
+
+| Demostracion | Que ensena |
+|---|---|
+| Octeto | La ruta de cada elemento —ceder, captar o compartir— sale de comparar cuantos electrones habria que ceder con cuantos captar. Las cuatro excepciones se senalan con su motivo. |
+| Escala de ΔEN | Una rampa continua de 0,00 a 3,16, con el caracter ionico calculado por la relacion de Pauling. Ensena que la frontera de 1,7 es un CONVENIO: ahi el caracter ionico ronda el 50 %. |
+| Lewis | Derivadas de la formula. Y las que el motor REHUSA —los ionicos, la glucosa— aparecen con su negativa: negarse es parte de la respuesta. |
+| **Momentos dipolares** | La demostracion central. CO₂: enlaces polares, |μ| = 0. H₂O: enlaces polares, |μ| = 1,52. CCl₄ frente a CHCl₃: cambiar un atomo de cuatro. |
+| Fuerzas intermoleculares | Predicciones de punto de ebullicion **contrastadas con medidas** del CRC Handbook. Las cuatro aciertan. |
+
+Once figuras 3D, varias con la geometria real del constructor VSEPR.
+
+**Hueco declarado:** el enlace metalico no tiene motor. No hay modelo de bandas
+ni de mar de electrones; el apartado explica el modelo con datos medidos de los
+elementos y dice que no calcula nada sobre el enlace.
+
 ## El arbol del conocimiento (§22, §36)
 
 `teach/tree.ts` y `ui/tree-view.ts`. 52 nodos, 72 aristas, 21 capas. Es el
@@ -197,7 +220,7 @@ mapa de prerrequisitos del temario, no su indice: dice que hace falta entender
 antes de cada apartado, y donde encaja lo que aun no existe.
 
 La arista `requires` es nueva y DIRIGIDA. No se pudo derivar de `connects`,
-que es lateral y reciproco (16 de 41 apartados, y con pares en los dos
+que es lateral y reciproco (33 de 58 apartados, y con pares en los dos
 sentidos que habrian creado ciclos). Una prueba comprueba que el grafo es
 aciclico: un ciclo ahi seria un temario sin punto de entrada.
 
@@ -206,11 +229,12 @@ nodo cae despues de todo lo que necesita, y la altura dice cuantas cosas hay
 encadenadas antes. Dentro de cada capa, los nodos se ordenan por el baricentro
 de sus padres — una pasada, que es la que se nota.
 
-**Once ramas previstas**, colgadas de apartados reales, con lo que cada una ya
-tiene: enlace quimico (`lewis.ts`, `hybridization.ts`, `polarity.ts`),
-nomenclatura (`nomenclature/inorganic.ts`), fuerzas intermoleculares
-(`imf.ts`), reaccion (`predict.ts`, `balance.ts`), estequiometria
-(`stoichiometry.ts`), termoquimica (`energy.ts`), redox (`redox.ts`)...
+**Nueve ramas previstas**, colgadas de apartados reales, con lo que cada una ya
+tiene: nomenclatura (`nomenclature/inorganic.ts`), reaccion (`predict.ts`,
+`balance.ts`), estequiometria (`stoichiometry.ts`), termoquimica
+(`energy.ts`), redox (`redox.ts`)... Eran once: el enlace quimico y las
+fuerzas intermoleculares dejaron de ser previstas al entregarse la unidad 3,
+y sus casillas grises se retiraron en lugar de quedarse duplicando el temario.
 Ocho de las once tienen motor escrito y probado; tres —disoluciones,
 equilibrio, organica avanzada— son trabajo nuevo y lo dicen.
 
@@ -244,7 +268,7 @@ algoritmo de memoria, y no se presenta como tal.
 
 ## Las figuras 3D del temario (§4)
 
-`teach/scenes.ts` y `ui/figure-3d.ts`. Siete juegos, veintisiete escenas, dibujadas
+`teach/scenes.ts` y `ui/figure-3d.ts`. Diecisiete juegos, cincuenta y dos escenas, dibujadas
 con el renderizador WebGL2 del visor — no hay ni una imagen.
 
 | Juego | Escenas | Apartado |
@@ -256,6 +280,16 @@ con el renderizador WebGL2 del visor — no hay ni una imagen.
 | La forma de un orbital | que es · n · l · m_l · d_xy · d_z² | 2.11.1 |
 | Pauli y Hund en el espacio | vacios · Hund mal · Hund bien · Pauli | 2.11.1.3 |
 | Para / diamagnetismo | oxigeno · neon | 2.11.1.4 |
+| Por que ocho | neon · sodio · cloro | 3.1 |
+| Las tres maneras de resolverlo | ionico · covalente · metalico | 3.2 |
+| El cristal, no la molecula | lo que parece · lo que hay · que significa la formula | 3.2.1 |
+| Compartir, no partir | antes · despues | 3.2.2 |
+| De la estructura plana a la molecula | CH₄ · NH₃ · H₂O · CO₂ | 3.2.2.4 |
+| Enlace polar no es molecula polar | CO₂ · H₂O · CCl₄ · CHCl₃ | 3.2.2.5 |
+| El mar de electrones | la red y el mar · por que se dobla | 3.2.3 |
+| Lo que pasa ENTRE moleculas | dentro y fuera | 3.3 |
+| La red que sostiene al agua | cuatro puentes por molecula | 3.3.1.2 |
+| Dipolos que duran un instante | en promedio · en un instante | 3.3.1.3 |
 
 **Toda escena declara en que MIENTE el dibujo**, y el tipo lo exige: sin ese
 campo no compila. Es la misma regla de las analogias, porque un dibujo de un
@@ -266,7 +300,7 @@ Dos restricciones reales dan forma al modulo. Un navegador limita los contextos
 WebGL simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos
 en silencio, dejando lienzos negros; por eso el contexto se crea al entrar la
 figura en pantalla (`IntersectionObserver`) y se libera al salir del modo. Y se
-dibuja bajo demanda, no en bucle: son escenas estaticas, y veintisiete bucles de
+dibuja bajo demanda, no en bucle: son escenas estaticas, y cincuenta y dos bucles de
 animacion solo calentarian el portatil.
 
 Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.

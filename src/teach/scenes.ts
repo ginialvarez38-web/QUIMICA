@@ -34,6 +34,8 @@ import type { OrbitalKey } from './orbitals.js';
 import type { SampleOptions } from './orbitals.js';
 import { sampleOrbital, radiusContaining, ORBITALS } from './orbitals.js';
 import { configureAtom } from '../analysis/electronic.js';
+import { buildStructure } from '../geometry/vsepr.js';
+import { parseFormula } from '../core/formula/parse.js';
 
 export interface Scene {
   readonly id: string;
@@ -570,6 +572,16 @@ const BUILDERS: Record<string, () => SceneSet> = {
   orbitales: orbitalSet,
   llenado: fillingSet,
   magnetismo: magnetismSet,
+  octeto: octetSet,
+  uniones: bondTypesSet,
+  ionico: ionicSet,
+  covalente: covalentSet,
+  lewis3d: lewis3dSet,
+  polaridad: polaritySet,
+  metalico: metallicSet,
+  intermoleculares: imfSet,
+  puentes: hydrogenBondSet,
+  dispersion: dispersionSet,
 };
 
 const SETS = new Map<string, SceneSet>();
@@ -981,6 +993,737 @@ function magnetismSet(): SceneSet {
           'El diamagnetismo no es «no tener magnetismo»: es una repulsion debil que tienen TODAS las ' +
           'sustancias. En las paramagneticas queda tapada por la atraccion de los desapareados.',
         structure: molecular(pShell('Ne', 2)),
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 7. EL ENLACE QUIMICO (unidad 3)
+// ---------------------------------------------------------------------------
+
+/*
+ * ESTA UNIDAD ES LA MAS ESPACIAL DE LAS TRES, Y CON DIFERENCIA.
+ *
+ * «El CO₂ tiene dos enlaces polares y es una molecula apolar» es una frase que
+ * se puede leer cien veces sin entenderla, porque lo que hay que entender es
+ * una SUMA DE VECTORES en el espacio. Dicho: suena a contradiccion. Dibujado
+ * con las dos flechas apuntando en sentidos opuestos sobre la misma recta:
+ * deja de haber nada que memorizar.
+ *
+ * Lo mismo con la red del cloruro de sodio (no hay moleculas), con el mar de
+ * electrones (no pertenecen a nadie) y con la red de puentes del hielo (por
+ * eso flota). Las cuatro son geometria.
+ *
+ * DONDE SE PUEDE, LA GEOMETRIA ES LA DE VERDAD
+ * `geometry/vsepr.ts` construye las moleculas reales con sus angulos medidos —
+ * el agua a 104,5°, no a 90 ni a 120. Las escenas que ensenan una molecula la
+ * piden alli en vez de colocar esferas a ojo, porque el angulo ES el argumento:
+ * si el agua se dibujara a 180° la figura demostraria lo contrario de lo que
+ * dice el texto.
+ */
+
+const DELTA_MINUS = '#4da3ff';
+const DELTA_PLUS = '#ff7a59';
+const METAL_CORE = '#f5b342';
+const SEA = '#4da3ff';
+
+/** Una flecha: un reguero de esferas que se ensancha hacia la punta. */
+function arrow(from: Vec3, to: Vec3, color: string, beads = 11): StructureAtom[] {
+  return Array.from({ length: beads }, (_, i) => {
+    const t = i / (beads - 1);
+    // La punta engorda: es lo que convierte una linea de puntos en una flecha.
+    const radius = t > 0.82 ? 0.3 - (t - 0.82) * 1.2 : 0.11;
+    return sphere(
+      v(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, from.z + (to.z - from.z) * t),
+      Math.max(0.07, radius),
+      color,
+      'μ',
+    );
+  });
+}
+
+/** La molecula real, pedida al constructor de geometrias. */
+function realMolecule(formula: string): StructureAtom[] {
+  const parsed = parseFormula(formula);
+  if (!parsed.ok) return [];
+  const built = buildStructure(formula, parsed.value.composition);
+  return built ? [...built.atoms] : [];
+}
+
+function realBonds(formula: string): Bond[] {
+  const parsed = parseFormula(formula);
+  if (!parsed.ok) return [];
+  const built = buildStructure(formula, parsed.value.composition);
+  return built ? [...built.bonds] : [];
+}
+
+/** Una red cubica de iones alternos: el cristal, no una molecula. */
+function lattice(n: number, spacing: number, radiusA: number, radiusB: number): StructureAtom[] {
+  const out: StructureAtom[] = [];
+  const half = ((n - 1) * spacing) / 2;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      for (let k = 0; k < n; k++) {
+        const even = (i + j + k) % 2 === 0;
+        out.push(
+          sphere(
+            v(i * spacing - half, j * spacing - half, k * spacing - half),
+            even ? radiusA : radiusB,
+            even ? POSITIVE : SUBSTANCE_A,
+            even ? 'Na+' : 'Cl-',
+          ),
+        );
+      }
+    }
+  }
+  return out;
+}
+
+function octetSet(): SceneSet {
+  // Capas de valencia como anillos de puntos. No son orbitales: son un
+  // RECUENTO, y el limite lo dice.
+  const shell = (count: number, radius: number, color: string, tilt = 0): StructureAtom[] =>
+    Array.from({ length: count }, (_, i) => {
+      const a = (i / Math.max(count, 1)) * Math.PI * 2;
+      return sphere(
+        v(Math.cos(a) * radius, Math.sin(a) * radius * Math.cos(tilt), Math.sin(a) * radius * Math.sin(tilt)),
+        0.34,
+        color,
+        'e',
+      );
+    });
+
+  const core = (label: string) => sphere(v(0, 0, 0), 1.5, NUCLEUS, label);
+
+  return {
+    id: 'octeto',
+    title: 'Por que ocho',
+    intro:
+      'La capa de valencia como un recuento de sitios. Los gases nobles la tienen llena, y por eso no ' +
+      'reaccionan con casi nada: ya estan donde los demas intentan llegar.',
+    scenes: [
+      {
+        id: 'neon',
+        title: 'Neon · ya la tiene llena',
+        caption:
+          'Ocho electrones en la capa de valencia. No le sobra ninguno que ceder ni le falta hueco donde ' +
+          'meter otro, asi que no tiene motivo para unirse a nadie. Eso es un gas noble.',
+        limit:
+          'Los electrones NO estan en un anillo ni repartidos a distancias iguales: ocupan orbitales, que ' +
+          'son nubes de probabilidad con formas distintas (apartado 2.11.1). El anillo aqui solo sirve ' +
+          'para CONTAR ocho.',
+        structure: molecular([core('Ne'), ...shell(8, 4.2, ELECTRON)]),
+      },
+      {
+        id: 'sodio',
+        title: 'Sodio · le sobra uno',
+        caption:
+          'Un solo electron en la capa de fuera, lejos del nucleo y mal sujeto. Captar siete seria ' +
+          'carisimo; soltar ese uno deja debajo una capa que ya esta completa. Por eso el sodio CEDE.',
+        limit:
+          'La capa interna completa se ha dibujado como una esfera lisa. No lo es: son diez electrones ' +
+          'en sus propios orbitales. Se resume asi porque en el enlace no participan.',
+        structure: molecular([core('Na'), ...shell(8, 2.6, NEUTRAL), ...shell(1, 4.6, ELECTRON)]),
+      },
+      {
+        id: 'cloro',
+        title: 'Cloro · le falta uno',
+        caption:
+          'Siete en la capa de valencia: un solo hueco. Captar uno le completa el octeto, y eso es ' +
+          'muchisimo mas barato que soltar siete. Por eso el cloro CAPTA — y por eso sodio y cloro ' +
+          'encajan tan bien.',
+        limit:
+          'El «hueco» no es un agujero en ningun sitio: es que en uno de los orbitales 3p hay un electron ' +
+          'en vez de dos. Se dibuja como un espacio vacio del anillo para poder senalarlo.',
+        structure: molecular([core('Cl'), ...shell(8, 2.6, NEUTRAL), ...shell(7, 4.6, ELECTRON)]),
+      },
+    ],
+  };
+}
+
+function bondTypesSet(): SceneSet {
+  const rng = seeded(41);
+  return {
+    id: 'uniones',
+    title: 'Las tres maneras de resolverlo',
+    intro:
+      'El mismo problema —llegar a una capa completa— con tres soluciones distintas, segun quien pueda ' +
+      'ceder y quien pueda captar. Compara donde estan los electrones en cada una.',
+    scenes: [
+      {
+        id: 'ionico',
+        title: 'Ionico · el electron cambia de dueno',
+        caption:
+          'El de la izquierda cedio y quedo positivo; el de la derecha capto y quedo negativo. Los ' +
+          'electrones estan TODOS sobre uno de los dos, y lo que los une es la atraccion entre cargas ' +
+          'opuestas.',
+        limit:
+          'Dos iones sueltos no existen en la practica: en cuanto se forman se rodean de muchos mas y ' +
+          'construyen una red. Esta pareja es un recorte para poder senalar quien tiene que.',
+        structure: molecular([
+          sphere(v(-3.2, 0, 0), 1.1, POSITIVE, 'Na+'),
+          sphere(v(3.2, 0, 0), 1.9, SUBSTANCE_A, 'Cl-'),
+          ...Array.from({ length: 8 }, (_, i) => {
+            const a = (i / 8) * Math.PI * 2;
+            return sphere(v(3.2 + Math.cos(a) * 2.7, Math.sin(a) * 2.7, 0), 0.3, ELECTRON, 'e');
+          }),
+        ]),
+      },
+      {
+        id: 'covalente',
+        title: 'Covalente · el par se comparte',
+        caption:
+          'Ninguno de los dos puede permitirse ceder, asi que ponen un electron cada uno y los DOS ' +
+          'cuentan el par como suyo. Fijate en que la nube densa esta justo en medio: es lo que sujeta ' +
+          'a los dos nucleos.',
+        limit:
+          'El par compartido no son dos bolitas quietas en el centro. Es una densidad de probabilidad ' +
+          'mayor en la zona internuclear, que es exactamente lo que se dibujo con los puntos.',
+        structure: molecular([
+          sphere(v(-2.4, 0, 0), 1.2, NUCLEUS, 'Cl'),
+          sphere(v(2.4, 0, 0), 1.2, NUCLEUS, 'Cl'),
+          ...Array.from({ length: 60 }, () => {
+            const t = rng() * 2 - 1;
+            const r = rng() * 0.9;
+            const a = rng() * Math.PI * 2;
+            return sphere(v(t * 2.2, Math.cos(a) * r, Math.sin(a) * r), 0.16, ELECTRON, 'e');
+          }),
+        ]),
+      },
+      {
+        id: 'metalico',
+        title: 'Metalico · los electrones son de todos',
+        caption:
+          'Cationes ordenados en una red, y los electrones de valencia sueltos entre ellos, sin ' +
+          'pertenecer a ninguno. Ese mar es lo que conduce la electricidad y lo que permite deformar el ' +
+          'metal sin romperlo.',
+        limit:
+          'El «mar» es un modelo antiguo y basto: no explica por que unos metales conducen mas que otros ' +
+          'ni por que el silicio es semiconductor. Para eso hace falta la teoria de bandas.',
+        structure: molecular([
+          ...Array.from({ length: 27 }, (_, i) => {
+            const x = (i % 3) - 1;
+            const y = (Math.floor(i / 3) % 3) - 1;
+            const z = Math.floor(i / 9) - 1;
+            return sphere(v(x * 3, y * 3, z * 3), 0.85, METAL_CORE, 'M+');
+          }),
+          ...Array.from({ length: 150 }, () =>
+            sphere(v((rng() - 0.5) * 8.5, (rng() - 0.5) * 8.5, (rng() - 0.5) * 8.5), 0.19, SEA, 'e'),
+          ),
+        ]),
+      },
+    ],
+  };
+}
+
+function ionicSet(): SceneSet {
+  return {
+    id: 'ionico',
+    title: 'El cristal, no la molecula',
+    intro:
+      'La afirmacion mas importante del apartado —que no existe la molecula de NaCl— es geometrica, y ' +
+      'por eso hay que verla. Naranja: Na⁺. Azul: Cl⁻.',
+    scenes: [
+      {
+        id: 'par',
+        title: '1 · Lo que la formula parece decir',
+        caption:
+          'Un sodio y un cloro juntos. Es lo que casi todo el mundo imagina al leer «NaCl», y es FALSO: ' +
+          'esta pareja aislada no existe en un cristal de sal.',
+        limit:
+          'Se dibuja a proposito una cosa que no existe, para poder compararla con la siguiente. Los ' +
+          'pares ionicos sueltos solo se dan en fase gaseosa a temperaturas altisimas.',
+        structure: molecular([
+          sphere(v(-2.4, 0, 0), 1.1, POSITIVE, 'Na+'),
+          sphere(v(2.4, 0, 0), 1.9, SUBSTANCE_A, 'Cl-'),
+        ]),
+      },
+      {
+        id: 'red',
+        title: '2 · Lo que de verdad hay',
+        caption:
+          'Una red tridimensional. Cada Na⁺ tiene SEIS Cl⁻ alrededor y cada Cl⁻ seis Na⁺, repetido ' +
+          'millones de veces. Gira la figura: no hay forma de senalar una pareja y decir «esta es una ' +
+          'molecula de sal».',
+        limit:
+          'Se dibujan 125 iones; un grano de sal de un milimetro tiene del orden de 10¹⁸. Y los iones no ' +
+          'estan quietos: vibran alrededor de su posicion. Los tamanos relativos si son los reales — el ' +
+          'cloruro es bastante mayor que el sodio.',
+        structure: molecular(lattice(5, 2.4, 0.75, 1.15)),
+      },
+      {
+        id: 'proporcion',
+        title: '3 · Que significa entonces la formula',
+        caption:
+          'Cuenta los iones de un color y los del otro: salen iguales. Eso es lo que dice «NaCl» — una ' +
+          'PROPORCION de uno a uno, no una particula. Por eso se llama unidad formula y no molecula.',
+        limit:
+          'En el borde del trozo dibujado la cuenta no sale exacta, porque los iones de la superficie ' +
+          'tienen menos vecinos. En un cristal real la proporcion es exacta porque la superficie es ' +
+          'despreciable frente al interior.',
+        structure: molecular(lattice(4, 2.4, 0.75, 1.15)),
+      },
+    ],
+  };
+}
+
+function covalentSet(): SceneSet {
+  const rng = seeded(73);
+  const cloudBetween = (count: number, spread: number, centre: number): StructureAtom[] =>
+    Array.from({ length: count }, () => {
+      const t = (rng() - 0.5) * 2;
+      const r = rng() * spread;
+      const a = rng() * Math.PI * 2;
+      return sphere(v(centre + t * 2.0, Math.cos(a) * r, Math.sin(a) * r), 0.15, ELECTRON, 'e');
+    });
+
+  return {
+    id: 'covalente',
+    title: 'Compartir, no partir',
+    intro:
+      'Un par compartido cuenta entero para los DOS atomos. Ese doble recuento es lo que hace que la ' +
+      'suma del octeto salga, y es lo que mas cuesta creerse de toda la unidad.',
+    scenes: [
+      {
+        id: 'antes',
+        title: '1 · Antes: cada uno con lo suyo',
+        caption:
+          'Dos atomos de cloro, cada uno con siete electrones de valencia. A los dos les falta uno y ' +
+          'ninguno puede ceder: ceder siete no lo hace nadie.',
+        limit:
+          'Los electrones se dibujan alrededor de cada nucleo como una nube difusa. En realidad ocupan ' +
+          'orbitales con forma definida, que ya se vieron en el apartado 2.11.1.',
+        structure: molecular([
+          sphere(v(-4.5, 0, 0), 1.2, NUCLEUS, 'Cl'),
+          sphere(v(4.5, 0, 0), 1.2, NUCLEUS, 'Cl'),
+          ...cloudBetween(45, 1.5, -4.5),
+          ...cloudBetween(45, 1.5, 4.5),
+        ]),
+      },
+      {
+        id: 'despues',
+        title: '2 · Despues: la nube del medio',
+        caption:
+          'Se acercan y aparece una zona densa ENTRE los dos nucleos. Esa carga negativa del centro atrae ' +
+          'a los dos nucleos positivos a la vez, y eso es el enlace: no un palo, una atraccion compartida.',
+        limit:
+          'La raya que se dibuja en una formula estructural representa este par compartido, pero un ' +
+          'enlace no es un objeto rigido: los atomos vibran, se acercan y se separan constantemente ' +
+          'alrededor de una distancia media.',
+        structure: molecular([
+          sphere(v(-2.1, 0, 0), 1.2, NUCLEUS, 'Cl'),
+          sphere(v(2.1, 0, 0), 1.2, NUCLEUS, 'Cl'),
+          ...cloudBetween(30, 1.3, -2.6),
+          ...cloudBetween(30, 1.3, 2.6),
+          ...cloudBetween(70, 0.85, 0),
+        ]),
+      },
+    ],
+  };
+}
+
+/** Moleculas reales, con los angulos que dice la VSEPR. */
+function lewis3dSet(): SceneSet {
+  const scene = (formula: string, title: string, caption: string, limit: string): Scene => ({
+    id: formula.toLowerCase(),
+    title,
+    caption,
+    limit,
+    structure: molecular(realMolecule(formula), realBonds(formula)),
+  });
+
+  return {
+    id: 'lewis3d',
+    title: 'De la estructura plana a la molecula',
+    intro:
+      'Una formula de Lewis se dibuja en un papel, pero la molecula esta en el espacio. Estas son las ' +
+      'mismas especies con sus angulos de verdad, construidas por el motor de geometria a partir de la ' +
+      'estructura de Lewis.',
+    scenes: [
+      scene(
+        'CH4',
+        'Metano · tetraedrica',
+        'Cuatro pares de enlace, ningun par libre. Se reparten lo mas lejos posible unos de otros y sale ' +
+          'un tetraedro de 109,5°. En el papel se dibuja en cruz, y en cruz no esta.',
+        'Los enlaces no son varillas rigidas. La molecula vibra: los angulos y las distancias oscilan ' +
+          'alrededor del valor que se dibuja, que es una media.',
+      ),
+      scene(
+        'NH3',
+        'Amoniaco · piramidal',
+        'Tres enlaces y UN par libre. El par libre no se ve pero ocupa sitio y empuja: el angulo baja de ' +
+          '109,5° a 107°, y la molecula queda como una piramide en vez de plana.',
+        'El par libre no esta dibujado. Es lo mas importante de esta figura y es justamente lo que no se ' +
+          'puede representar con una esfera: ocupa una region difusa encima del nitrogeno.',
+      ),
+      scene(
+        'H2O',
+        'Agua · angular',
+        'Dos enlaces y DOS pares libres, que empujan el doble: el angulo cae a 104,5°. Esa doblez es la ' +
+          'razon de que el agua sea polar, de que forme puentes de hidrogeno y de que exista el mar.',
+        'Igual que antes, los dos pares libres no se dibujan. Estan ahi, encima del oxigeno, y son los ' +
+          'responsables del angulo que si se ve.',
+      ),
+      scene(
+        'CO2',
+        'Dioxido de carbono · lineal',
+        'Dos dobles enlaces y ningun par libre sobre el carbono. Sin nada que empuje, los dos oxigenos se ' +
+          'colocan en linea recta, a 180°. Recuerda esta forma para el apartado de polaridad.',
+        'Los dobles enlaces se dibujan como dos cilindros paralelos, que es un convenio. Un doble enlace ' +
+          'no son dos enlaces iguales: es un sigma y un pi, y el pi tiene otra forma.',
+      ),
+    ],
+  };
+}
+
+/**
+ * Las flechas se calculan DESDE las posiciones reales de los atomos.
+ *
+ * El primer intento las coloco en coordenadas supuestas —los hidrogenos del
+ * agua «arriba»— y salieron espejadas: estan en y = −0,59, debajo del oxigeno.
+ * El dibujo quedaba con las dos flechas apuntando hacia fuera y hacia arriba,
+ * que es exactamente lo contrario de lo que dice el pie. Una figura que
+ * contradice a su propio texto es peor que ninguna figura.
+ *
+ * Asi que se piden las posiciones al constructor de geometrias y se calculan a
+ * partir de ellas. Si manana cambiara el angulo del agua, las flechas se
+ * moverian con el.
+ */
+function dipoleArrow(from: Vec3, to: Vec3, color: string, overshoot = 0.82, beads = 9): StructureAtom[] {
+  return arrow(
+    from,
+    v(
+      from.x + (to.x - from.x) * overshoot,
+      from.y + (to.y - from.y) * overshoot,
+      from.z + (to.z - from.z) * overshoot,
+    ),
+    color,
+    beads,
+  );
+}
+
+/**
+ * La molecula, agrandada.
+ *
+ * Un enlace O–H mide 0,96 unidades y una flecha legible necesita mas sitio que
+ * eso: dibujadas a la escala de la molecula quedan del tamano de los atomos y
+ * no se distingue la punta. Se multiplican las distancias —no los radios— por
+ * un factor, y el limite de la escena lo dice.
+ */
+function scaledMolecule(formula: string, k: number): StructureAtom[] {
+  /*
+   * Solo se toca la POSICION. Ni el radio ni el color se ponen, y eso es
+   * deliberado: los atomos de una molecula real son atomos de elementos, y el
+   * renderizador les da su radio y su color CPK. Rellenarlos con un valor por
+   * defecto —como se hizo en el primer intento— dejaba el oxigeno y los
+   * hidrogenos del agua del mismo gris, y una figura sobre polaridad en la que
+   * no se distingue el oxigeno no sirve de nada.
+   */
+  return realMolecule(formula).map((a) => ({
+    ...a,
+    position: v(a.position.x * k, a.position.y * k, a.position.z * k),
+  }));
+}
+
+/** Localiza los atomos de una molecula real por su simbolo, ya escalados. */
+function atomsOf(formula: string, symbol: string, k = 1): Vec3[] {
+  return realMolecule(formula)
+    .filter((a) => a.symbol === symbol)
+    .map((a) => v(a.position.x * k, a.position.y * k, a.position.z * k));
+}
+
+function polaritySet(): SceneSet {
+  // Las distancias se agrandan para que quepan las flechas; los angulos, que
+  // son el argumento, no se tocan.
+  const K = 2.6;
+  const water = scaledMolecule('H2O', K);
+  const co2 = scaledMolecule('CO2', K);
+
+  // Posiciones REALES, no supuestas.
+  const oWater = atomsOf('H2O', 'O', K)[0]!;
+  const hWater = atomsOf('H2O', 'H', K);
+  const cCo2 = atomsOf('CO2', 'C', K)[0]!;
+  const oCo2 = atomsOf('CO2', 'O', K);
+
+  return {
+    id: 'polaridad',
+    title: 'Enlace polar no es molecula polar',
+    intro:
+      'LA figura de la unidad. Cada flecha azul es el dipolo de UN enlace y apunta hacia el atomo que ' +
+      'tira mas de los electrones. La polaridad de la molecula es la SUMA de esas flechas — y una suma ' +
+      'de vectores depende de hacia donde apuntan, no solo de cuanto miden.',
+    scenes: [
+      {
+        id: 'co2',
+        title: 'CO₂ · dos flechas que se anulan',
+        caption:
+          'Dos enlaces muy polares (ΔEN = 0,89) y la molecula es APOLAR. Las dos flechas apuntan hacia ' +
+          'los oxigenos, estan sobre la misma recta y van en sentidos opuestos: se cancelan exactamente. ' +
+          'Momento dipolar neto, cero. No hay tercera flecha que dibujar.',
+        limit:
+          'Las flechas no existen: representan el desplazamiento de la densidad electronica. Y que se ' +
+          'cancelen NO significa que los enlaces dejen de ser polares — lo siguen siendo, y eso se nota ' +
+          'en como reacciona el CO₂. Lo que se anula es el efecto neto a distancia.',
+        structure: molecular([
+          ...co2,
+          ...dipoleArrow(cCo2, oCo2[0]!, DELTA_MINUS),
+          ...dipoleArrow(cCo2, oCo2[1]!, DELTA_MINUS),
+        ]),
+      },
+      {
+        id: 'agua',
+        title: 'H₂O · dos flechas que no se anulan',
+        caption:
+          'Dos enlaces polares igual que antes, pero la molecula esta DOBLADA a 104,5°. Las flechas van ' +
+          'de cada hidrogeno hacia el oxigeno y forman un angulo entre si, asi que su suma no es cero: ' +
+          'es la flecha naranja, que apunta por la bisectriz hacia el oxigeno. La molecula es polar.',
+        limit:
+          'La flecha naranja es la SUMA, y esta dibujada a una escala distinta de las azules para que se ' +
+          'vea — no mide lo que mediria el vector suma de verdad. Y los dos pares libres del oxigeno, ' +
+          'que son los que doblan la molecula, no se pueden dibujar como esferas.',
+        structure: molecular([
+          ...water,
+          ...dipoleArrow(hWater[0]!, oWater, DELTA_MINUS, 0.78, 8),
+          ...dipoleArrow(hWater[1]!, oWater, DELTA_MINUS, 0.78, 8),
+          /*
+           * La SUMA. Arranca en el punto medio de los dos hidrogenos —que es
+           * donde esta el centro de carga positiva— y apunta hacia el oxigeno
+           * y mas alla. Ni empieza antes ni atraviesa la molecula por detras:
+           * empezar por debajo de los hidrogenos hacia que pareciera venir de
+           * fuera y cruzarla entera.
+           */
+          ...arrow(v(0, hWater[0]!.y, 0), v(0, oWater.y + 3.4, 0), DELTA_PLUS, 14),
+        ]),
+      },
+      {
+        id: 'ccl4',
+        title: 'CCl₄ · cuatro que se anulan',
+        caption:
+          'Cuatro enlaces C–Cl polares apuntando a los cuatro vertices de un tetraedro. En tres ' +
+          'dimensiones esa disposicion es tan simetrica que la suma vuelve a dar cero. Gira la figura: ' +
+          'mires desde donde mires, esta equilibrada.',
+        limit:
+          'Aqui no se han dibujado las flechas: cuatro apuntando a un tetraedro dejan la figura ' +
+          'ilegible. La simetria se ve mejor girando la molecula, que es lo que se pide hacer.',
+        structure: molecular(realMolecule('CCl4'), realBonds('CCl4')),
+      },
+      {
+        id: 'chcl3',
+        title: 'CHCl₃ · cambia UN atomo y ya es polar',
+        caption:
+          'El mismo tetraedro con un cloro sustituido por un hidrogeno. El C–H tira mucho menos que los ' +
+          'C–Cl, la cancelacion se rompe y queda un dipolo neto apuntando hacia el lado de los tres ' +
+          'cloros — es decir, en sentido contrario al hidrogeno.',
+        limit:
+          'La flecha del dipolo neto tiene una longitud elegida para que se vea, no a escala con las ' +
+          'distancias de la molecula.',
+        structure: (() => {
+          const h = atomsOf('CHCl3', 'H', 1)[0]!;
+          // El dipolo neto va del hidrogeno hacia el centro y sigue: los tres
+          // cloros estan del lado opuesto y entre ellos se lo reparten.
+          return molecular([
+            ...realMolecule('CHCl3'),
+            ...arrow(v(h.x * 1.6, h.y * 1.6, h.z * 1.6), v(-h.x * 1.9, -h.y * 1.9, -h.z * 1.9), DELTA_PLUS, 14),
+          ]);
+        })(),
+      },
+    ],
+  };
+}
+
+function metallicSet(): SceneSet {
+  const rng = seeded(97);
+  const cations = (n: number, spacing: number, offset = 0): StructureAtom[] =>
+    Array.from({ length: n * n * n }, (_, i) => {
+      const x = (i % n) - (n - 1) / 2;
+      const y = (Math.floor(i / n) % n) - (n - 1) / 2;
+      const z = Math.floor(i / (n * n)) - (n - 1) / 2;
+      return sphere(v(x * spacing + offset, y * spacing, z * spacing), 0.9, METAL_CORE, 'M+');
+    });
+
+  return {
+    id: 'metalico',
+    title: 'El mar de electrones',
+    intro:
+      'Cationes fijos en una red, y los electrones de valencia sueltos entre ellos sin pertenecer a ' +
+      'ninguno. De ahi salen de golpe todas las propiedades de un metal.',
+    scenes: [
+      {
+        id: 'mar',
+        title: 'La red y el mar',
+        caption:
+          'Los cationes (naranja) estan ordenados; los electrones (azul) no estan en ninguna parte ' +
+          'concreta. Un electron deslocalizado se mueve por TODO el metal, y eso es exactamente lo que ' +
+          'significa conducir la electricidad.',
+        limit:
+          'Los electrones no son bolitas ni se mueven en linea recta como un gas. Es un modelo clasico y ' +
+          'viejo: no explica por que el cobre conduce mejor que el hierro ni por que el silicio es ' +
+          'semiconductor. Para eso hace falta la teoria de bandas.',
+        structure: molecular([
+          ...cations(3, 3.4),
+          ...Array.from({ length: 200 }, () =>
+            sphere(v((rng() - 0.5) * 10, (rng() - 0.5) * 10, (rng() - 0.5) * 10), 0.2, SEA, 'e'),
+          ),
+        ]),
+      },
+      {
+        id: 'deformar',
+        title: 'Por que se dobla en vez de romperse',
+        caption:
+          'Una capa de cationes desplazada respecto de las otras. Como los electrones son de todos, el ' +
+          'enlace se rehace sobre la marcha y el metal se deforma sin partirse. Compara esto con lo que ' +
+          'le pasa a un cristal ionico al golpearlo.',
+        limit:
+          'El desplazamiento se dibuja congelado y limpio. En un metal real la deformacion ocurre por ' +
+          'movimiento de defectos de la red —dislocaciones—, no por capas enteras deslizando a la vez.',
+        structure: molecular([
+          ...cations(3, 3.4).filter((a) => a.position.y < 0),
+          ...cations(3, 3.4)
+            .filter((a) => a.position.y >= 0)
+            .map((a) => sphere(v(a.position.x + 1.7, a.position.y, a.position.z), 0.9, METAL_CORE, 'M+')),
+          ...Array.from({ length: 180 }, () =>
+            sphere(v((rng() - 0.5) * 11, (rng() - 0.5) * 10, (rng() - 0.5) * 10), 0.2, SEA, 'e'),
+          ),
+        ]),
+      },
+    ],
+  };
+}
+
+function imfSet(): SceneSet {
+  return {
+    id: 'intermoleculares',
+    title: 'Lo que pasa ENTRE moleculas',
+    intro:
+      'Ojo a la diferencia de escala: dentro de cada molecula hay enlaces covalentes de unos 460 kJ/mol; ' +
+      'entre unas moleculas y otras, fuerzas de 20 o menos. Hervir separa lo segundo, no rompe lo ' +
+      'primero.',
+    scenes: [
+      {
+        id: 'dentro-fuera',
+        title: 'Dentro y fuera de la molecula',
+        caption:
+          'Tres moleculas de agua. Las rayas cortas y gruesas son los enlaces O–H, DENTRO de cada una. Lo ' +
+          'que separa unas moleculas de otras es mucho mas debil — y es lo unico que se rompe al hervir.',
+        limit:
+          'Las distancias entre moleculas estan comprimidas para que quepan las tres. En el agua liquida ' +
+          'las moleculas estan mas juntas y en movimiento constante, chocando y girando.',
+        structure: (() => {
+          const atoms: StructureAtom[] = [];
+          const bonds: Bond[] = [];
+          for (const [dx, dy] of [[-4.5, 0], [0, 2.2], [4.5, 0]] as const) {
+            const base = atoms.length;
+            const mol = realMolecule('H2O');
+            for (const a of mol) {
+              atoms.push(sphere(v(a.position.x + dx, a.position.y + dy, a.position.z), a.radius ?? 0.6, a.color ?? '#888', a.symbol));
+            }
+            for (const b of realBonds('H2O')) bonds.push({ a: base + b.a, b: base + b.b, order: 1, kind: 'covalent-polar' });
+          }
+          return molecular(atoms, bonds);
+        })(),
+      },
+    ],
+  };
+}
+
+function hydrogenBondSet(): SceneSet {
+  /** Una molecula de agua colocada y girada, con sus enlaces. */
+  const placed = (dx: number, dy: number, dz: number, turn: number, out: StructureAtom[], bonds: Bond[]) => {
+    const base = out.length;
+    const mol = realMolecule('H2O');
+    for (const a of mol) {
+      const x = a.position.x * Math.cos(turn) - a.position.y * Math.sin(turn);
+      const y = a.position.x * Math.sin(turn) + a.position.y * Math.cos(turn);
+      out.push(sphere(v(x + dx, y + dy, a.position.z + dz), a.radius ?? 0.6, a.color ?? '#888', a.symbol));
+    }
+    for (const b of realBonds('H2O')) bonds.push({ a: base + b.a, b: base + b.b, order: 1, kind: 'covalent-polar' });
+    return base;
+  };
+
+  const net = () => {
+    const atoms: StructureAtom[] = [];
+    const bonds: Bond[] = [];
+    placed(0, 0, 0, 0, atoms, bonds);
+    placed(-3.4, 2.6, 0, 2.1, atoms, bonds);
+    placed(3.4, 2.6, 0, -2.1, atoms, bonds);
+    placed(0, -3.4, 2.2, 3.14, atoms, bonds);
+    placed(0, -3.4, -2.2, 3.14, atoms, bonds);
+    return molecular(atoms, bonds);
+  };
+
+  return {
+    id: 'puentes',
+    title: 'La red que sostiene al agua',
+    intro:
+      'Cada molecula de agua puede formar CUATRO puentes de hidrogeno: dos por sus hidrogenos y dos por ' +
+      'los pares libres del oxigeno. Cuatro es lo que hace del agua un caso aparte.',
+    scenes: [
+      {
+        id: 'cuatro',
+        title: 'Cuatro puentes por molecula',
+        caption:
+          'La molecula del centro rodeada de otras cuatro, dos por arriba y dos por abajo. Sus dos H ' +
+          'apuntan a los pares libres de dos vecinas, y sus dos pares libres reciben los H de otras dos. ' +
+          'Donador y aceptor a la vez.',
+        limit:
+          'Los puentes de hidrogeno NO estan dibujados como lineas: solo se ve la disposicion. Y la red ' +
+          'no es estatica — en agua liquida los puentes se rompen y se rehacen billones de veces por ' +
+          'segundo. Esto es una foto de un instante imposible.',
+        structure: net(),
+      },
+    ],
+  };
+}
+
+function dispersionSet(): SceneSet {
+  const rng = seeded(131);
+  /** Una molecula apolar con su nube desplazada un poco a un lado. */
+  const blob = (cx: number, shift: number, color: string): StructureAtom[] => [
+    sphere(v(cx, 0, 0), 1.3, NEUTRAL, 'X'),
+    ...Array.from({ length: 70 }, () => {
+      const r = Math.cbrt(rng()) * 2.1;
+      const t = Math.acos(2 * rng() - 1);
+      const p = rng() * Math.PI * 2;
+      return sphere(
+        v(cx + r * Math.sin(t) * Math.cos(p) + shift, r * Math.sin(t) * Math.sin(p), r * Math.cos(t)),
+        0.15,
+        color,
+        'e',
+      );
+    }),
+  ];
+
+  return {
+    id: 'dispersion',
+    title: 'Dipolos que duran un instante',
+    intro:
+      'Los electrones de una molecula apolar se mueven, y en un instante dado pueden estar mas a un ' +
+      'lado que a otro. Ese desequilibrio momentaneo induce otro en la vecina, y los dos se atraen.',
+    scenes: [
+      {
+        id: 'simetrica',
+        title: '1 · En promedio, simetrica',
+        caption:
+          'Dos moleculas apolares. Promediada en el tiempo, la nube de cada una esta centrada: no hay ' +
+          'ningun lado mas negativo que otro, y por eso se dice que son apolares.',
+        limit:
+          'Un promedio no es una foto. En ningun instante concreto la nube esta perfectamente centrada — ' +
+          'eso es justamente lo que hace posible la escena siguiente.',
+        structure: molecular([...blob(-4, 0, ELECTRON), ...blob(4, 0, ELECTRON)]),
+      },
+      {
+        id: 'instante',
+        title: '2 · En un instante, no',
+        caption:
+          'La nube de la izquierda se ha corrido a un lado por puro azar: por un momento tiene un ' +
+          'extremo δ− y otro δ+. Eso EMPUJA la nube de la derecha al mismo lado, apareciendo un dipolo ' +
+          'inducido, y los dos extremos que ahora se enfrentan tienen signos opuestos: se atraen.',
+        limit:
+          'Estos desequilibrios duran del orden de 10⁻¹⁵ segundos y se rehacen sin parar en direcciones ' +
+          'distintas. La figura congela uno; lo que hay de verdad es un parpadeo continuo, y la ' +
+          'atraccion neta es el promedio de todos ellos.',
+        structure: molecular([...blob(-4, -0.9, DELTA_MINUS), ...blob(4, -0.9, DELTA_MINUS)]),
       },
     ],
   };

@@ -174,6 +174,7 @@ export function renderTree(tree: KnowledgeTree, currentId: string | null): strin
       <div class="tree-legend">
         <span class="legend-item"><span class="legend-dot unit-1"></span>Unidad 1 · la materia</span>
         <span class="legend-item"><span class="legend-dot unit-2"></span>Unidad 2 · el atomo</span>
+        <span class="legend-item"><span class="legend-dot unit-3"></span>Unidad 3 · el enlace</span>
         <span class="legend-item"><span class="legend-dot is-planned"></span>Rama prevista</span>
         <span class="legend-item"><span class="legend-line is-cross"></span>Cruza de unidad</span>
       </div>

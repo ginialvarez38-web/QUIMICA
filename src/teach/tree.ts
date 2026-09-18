@@ -21,7 +21,7 @@
  *     arista tendria un ciclo, y un ciclo en un orden de estudio significa
  *     «para entender esto necesitas esto, que necesita aquello»: nada por
  *     donde empezar.
- *   - Solo 16 de los 41 apartados tienen alguno.
+ *   - Solo 33 de los 58 apartados tienen alguno.
  *
  * Asi que `requires` es un dato NUEVO —una arista dirigida, «esto va antes que
  * esto»— y no una copia de nada. Cada apartado declara de que depende, y el
@@ -90,38 +90,15 @@ export interface KnowledgeTree {
  */
 const PLANNED: readonly TreeNode[] = [
   {
-    id: '3',
-    title: 'Enlace quimico',
-    state: 'previsto',
-    depth: 1,
-    requires: ['2.11.1.2', '2.10.2'],
-    engine: 'analysis/lewis.ts · hybridization.ts · polarity.ts',
-    note:
-      'Ionico, covalente y metalico; Lewis, geometria VSEPR y polaridad. El motor deriva la ' +
-      'estructura de Lewis desde la formula y suma los dipolos sobre la geometria real: falta el ' +
-      'temario, no la quimica.',
-  },
-  {
     id: '4',
     title: 'Nomenclatura',
     state: 'previsto',
     depth: 1,
-    requires: ['3', '1.4'],
+    requires: ['3.2.1', '3.2.2', '1.4'],
     engine: 'core/nomenclature/inorganic.ts',
     note:
       'Stock, sistematica y tradicional, ya implementadas y etiquetando cual es cual. Depende del ' +
       'enlace porque para nombrar hay que saber primero que tipo de compuesto es.',
-  },
-  {
-    id: '5',
-    title: 'Fuerzas intermoleculares',
-    state: 'previsto',
-    depth: 1,
-    requires: ['3'],
-    engine: 'analysis/imf.ts',
-    note:
-      'Por que el agua hierve a 100 °C y el sulfuro de hidrogeno a −60, siendo parecidos. Necesita ' +
-      'la polaridad, que sale del enlace.',
   },
   {
     id: '6',
@@ -150,7 +127,7 @@ const PLANNED: readonly TreeNode[] = [
     title: 'Disoluciones',
     state: 'previsto',
     depth: 1,
-    requires: ['1.6.1', '7', '5'],
+    requires: ['1.6.1', '7', '3.3.1'],
     note:
       'Concentracion, solubilidad y propiedades coligativas. Es la rama que tapa el hueco declarado ' +
       'del apartado 1.6: hoy el sandbox no tiene modelo de mezclas.',
@@ -201,7 +178,7 @@ const PLANNED: readonly TreeNode[] = [
     title: 'Quimica organica',
     state: 'previsto',
     depth: 1,
-    requires: ['3', '4'],
+    requires: ['3.2.2.4', '4'],
     note:
       'Grupos funcionales, nomenclatura IUPAC y mecanismos. El modelo la admite desde el inicio, pero ' +
       'la nomenclatura organica y los mecanismos estan por hacer.',
@@ -280,8 +257,8 @@ function layerize(nodes: readonly TreeNode[]): (readonly TreeNode[])[] {
  * El arbol entero: lo que hay y lo que viene.
  *
  * Las unidades se pasan como argumento en lugar de importarse para que el
- * modulo no dependa de ningun temario concreto — anadir la unidad 3 el dia que
- * exista sera pasarla aqui, sin tocar esta funcion.
+ * modulo no dependa de ningun temario concreto. Anadir la unidad 3 fue
+ * exactamente eso: pasarla aqui, sin tocar ni una linea de esta funcion.
  */
 export function knowledgeTree(units: readonly TheoryTopic<never>[]): KnowledgeTree {
   const nodes: TreeNode[] = [...units.flatMap((u) => nodesOfUnit(u)), ...PLANNED];

@@ -35,6 +35,7 @@ import { allSceneSets, sceneSet } from '../src/teach/scenes.js';
 import { flattenTopics } from '../src/ui/theory-view.js';
 import { cardsOf, deckOf, shuffle, progressOf } from '../src/teach/flashcards.js';
 import { knowledgeTree, plannedBranches, neighbours } from '../src/teach/tree.js';
+import { unitEnlace } from '../src/teach/bond.js';
 import { radial, psi, sampleOrbital, radiusContaining } from '../src/teach/orbitals.js';
 
 /** Recorre un temario en profundidad. Lo usan varias pruebas. */
@@ -1534,10 +1535,11 @@ describe('las figuras 3D del temario', () => {
     // Siete conjuntos, y ninguno es decoracion: escala, modelos atomicos,
     // reparto de particulas en las mezclas, antes/despues de un cambio, la
     // forma de los orbitales, el llenado y el magnetismo.
-    assert.deepEqual(
-      sets.map((s) => s.id).sort(),
-      ['cambio', 'escala', 'llenado', 'magnetismo', 'materia', 'modelos', 'orbitales'],
-    );
+    assert.deepEqual(sets.map((s) => s.id).sort(), [
+      'cambio', 'covalente', 'dispersion', 'escala', 'intermoleculares', 'ionico',
+      'lewis3d', 'llenado', 'magnetismo', 'materia', 'metalico', 'modelos',
+      'octeto', 'orbitales', 'polaridad', 'puentes', 'uniones',
+    ]);
   });
 
   test('TODA escena declara donde el dibujo miente', () => {
@@ -1574,15 +1576,33 @@ describe('las figuras 3D del temario', () => {
     }
   });
 
-  test('cada esfera lleva radio y color propios', () => {
-    // Un nucleo o una particula generica no son atomos de ningun elemento, asi
-    // que no se les puede sacar el radio de una tabla de radios covalentes ni
-    // el color de la paleta CPK.
+  test('las esferas inventadas llevan radio y color; las moleculas reales, no', () => {
+    /*
+     * La regla tuvo que afinarse al llegar la unidad 3.
+     *
+     * Antes TODAS las escenas se componian a mano, y una esfera que representa
+     * un nucleo o una particula generica no es atomo de ningun elemento: no se
+     * le puede sacar el radio de una tabla de radios covalentes ni el color de
+     * la paleta CPK, asi que tiene que traerlos puestos.
+     *
+     * Pero las escenas de enlace piden moleculas REALES al constructor de
+     * geometrias —el agua a 104,5°, no a ojo— y esas si son atomos de
+     * elementos. Imponerles radio y color seria lo contrario de lo que se
+     * quiere: perderian el tamano y el color que les corresponde.
+     *
+     * Asi que la regla es: o lleva radio y color propios, o su simbolo es un
+     * elemento de verdad del que sacarlos. Lo que no vale es ninguna de las dos.
+     */
     for (const set of sets) {
       for (const scene of set.scenes) {
         for (const atom of scene.structure.atoms) {
-          assert.ok(typeof atom.radius === 'number' && atom.radius > 0, `${set.id}/${scene.id}: sin radio`);
-          assert.match(atom.color ?? '', /^#[0-9a-f]{6}$/i, `${set.id}/${scene.id}: sin color`);
+          const propios =
+            typeof atom.radius === 'number' && atom.radius > 0 && /^#[0-9a-f]{6}$/i.test(atom.color ?? '');
+          if (propios) continue;
+          assert.ok(
+            getElement(atom.symbol),
+            `${set.id}/${scene.id}: «${atom.symbol}» no lleva radio ni color propios y tampoco es un elemento`,
+          );
         }
       }
     }
@@ -1981,7 +2001,7 @@ describe('el lector del temario', () => {
   // Las dos unidades tienen demostraciones de tipos distintos; el lector las
   // guarda con el tipo ya olvidado, y aqui se hace lo mismo para poder
   // recorrerlas juntas.
-  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo()];
+  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo(), unitEnlace()];
 
   test('las dos unidades se recorren en el mismo orden que el indice', () => {
     for (const unidad of unidades) {
@@ -2077,7 +2097,7 @@ describe('el lector del temario', () => {
 // ---------------------------------------------------------------------------
 
 describe('las tarjetas de repaso', () => {
-  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo()];
+  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo(), unitEnlace()];
 
   test('TODO apartado tiene al menos una tarjeta', () => {
     /*
@@ -2200,7 +2220,7 @@ describe('las tarjetas de repaso', () => {
 // ---------------------------------------------------------------------------
 
 describe('el arbol del conocimiento', () => {
-  const units = [unitMateria(), unitAtomo()] as unknown as TheoryTopic<never>[];
+  const units = [unitMateria(), unitAtomo(), unitEnlace()] as unknown as TheoryTopic<never>[];
   const tree = knowledgeTree(units);
   const ids = new Set(tree.nodes.map((n) => n.id));
 
@@ -2384,5 +2404,170 @@ describe('el arbol del conocimiento', () => {
         `${edge.from} y ${edge.to} se necesitan mutuamente: eso es un «connects», no un «requires»`,
       );
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('unidad 3: el enlace quimico', () => {
+  const topics = new Map(flattenTopics(unitEnlace()).map((t) => [t.id, t]));
+
+  test('estan los diecisiete apartados que pide el temario', () => {
+    for (const id of [
+      '3.1', '3.2', '3.2.1', '3.2.1.1', '3.2.1.2', '3.2.2', '3.2.2.1', '3.2.2.2',
+      '3.2.2.3', '3.2.2.4', '3.2.2.5', '3.2.3', '3.3', '3.3.1', '3.3.1.1', '3.3.1.2', '3.3.1.3',
+    ]) {
+      assert.ok(topics.has(id), `falta el apartado ${id}`);
+    }
+    assert.equal(topics.size, 17);
+  });
+
+  test('LA leccion de la unidad: enlace polar no es molecula polar', () => {
+    /*
+     * Si esta prueba falla, la unidad entera pierde su argumento. El CO₂ tiene
+     * dos enlaces MUY polares y momento dipolar cero; el agua tiene dos enlaces
+     * igual de polares y momento grande. La diferencia esta en la geometria, y
+     * el motor lo calcula sumando VECTORES, no comparando etiquetas.
+     */
+    const demo = topics.get('3.2.2.5')!.demo;
+    assert.equal(demo?.kind, 'dipole');
+    if (demo?.kind !== 'dipole') return;
+
+    const get = (f: string) => demo.rows.find((r) => r.formula === f)!;
+
+    const co2 = get('CO2');
+    assert.ok(co2.bondsArePolar, 'el CO₂ tiene enlaces polares');
+    assert.equal(co2.isPolar, false, 'y aun asi la molecula es apolar');
+    assert.ok(co2.netMagnitude < 0.01, `|μ| del CO₂ deberia ser cero, es ${co2.netMagnitude}`);
+
+    const agua = get('H2O');
+    assert.ok(agua.bondsArePolar);
+    assert.equal(agua.isPolar, true, 'el agua si es polar');
+    assert.ok(agua.netMagnitude > 1, `|μ| del agua deberia ser grande, es ${agua.netMagnitude}`);
+
+    // El par que lo remata: cambiar UN atomo de cuatro.
+    assert.equal(get('CCl4').isPolar, false);
+    assert.equal(get('CHCl3').isPolar, true);
+
+    // Y la implicacion solo va en un sentido: sin enlaces polares, no hay
+    // molecula polar. El metano lo comprueba.
+    const metano = get('CH4');
+    assert.equal(metano.bondsArePolar, false);
+    assert.equal(metano.isPolar, false);
+  });
+
+  test('hay filas donde enlaces y molecula NO coinciden, que es lo que ensena', () => {
+    const demo = topics.get('3.2.2.5')!.demo;
+    if (demo?.kind !== 'dipole') return assert.fail('demo equivocada');
+    const contradicen = demo.rows.filter((r) => r.bondsArePolar && !r.isPolar);
+    assert.ok(contradicen.length >= 3, `solo ${contradicen.length} casos de enlaces polares y molecula apolar`);
+  });
+
+  test('la escala de ΔEN es una rampa continua, sin saltos', () => {
+    const demo = topics.get('3.2')!.demo;
+    if (demo?.kind !== 'bond-scale') return assert.fail('demo equivocada');
+
+    // Ordenada de menor a mayor, sin ningun hueco grande: esa continuidad es
+    // el argumento de que la frontera de 1,7 es un convenio.
+    for (let i = 1; i < demo.rows.length; i++) {
+      assert.ok(demo.rows[i]!.deltaEN >= demo.rows[i - 1]!.deltaEN, 'la escala no esta ordenada');
+    }
+    assert.ok(demo.rows[0]!.deltaEN < 0.01, 'deberia empezar en un enlace de ΔEN cero');
+    assert.ok(demo.rows.at(-1)!.deltaEN > 3, 'deberia llegar a un ionico claro');
+
+    // El H–F: ΔEN por encima de 1,7 y aun asi NO es ionico, porque no hay metal.
+    const hf = demo.rows.find((r) => r.label === 'H–F')!;
+    assert.ok(hf.deltaEN > 1.7);
+    assert.notEqual(hf.kind, 'ionico', 'el HF no es ionico pese a superar el umbral');
+  });
+
+  test('el motor REHUSA derivar Lewis de los ionicos, y lo dice', () => {
+    const demo = topics.get('3.2.1.2')!.demo;
+    if (demo?.kind !== 'lewis-set') return assert.fail('demo equivocada');
+    assert.ok(demo.refused.length >= 2, 'deberia rehusar los compuestos ionicos');
+    for (const r of demo.refused) assert.ok(r.why.length > 30, `${r.formula}: negativa sin motivo`);
+    // Y el agua, que si es covalente, la deriva.
+    assert.ok(demo.rows.some((r) => r.formula === 'H2O'), 'el agua si deberia derivarse');
+  });
+
+  test('las predicciones de punto de ebullicion las confirma la medida', () => {
+    /*
+     * Lo que convierte el apartado 3.3 en ciencia y no en una opinion: el motor
+     * predice a partir de la ESTRUCTURA, y despues se contrasta con puntos de
+     * ebullicion medidos. Si alguna prediccion fallara, esta prueba lo diria —
+     * y entonces habria que arreglar el motor, no ocultar la comparacion.
+     */
+    const demo = topics.get('3.3.1')!.demo;
+    if (demo?.kind !== 'imf') return assert.fail('demo equivocada');
+
+    assert.ok(demo.comparisons.length >= 3, 'pocas comparaciones');
+    for (const c of demo.comparisons) {
+      assert.notEqual(c.confirmed, false, `${c.a}/${c.b}: la prediccion NO la confirma la medida`);
+    }
+    // Y el caso estrella: el agua hierve mas alto que el sulfuro de hidrogeno
+    // pese a pesar la mitad.
+    const agua = demo.rows.find((r) => r.formula === 'H2O')!;
+    const sulfuro = demo.rows.find((r) => r.formula === 'H2S')!;
+    assert.equal(agua.dominant, 'puente-hidrogeno');
+    assert.equal(sulfuro.dominant, 'dipolo-dipolo');
+    assert.ok(agua.molarMass < sulfuro.molarMass, 'el agua pesa menos');
+    assert.ok(agua.boiling! > sulfuro.boiling!, 'y aun asi hierve mucho mas alto');
+  });
+
+  test('el octeto se deduce de la valencia, no se tabula', () => {
+    const demo = topics.get('3.1')!.demo;
+    if (demo?.kind !== 'octet') return assert.fail('demo equivocada');
+
+    const get = (s: string) => demo.rows.find((r) => r.symbol === s)!;
+    assert.equal(get('Na').route, 'cede');
+    assert.equal(get('O').route, 'capta');
+    assert.equal(get('C').route, 'comparte');
+    assert.equal(get('Ne').route, 'ya lo tiene');
+    // Y la cuenta cuadra en todos: valencia + lo que falta = 8.
+    for (const r of demo.rows) assert.equal(r.valence + r.needs, 8, `${r.symbol}: la cuenta no da 8`);
+    // Las excepciones estan, y con motivo.
+    assert.ok(demo.exceptions.length >= 4);
+    for (const e of demo.exceptions) assert.ok(e.why.length > 80, `${e.formula}: excepcion sin explicar`);
+  });
+
+  test('el enlace metalico declara que NO tiene motor (§32)', () => {
+    const demo = topics.get('3.2.3')!.demo;
+    if (demo?.kind !== 'metallic') return assert.fail('demo equivocada');
+    assert.match(demo.gap, /no tiene modelo|no puede predecir|datos MEDIDOS/i);
+    assert.ok(demo.rows.every((r) => r.melting !== null), 'los puntos de fusion deberian estar');
+  });
+
+  test('las once figuras de la unidad existen y llevan su limite', () => {
+    const conFigura = flattenTopics(unitEnlace()).filter((t) => t.figure);
+    assert.ok(conFigura.length >= 8, `solo ${conFigura.length} apartados con figura`);
+    for (const topic of conFigura) {
+      const set = sceneSet(topic.figure!);
+      assert.ok(set, `${topic.id}: figura «${topic.figure}» inexistente`);
+      for (const scene of set!.scenes) {
+        assert.ok(scene.limit.length > 50, `${topic.figure}/${scene.id}: limite ausente`);
+      }
+    }
+  });
+
+  test('la figura de polaridad usa la geometria REAL, no una supuesta', () => {
+    /*
+     * Es el fallo que motivo la prueba. Las flechas se colocaron al principio
+     * en coordenadas inventadas —los hidrogenos «arriba»— y salieron
+     * espejadas: estan en y negativa. La figura contradecia a su propio pie.
+     *
+     * Aqui se comprueba que la escena del agua contiene atomos en las
+     * posiciones que da el constructor de geometrias, salvo el factor de
+     * escala.
+     */
+    const agua = sceneSet('polaridad')!.scenes.find((s) => s.id === 'agua')!;
+    const hidrogenos = agua.structure.atoms.filter((a) => a.symbol === 'H');
+    assert.equal(hidrogenos.length, 2);
+    // Los dos hidrogenos del agua estan POR DEBAJO del oxigeno, que esta en el
+    // origen. Si alguien volviera a suponerlos arriba, esto lo cazaria.
+    for (const h of hidrogenos) assert.ok(h.position.y < 0, 'los hidrogenos van debajo del oxigeno');
+    const oxigeno = agua.structure.atoms.find((a) => a.symbol === 'O')!;
+    assert.ok(Math.abs(oxigeno.position.y) < 0.01, 'el oxigeno esta en el origen');
+    // Y conservan su color de elemento: sin el, no se distingue cual es cual.
+    assert.equal(oxigeno.color, undefined, 'el oxigeno debe tomar su color del elemento');
   });
 });
