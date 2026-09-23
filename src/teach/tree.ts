@@ -90,22 +90,11 @@ export interface KnowledgeTree {
  */
 const PLANNED: readonly TreeNode[] = [
   {
-    id: '4',
-    title: 'Nomenclatura',
-    state: 'previsto',
-    depth: 1,
-    requires: ['3.2.1', '3.2.2', '1.4'],
-    engine: 'core/nomenclature/inorganic.ts',
-    note:
-      'Stock, sistematica y tradicional, ya implementadas y etiquetando cual es cual. Depende del ' +
-      'enlace porque para nombrar hay que saber primero que tipo de compuesto es.',
-  },
-  {
     id: '6',
     title: 'La reaccion quimica',
     state: 'previsto',
     depth: 1,
-    requires: ['1.7', '1.8.1', '4'],
+    requires: ['1.7', '1.8.1', '4.1'],
     engine: 'engine/predict.ts · core/balance.ts',
     note:
       'Tipos de reaccion, prediccion de productos y ajuste. Se apoya en las transformaciones del 1.7 ' +
@@ -178,7 +167,7 @@ const PLANNED: readonly TreeNode[] = [
     title: 'Quimica organica',
     state: 'previsto',
     depth: 1,
-    requires: ['3.2.2.4', '4'],
+    requires: ['3.2.2.4', '4.1'],
     note:
       'Grupos funcionales, nomenclatura IUPAC y mecanismos. El modelo la admite desde el inicio, pero ' +
       'la nomenclatura organica y los mecanismos estan por hacer.',

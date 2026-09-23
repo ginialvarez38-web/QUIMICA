@@ -36,6 +36,13 @@ import { flattenTopics } from '../src/ui/theory-view.js';
 import { cardsOf, deckOf, shuffle, progressOf } from '../src/teach/flashcards.js';
 import { knowledgeTree, plannedBranches, neighbours } from '../src/teach/tree.js';
 import { unitEnlace } from '../src/teach/bond.js';
+import { unitCombinaciones } from '../src/teach/combos.js';
+import {
+  empiricalFromPercent, molecularFromPercent, percentOf, formulaOf,
+} from '../src/core/formula/fromPercent.js';
+import { nameFormula } from '../src/core/nomenclature/inorganic.js';
+import { arityOf, atomCount, molarMass } from '../src/core/formula/composition.js';
+import { parseFormula } from '../src/core/formula/parse.js';
 import { radial, psi, sampleOrbital, radiusContaining } from '../src/teach/orbitals.js';
 
 /** Recorre un temario en profundidad. Lo usan varias pruebas. */
@@ -1532,13 +1539,13 @@ describe('las figuras 3D del temario', () => {
   const sets = allSceneSets();
 
   test('hay figura solo donde lo explicado es espacial', () => {
-    // Siete conjuntos, y ninguno es decoracion: escala, modelos atomicos,
-    // reparto de particulas en las mezclas, antes/despues de un cambio, la
-    // forma de los orbitales, el llenado y el magnetismo.
+    // Ningun conjunto es decoracion. Los dos ultimos en llegar, `aridad` y
+    // `minima`, son los unicos que NO dibujan geometria: la unidad 4 va de
+    // contar, no de formas, y dibujan columnas de atomos por elemento.
     assert.deepEqual(sets.map((s) => s.id).sort(), [
-      'cambio', 'covalente', 'dispersion', 'escala', 'intermoleculares', 'ionico',
-      'lewis3d', 'llenado', 'magnetismo', 'materia', 'metalico', 'modelos',
-      'octeto', 'orbitales', 'polaridad', 'puentes', 'uniones',
+      'aridad', 'cambio', 'covalente', 'dispersion', 'escala', 'intermoleculares',
+      'ionico', 'lewis3d', 'llenado', 'magnetismo', 'materia', 'metalico',
+      'minima', 'modelos', 'octeto', 'orbitales', 'polaridad', 'puentes', 'uniones',
     ]);
   });
 
@@ -1669,12 +1676,48 @@ describe('las figuras 3D del temario', () => {
   });
 
   test('cada figura apuntada existe de verdad', () => {
-    // Un `figure` mal escrito no rompe nada: `renderFigure` devuelve cadena
-    // vacia y el apartado sale sin figura, en silencio. Esta prueba es el
-    // unico sitio donde eso se nota.
-    for (const topic of [...walkTopics(unitMateria()), ...walkTopics(unitAtomo())]) {
-      if (!topic.figure) continue;
-      assert.ok(sceneSet(topic.figure), `${topic.id} apunta a la figura «${topic.figure}», que no existe`);
+    /*
+     * Un `figure` mal escrito no rompe nada: `renderFigure` devuelve cadena
+     * vacia y el apartado sale sin figura, en silencio. Esta prueba es el
+     * unico sitio donde eso se nota.
+     *
+     * Recorre TODAS las unidades a proposito. Antes miraba solo las dos
+     * primeras, y eso significa que cada unidad nueva entraba sin que nadie
+     * comprobara sus figuras — justo el tipo de hueco que se abre solo.
+     */
+    const todas = [
+      ...walkTopics(unitMateria()),
+      ...walkTopics(unitAtomo()),
+      ...walkTopics(unitEnlace() as unknown as TheoryTopic<never>),
+      ...walkTopics(unitCombinaciones() as unknown as TheoryTopic<never>),
+    ];
+    const apuntadas = todas.filter((t) => t.figure);
+    assert.ok(apuntadas.length >= 15, `solo ${apuntadas.length} apartados con figura`);
+
+    for (const topic of apuntadas) {
+      assert.ok(sceneSet(topic.figure!), `${topic.id} apunta a la figura «${topic.figure}», que no existe`);
+    }
+  });
+
+  test('no sobra ningun conjunto de escenas: todos se usan', () => {
+    /*
+     * La comprobacion contraria, que no existia. Una figura construida y no
+     * enlazada desde ningun apartado es codigo muerto que nadie ve nunca, y no
+     * da error en ninguna parte.
+     */
+    const usadas = new Set(
+      [
+        ...walkTopics(unitMateria()),
+        ...walkTopics(unitAtomo()),
+        ...walkTopics(unitEnlace() as unknown as TheoryTopic<never>),
+        ...walkTopics(unitCombinaciones() as unknown as TheoryTopic<never>),
+      ]
+        .map((t) => t.figure)
+        .filter((f): f is string => !!f),
+    );
+
+    for (const set of allSceneSets()) {
+      assert.ok(usadas.has(set.id), `el conjunto «${set.id}» no lo usa ningun apartado`);
     }
   });
 });
@@ -2001,7 +2044,7 @@ describe('el lector del temario', () => {
   // Las dos unidades tienen demostraciones de tipos distintos; el lector las
   // guarda con el tipo ya olvidado, y aqui se hace lo mismo para poder
   // recorrerlas juntas.
-  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo(), unitEnlace()];
+  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo(), unitEnlace(), unitCombinaciones()];
 
   test('las dos unidades se recorren en el mismo orden que el indice', () => {
     for (const unidad of unidades) {
@@ -2097,7 +2140,7 @@ describe('el lector del temario', () => {
 // ---------------------------------------------------------------------------
 
 describe('las tarjetas de repaso', () => {
-  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo(), unitEnlace()];
+  const unidades: readonly TheoryTopic<unknown>[] = [unitMateria(), unitAtomo(), unitEnlace(), unitCombinaciones()];
 
   test('TODO apartado tiene al menos una tarjeta', () => {
     /*
@@ -2220,7 +2263,7 @@ describe('las tarjetas de repaso', () => {
 // ---------------------------------------------------------------------------
 
 describe('el arbol del conocimiento', () => {
-  const units = [unitMateria(), unitAtomo(), unitEnlace()] as unknown as TheoryTopic<never>[];
+  const units = [unitMateria(), unitAtomo(), unitEnlace(), unitCombinaciones()] as unknown as TheoryTopic<never>[];
   const tree = knowledgeTree(units);
   const ids = new Set(tree.nodes.map((n) => n.id));
 
@@ -2569,5 +2612,348 @@ describe('unidad 3: el enlace quimico', () => {
     assert.ok(Math.abs(oxigeno.position.y) < 0.01, 'el oxigeno esta en el origen');
     // Y conservan su color de elemento: sin el, no se distingue cual es cual.
     assert.equal(oxigeno.color, undefined, 'el oxigeno debe tomar su color del elemento');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('de los porcentajes a la formula (unidad 4)', () => {
+  /*
+   * Es el unico calculo del proyecto que va HACIA ATRAS: de lo que mide una
+   * balanza a la formula. Y es el que mas facil seria falsear, porque redondear
+   * un 1,5 a 2 da una formula perfectamente plausible de otra sustancia.
+   *
+   * Por eso la mitad de estas pruebas comprueban que el motor SE NIEGA.
+   */
+
+  test('glucosa: 40,00 / 6,71 / 53,29 da CH2O, y con la masa molar C6H12O6', () => {
+    const entries = [
+      { symbol: 'C', percent: 40.0 },
+      { symbol: 'H', percent: 6.71 },
+      { symbol: 'O', percent: 53.29 },
+    ];
+
+    const emp = empiricalFromPercent(entries);
+    assert.ok(emp.ok);
+    assert.equal(emp.value.empiricalFormula, 'CH2O');
+    assert.equal(emp.value.multiplier, 1, 'aqui las razones salen enteras a la primera');
+
+    const mol = molecularFromPercent(entries, 180.16);
+    assert.ok(mol.ok);
+    assert.equal(mol.value.molecularFormula, 'C6H12O6');
+    assert.equal(mol.value.factor, 6);
+    // Lo que de verdad hay que mirar: el cociente sale entero, no «casi».
+    assert.ok(Math.abs(mol.value.factorRaw - 6) < 0.01, `n = ${mol.value.factorRaw}`);
+  });
+
+  test('hematita: una razon de 1,5 se MULTIPLICA por dos, no se redondea', () => {
+    /*
+     * La prueba que protege el apartado 4.2.1 entero.
+     *
+     * Fe 1,000 / O 1,500. Redondear el 1,500 a 2 da FeO, que existe, es negro
+     * en vez de rojo y tiene otro hierro dentro. Multiplicar por dos da Fe2O3,
+     * que es la respuesta. Las dos operaciones se parecen y solo una es
+     * quimica.
+     */
+    const r = empiricalFromPercent([
+      { symbol: 'Fe', percent: 69.94 },
+      { symbol: 'O', percent: 30.06 },
+    ]);
+    assert.ok(r.ok);
+    assert.equal(r.value.empiricalFormula, 'Fe2O3');
+    assert.equal(r.value.multiplier, 2, 'hizo falta multiplicar por 2');
+    assert.notEqual(r.value.empiricalFormula, 'FeO');
+  });
+
+  test('se rechazan las razones que no caen en enteros, y se dice cual falla', () => {
+    const r = empiricalFromPercent([
+      { symbol: 'C', percent: 52 },
+      { symbol: 'H', percent: 13 },
+      { symbol: 'O', percent: 35 },
+    ]);
+    assert.ok(!r.ok, 'deberia negarse en lugar de redondear');
+    // El mensaje nombra al elemento que no cuadra: es la informacion util.
+    assert.match(r.error, /H/);
+    assert.match(r.error, /enteros/);
+  });
+
+  test('se rechaza un analisis cuyos porcentajes no suman 100', () => {
+    const r = empiricalFromPercent([
+      { symbol: 'C', percent: 40 },
+      { symbol: 'H', percent: 6 },
+    ]);
+    assert.ok(!r.ok, 'faltando el 54 % de la muestra no se puede concluir nada');
+    assert.match(r.error, /46/);
+  });
+
+  test('se rechaza una masa molar que no es multiplo entero de la minima', () => {
+    /*
+     * Una molecula contiene un numero ENTERO de veces su formula minima. Si el
+     * cociente sale 3,33, el fallo esta en los datos — y decirlo es mas util
+     * que devolver C3H6O3 como si tal cosa.
+     */
+    const r = molecularFromPercent(
+      [
+        { symbol: 'C', percent: 40.0 },
+        { symbol: 'H', percent: 6.71 },
+        { symbol: 'O', percent: 53.29 },
+      ],
+      100,
+    );
+    assert.ok(!r.ok);
+    assert.match(r.error, /entero/);
+  });
+
+  test('el circulo se cierra: formula -> porcentajes -> formula minima', () => {
+    /*
+     * La comprobacion mas fuerte del modulo, porque no usa ningun numero
+     * escrito a mano. Se parte de una formula, se calculan sus porcentajes con
+     * un camino, se vuelven a meter por el otro y tiene que salir la minima.
+     *
+     * Si cualquiera de los dos caminos tuviera un error, aqui se veria.
+     */
+    const casos: readonly [string, string][] = [
+      ['C6H12O6', 'CH2O'],
+      ['C2H4O2', 'CH2O'],
+      ['CH2O', 'CH2O'],
+      ['Fe2O3', 'Fe2O3'],
+      ['H2O', 'H2O'],
+      ['C6H6', 'CH'],
+      ['H2SO4', 'H2O4S'],
+    ];
+
+    for (const [formula, minima] of casos) {
+      const parsed = parseFormula(formula);
+      assert.ok(parsed.ok, formula);
+      const pc = percentOf(parsed.value.composition);
+      assert.ok(pc.ok, formula);
+      const back = empiricalFromPercent(pc.value);
+      assert.ok(back.ok, `${formula}: ${back.ok ? '' : back.error}`);
+      assert.equal(back.value.empiricalFormula, minima, `${formula} deberia dar ${minima}`);
+    }
+  });
+
+  test('tres sustancias distintas dan EXACTAMENTE los mismos porcentajes', () => {
+    /*
+     * El argumento del apartado 4.2.2, comprobado en lugar de afirmado. Si
+     * esto fallara, el apartado estaria contando un cuento.
+     */
+    const porcentajes = ['CH2O', 'C2H4O2', 'C6H12O6'].map((f) => {
+      const c = parseFormula(f);
+      assert.ok(c.ok);
+      const p = percentOf(c.value.composition);
+      assert.ok(p.ok);
+      return p.value.map((x) => `${x.symbol}:${x.percent.toFixed(2)}`).join(' ');
+    });
+
+    assert.equal(porcentajes[0], porcentajes[1]);
+    assert.equal(porcentajes[1], porcentajes[2]);
+
+    // Y sin embargo las masas molares son distintas: eso es lo que las separa.
+    const masas = ['CH2O', 'C2H4O2', 'C6H12O6'].map((f) => {
+      const c = parseFormula(f);
+      assert.ok(c.ok);
+      const m = molarMass(c.value.composition);
+      assert.ok(m.ok);
+      return Math.round(m.value.total);
+    });
+    assert.deepEqual(masas, [30, 60, 180]);
+  });
+
+  test('la formula se escribe en orden de Hill', () => {
+    const c = parseFormula('C6H12O6');
+    assert.ok(c.ok);
+    assert.equal(formulaOf(c.value.composition), 'C6H12O6');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('la nomenclatura no inventa palabras', () => {
+  /*
+   * ESTAS PRUEBAS NACEN DE UN FALLO REAL, encontrado al montar la unidad 4.
+   *
+   * El motor aplicaba la morfologia regular -oso/-ico a cualquier elemento que
+   * tuviera raiz latina en la tabla, incluidos los no metales. Salian:
+   *
+   *   CO₂   → «oxido carbico»
+   *   P₂O₅  → «oxido fosfico»
+   *   N₂O₅  → «oxido pernitrico»
+   *   Al₂O₃ → «oxido aluminico»
+   *
+   * Ninguna de las cuatro es una palabra. La tercera es, ademas, literalmente
+   * el ejemplo que el comentario del propio modulo ponia como muestra de lo
+   * que no se debe generar: alli se habia evitado con una tabla curada para
+   * los oxoacidos, y se colaba por la puerta de los oxidos.
+   *
+   * No habia ninguna prueba que lo cazara. Ahora si.
+   */
+
+  test('el oxido de un NO METAL es un anhidrido, con su nombre real', () => {
+    const casos: readonly [string, string][] = [
+      ['CO2', 'anhidrido carbonico'],
+      ['SO2', 'anhidrido sulfuroso'],
+      ['SO3', 'anhidrido sulfurico'],
+      ['N2O5', 'anhidrido nitrico'],
+      ['N2O3', 'anhidrido nitroso'],
+      ['P2O5', 'anhidrido fosforico'],
+      ['Cl2O7', 'anhidrido perclorico'],
+    ];
+    for (const [formula, esperado] of casos) {
+      assert.equal(nameFormula(formula)?.traditional, esperado, formula);
+    }
+  });
+
+  test('las palabras inventadas ya no salen por ninguna parte', () => {
+    const prohibidas = [
+      'carbico', 'carboso', 'fosfico', 'pernitrico', 'aluminico', 'zincico', 'silicico ferrico',
+    ];
+    const formulas = [
+      'CO2', 'CO', 'P2O5', 'N2O5', 'N2O3', 'Al2O3', 'ZnO', 'SiO2', 'B2O3',
+      'SO2', 'SO3', 'Cl2O7', 'CaO', 'Na2O', 'Fe2O3', 'FeO', 'CuO',
+    ];
+    for (const f of formulas) {
+      const n = nameFormula(f);
+      for (const campo of [n?.stock, n?.systematic, n?.traditional, n?.common]) {
+        if (!campo) continue;
+        for (const mala of prohibidas) {
+          assert.ok(!campo.includes(mala), `${f} produjo «${campo}», que contiene «${mala}»`);
+        }
+      }
+    }
+  });
+
+  test('un metal de un solo estado no lleva adjetivo tradicional', () => {
+    /*
+     * El sufijo -oso/-ico existe para DISTINGUIR estados de oxidacion. Con un
+     * solo estado no hay nada que distinguir, y «oxido de aluminio» ya es el
+     * nombre tradicional completo. Devolver null es correcto; inventar
+     * «aluminico» es anadir una palabra falsa que ademas no informa de nada.
+     */
+    for (const f of ['Al2O3', 'ZnO', 'Na2O', 'CaO']) {
+      assert.equal(nameFormula(f)?.traditional, null, `${f} no deberia llevar adjetivo`);
+    }
+  });
+
+  test('los metales con varios estados SI lo llevan, y distinguen', () => {
+    // La otra cara: donde el adjetivo informa, tiene que estar.
+    assert.equal(nameFormula('FeO')?.traditional, 'oxido ferroso');
+    assert.equal(nameFormula('Fe2O3')?.traditional, 'oxido ferrico');
+    assert.notEqual(nameFormula('FeO')?.traditional, nameFormula('Fe2O3')?.traditional);
+  });
+
+  test('Stock pone el numero romano solo cuando hace falta', () => {
+    // Con un unico estado posible, el parentesis sobraria.
+    assert.equal(nameFormula('CaO')?.stock, 'oxido de calcio');
+    // Con varios, es imprescindible para saber de cual se habla.
+    assert.equal(nameFormula('Fe2O3')?.stock, 'oxido de hierro(III)');
+    assert.equal(nameFormula('FeO')?.stock, 'oxido de hierro(II)');
+  });
+
+  test('lo que no sabe nombrar, lo deja vacio (§32)', () => {
+    // Una sal con dos cationes poliatomicos y un organico: ni uno ni otro
+    // entran en un motor de nomenclatura inorganica.
+    const sal = nameFormula('(NH4)2SO4');
+    assert.ok(sal === null || sal.stock === null, 'no deberia inventar un nombre para (NH4)2SO4');
+    const organico = nameFormula('CH4');
+    assert.ok(organico === null || organico.stock === null, 'el metano no es cosa de este motor');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('la unidad 4: contar elementos, no atomos', () => {
+  /*
+   * El error que la unidad existe para matar, comprobado con los dos casos que
+   * lo demuestran: el acido sulfurico tiene MAS atomos que el bicarbonato y
+   * MENOS elementos. Ordenar por una cuenta o por la otra da resultados
+   * contrarios.
+   */
+
+  const comp = (f: string) => {
+    const p = parseFormula(f);
+    assert.ok(p.ok, f);
+    return p.value.composition;
+  };
+
+  test('H2SO4 tiene 7 atomos y es TERNARIO; NaHCO3 tiene 6 y es CUATERNARIO', () => {
+    const sulfurico = comp('H2SO4');
+    const bicarbonato = comp('NaHCO3');
+
+    assert.equal(atomCount(sulfurico), 7);
+    assert.equal(arityOf(sulfurico), 'ternary');
+
+    assert.equal(atomCount(bicarbonato), 6);
+    assert.equal(arityOf(bicarbonato), 'quaternary');
+
+    // Y aqui esta el argumento: los dos ordenes se invierten.
+    assert.ok(atomCount(sulfurico) > atomCount(bicarbonato), 'por atomos gana el sulfurico');
+    assert.ok(sulfurico.size < bicarbonato.size, 'por elementos gana el bicarbonato');
+  });
+
+  test('la aridad no cambia aunque haya muchos atomos', () => {
+    assert.equal(arityOf(comp('Fe2O3')), 'binary', 'cinco atomos, dos elementos');
+    assert.equal(arityOf(comp('H2O2')), 'binary', 'cuatro atomos, dos elementos');
+    assert.equal(arityOf(comp('Ca(OH)2')), 'ternary');
+  });
+
+  test('las figuras de la unidad 4 cuentan atomos de verdad', () => {
+    /*
+     * Las dos figuras nuevas no dibujan geometria: dibujan una columna por
+     * elemento y una esfera por atomo. Si el recuento no coincidiera con la
+     * formula, la figura estaria mintiendo sobre lo unico que afirma.
+     */
+    const esperado: Record<string, [number, number]> = {
+      // id de escena -> [esferas, elementos distintos]
+      nacl: [2, 2],
+      h2so4: [7, 3],
+      nahco3: [6, 4],
+    };
+    for (const escena of sceneSet('aridad')!.scenes) {
+      const [esferas, elementos] = esperado[escena.id]!;
+      assert.equal(escena.structure.atoms.length, esferas, `${escena.id}: esferas`);
+      assert.equal(
+        new Set(escena.structure.atoms.map((a) => a.symbol)).size,
+        elementos,
+        `${escena.id}: columnas`,
+      );
+    }
+  });
+
+  test('la figura de la formula minima mantiene la proporcion 1:2:1', () => {
+    for (const escena of sceneSet('minima')!.scenes) {
+      const cuenta = new Map<string, number>();
+      for (const a of escena.structure.atoms) cuenta.set(a.symbol, (cuenta.get(a.symbol) ?? 0) + 1);
+      const c = cuenta.get('C')!;
+      assert.equal(cuenta.get('H'), c * 2, `${escena.id}: el doble de hidrogenos que de carbonos`);
+      assert.equal(cuenta.get('O'), c, `${escena.id}: tantos oxigenos como carbonos`);
+    }
+  });
+
+  test('las escenas de la unidad 4 no fingen geometria', () => {
+    /*
+     * Son las unicas escenas sin enlaces, y a proposito: el motor de geometria
+     * no construye ni el bicarbonato ni la glucosa, y dibujar unos enlaces «a
+     * ojo» habria sido inventarse la estructura. Cada escena lo declara en su
+     * limite, que es obligatorio.
+     */
+    for (const id of ['aridad', 'minima']) {
+      for (const escena of sceneSet(id)!.scenes) {
+        assert.equal(escena.structure.bonds.length, 0, `${escena.id} no deberia dibujar enlaces`);
+        assert.ok(escena.limit.length > 40, `${escena.id} tiene que declarar su limite`);
+      }
+    }
+  });
+
+  test('los porcentajes del agua: mas atomos de hidrogeno, mucha menos masa', () => {
+    const m = molarMass(comp('H2O'));
+    assert.ok(m.ok);
+    const h = m.value.perElement.find((p) => p.symbol === 'H')!;
+    const o = m.value.perElement.find((p) => p.symbol === 'O')!;
+    assert.equal(h.count, 2);
+    assert.equal(o.count, 1);
+    // El doble de atomos y una novena parte de la masa.
+    assert.ok(Math.abs(h.massPercent - 11.19) < 0.1, `H = ${h.massPercent}`);
+    assert.ok(o.massPercent > 88, `O = ${o.massPercent}`);
   });
 });

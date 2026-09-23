@@ -41,7 +41,9 @@ import { renderTree, renderLineage, renderPlanned } from './tree-view.js';
 import { unitAtomo } from '../teach/atom.js';
 import { atomoView } from './atom-view.js';
 import { unitEnlace } from '../teach/bond.js';
+import { unitCombinaciones } from '../teach/combos.js';
 import { enlaceView } from './bond-view.js';
+import { combinacionesView } from './combos-theory-view.js';
 import { FigureManager } from './figure-3d.js';
 
 type Mode = 'build' | 'react' | 'tabla' | 'teoria' | 'routes' | 'lab';
@@ -1131,6 +1133,7 @@ const THEORY_VIEWS: readonly AnyUnitView[] = [
   anyView(materiaView(unitMateria())),
   anyView(atomoView(unitAtomo())),
   anyView(enlaceView(unitEnlace())),
+  anyView(combinacionesView(unitCombinaciones())),
 ];
 
 /**
@@ -1145,7 +1148,7 @@ const cardsKnown: Set<string> = loadProgress();
 /**
  * El arbol del conocimiento, construido una vez.
  *
- * Abarca las DOS unidades a la vez y las ramas previstas, asi que no depende
+ * Abarca TODAS las unidades a la vez y las ramas previstas, asi que no depende
  * de cual este abierta: cambiar de unidad no lo rehace. Es justamente lo que
  * hace que se vean las aristas que cruzan de unidad — el 1.8.3 empujando a los
  * modelos atomicos del 2.2.1.2— que leyendo no se ven nunca.

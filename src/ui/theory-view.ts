@@ -498,13 +498,13 @@ export interface UnitView<D> {
 /**
  * Una unidad con el tipo de su demostracion ya olvidado.
  *
- * Las dos unidades tienen demostraciones distintas —la 1 calcula leyes
- * ponderales, la 2 cuenta nucleones y sortea orbitales— y cada renderizador
- * solo sabe de las suyas. Para poder guardarlas en la misma lista hace falta
- * borrar ese tipo, y la unica forma segura es borrarlo JUNTO CON su
- * renderizador: `anyView` empareja los dos en una clausura, y desde ese
- * momento ya no existe ninguna forma de pasarle a un renderizador una
- * demostracion de la otra unidad.
+ * Cada unidad tiene demostraciones de un tipo distinto —la 1 calcula leyes
+ * ponderales, la 2 cuenta nucleones y sortea orbitales, la 3 suma dipolos y la
+ * 4 deduce formulas de porcentajes— y cada renderizador solo sabe de las
+ * suyas. Para poder guardarlas en la misma lista hace falta borrar ese tipo, y
+ * la unica forma segura es borrarlo JUNTO CON su renderizador: `anyView`
+ * empareja los dos en una clausura, y desde ese momento ya no existe ninguna
+ * forma de pasarle a un renderizador una demostracion de otra unidad.
  */
 export interface AnyUnitView {
   readonly unit: TheoryTopic<unknown>;
@@ -543,9 +543,18 @@ export function renderTheoryShell(
           ${views
             .map(
               (view, i) =>
-                `<button class="unit-tab" role="tab" data-unit="${i}" aria-selected="${i === activeIndex}">
+                /*
+                 * El titulo va en su propio <span> para que el CSS pueda
+                 * acortarlo en pantallas estrechas. Con tres unidades la fila
+                 * cabia; con la cuarta se desbordaba 45 px en un movil de 320,
+                 * y el desbordamiento afectaba a TODAS las unidades porque el
+                 * conmutador es el mismo. El `aria-label` conserva el nombre
+                 * completo aunque el texto se recorte.
+                 */
+                `<button class="unit-tab" role="tab" data-unit="${i}" aria-selected="${i === activeIndex}"
+                         aria-label="Unidad ${escapeHtml(view.unit.id)}: ${escapeHtml(view.unit.title)}">
                    <span class="unit-number">${escapeHtml(view.unit.id)}</span>
-                   ${escapeHtml(view.unit.title)}
+                   <span class="unit-title">${escapeHtml(view.unit.title)}</span>
                  </button>`,
             )
             .join('')}

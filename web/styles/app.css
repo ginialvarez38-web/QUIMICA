@@ -3617,6 +3617,7 @@ button { cursor: pointer; border: none; background: none; }
 }
 .legend-dot.unit-2 { background: var(--teal); }
 .legend-dot.unit-3 { background: var(--violet); }
+.legend-dot.unit-4 { background: var(--hazard-safe); }
 .legend-dot.is-planned { background: var(--surface-3); border: 1px dashed var(--text-faint); }
 .legend-line {
   width: 18px; height: 0;
@@ -3674,6 +3675,7 @@ button { cursor: pointer; border: none; background: none; }
 .tree-node:hover { background: var(--surface-2); transform: translateY(-1px); z-index: 2; }
 .tree-node.unit-2 { border-left-color: var(--teal); }
 .tree-node.unit-3 { border-left-color: var(--violet); }
+.tree-node.unit-4 { border-left-color: var(--hazard-safe); }
 /* Los subapartados se distinguen sin necesidad de sangrar: en un grafo por
    capas la sangria no significa nada, porque la posicion ya la decide la
    dependencia. */
@@ -4290,8 +4292,32 @@ button { cursor: pointer; border: none; background: none; }
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
-  .unit-switch { flex-direction: row; margin-bottom: 0; }
-  .unit-tab { flex: 1; justify-content: center; padding: 6px 8px; }
+  /* El conmutador de unidad en movil.
+
+     Con tres unidades la fila cabia en un movil de 320 px. Con la cuarta se
+     desbordaba 45 px — y como el conmutador es el mismo para todas, la pagina
+     se desplazaba en horizontal estuviera abierta la unidad que estuviera.
+
+     `flex: 1` no basta: un elemento flexible no se encoge por debajo de su
+     contenido minimo salvo que se le diga con `min-width: 0`. Con eso, y
+     envolviendo a dos por fila, cuatro unidades caben sin desbordar y siguen
+     leyendose enteras. Con una sexta unidad se pondran tres filas solas. */
+  .unit-switch {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+  }
+  .unit-tab {
+    flex: 1 1 44%;
+    min-width: 0;
+    justify-content: center;
+    padding: 6px 8px;
+  }
+  .unit-tab .unit-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   /* El aviso de «se calculan» se lee una vez y ocupa cuatro lineas: en movil
      se queda solo en la version de escritorio. */
   .toc-claim { display: none; }
@@ -4917,3 +4943,50 @@ button { cursor: pointer; border: none; background: none; }
   .figure3d-caption { padding-left: 11px; padding-right: 11px; }
   .figure3d-limit { margin-left: 11px; margin-right: 11px; }
 }
+
+/* ---------------------------------------------------------------------------
+   UNIDAD 4 — combinaciones quimicas.
+
+   Dos reglas, y las dos existen para que se vea un ARGUMENTO y no una tabla.
+
+   `.is-paired` empareja las dos columnas que hay que comparar —atomos y
+   elementos distintos— dandoles un fondo comun, igual que los dipolos de la
+   unidad 3. Y `.is-contradiction` marca las filas donde las dos cuentas no
+   coinciden, que son casi todas: lo raro es que coincidan.
+   --------------------------------------------------------------------------- */
+
+.demo-table .is-paired {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  text-align: center;
+}
+.demo-table thead .is-paired { font-size: 10px; }
+
+.demo-table tr.is-contradiction th,
+.demo-table tr.is-contradiction td {
+  background: color-mix(in srgb, var(--hazard-special) 11%, transparent);
+}
+.demo-table tr.is-contradiction .is-paired {
+  background: color-mix(in srgb, var(--hazard-special) 18%, transparent);
+}
+
+/* Una formula se lee mejor con el mismo tipo que el resto de formulas de la
+   aplicacion, y sin partirse a mitad de subindice. */
+.formula-cell {
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+/* Un nombre que el motor NO da. Se marca como ausencia deliberada: la
+   diferencia entre «aqui no hay nombre» y «aqui se nos olvido» es el §32. */
+.no-name {
+  font-style: italic;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.trend-bar.is-mass { background: color-mix(in srgb, var(--oxide) 65%, transparent); }
+
+/* La tabla de los tres sistemas es ancha por naturaleza: tres nombres largos
+   uno al lado de otro. Se deja respirar menos que las demas para que quepa sin
+   desplazamiento en un portatil, y en movil se desplaza como el resto. */
+.naming-table td { font-size: 11.5px; line-height: 1.5; }

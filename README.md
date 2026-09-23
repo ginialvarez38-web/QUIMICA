@@ -107,9 +107,10 @@ cada una por lo que se sabe de ella, no por si la aritmetica cuadra:
 ### `src/teach` — modo profesor, el guia y el temario
 
 `explain.ts` desarrolla una reaccion como una leccion. `theory.ts` es la
-unidad 1 (la materia), `atom.ts` la unidad 2 (estructura atomica) y `bond.ts`
-la unidad 3 (el enlace quimico). `scenes.ts` son las figuras 3D que ilustran
-las tres. `guide.ts` es el cerebro del
+unidad 1 (la materia), `atom.ts` la unidad 2 (estructura atomica), `bond.ts`
+la unidad 3 (el enlace quimico) y `combos.ts` la unidad 4 (combinaciones
+quimicas: nomenclatura y formulas). `scenes.ts` son las figuras 3D que ilustran
+las cuatro. `guide.ts` es el cerebro del
 avatar: mira en que punto esta el usuario y decide que decirle.
 
 **El temario no se escribe: se calcula.** Donde una ley admite demostracion,
@@ -212,6 +213,57 @@ ni de mar de electrones en ninguna capa, y el apartado 3.2.3 lo dice: explica
 el modelo con datos medidos de los elementos, pero no calcula nada sobre el
 enlace.
 
+### La unidad 4 es la unica que va hacia atras
+
+Las tres anteriores parten de la formula y la analizan. La unidad 4 parte de lo
+unico que mide un laboratorio —masas— y llega a la formula. Es el camino que
+recorre un quimico cuando encuentra una sustancia nueva, y el unico apartado
+del temario donde la formula no se sabe de antemano.
+
+Para eso hizo falta escribir `core/formula/fromPercent.ts`: el proyecto sabia
+ir de la formula al porcentaje, pero no al reves.
+
+| Apartado | Quien lo calcula |
+|---|---|
+| 4.1 Los tres sistemas de nombre | `nomenclature/inorganic.ts` — cada fila de la tabla se pide al motor, huecos incluidos |
+| 4.1.1–4.1.3 Binario / ternario / cuaternario | `composition.ts::arityOf` — cuenta ELEMENTOS, no atomos |
+| 4.2.1 Formula minima | `fromPercent.ts` — porcentajes → moles → razon → enteros |
+| 4.2.2 Formula molecular | `fromPercent.ts` — n = M / M(minima), y tiene que salir entero |
+| 4.2.3 Composicion porcentual | `composition.ts::molarMass`, el desglose que ya existia |
+
+**El error que la unidad existe para matar** es contar atomos en lugar de
+elementos. El H₂SO₄ tiene **siete** atomos y es ternario; el NaHCO₃ tiene
+**seis** y es cuaternario. Ordenados por atomos salen al reves que ordenados
+por aridad, y las dos filas van pegadas en la tabla para que la inversion se
+vea. La figura 3D dibuja una columna por elemento y una esfera por atomo: el
+numero de columnas es la aridad y la altura es el recuento.
+
+**La demostracion del 4.2.2** es que el formaldehido, el acido acetico y la
+glucosa dan **exactamente** los mismos porcentajes: 40,00 % C, 6,71 % H,
+53,28 % O. Los numeros no estan escritos en el temario — se calculan de la
+glucosa, y despues se comprueba que las tres formulas devuelven la misma
+formula minima. Un analisis elemental es compatible con las tres, y una es un
+conservante de cadaveres y otra es azucar. Sin la masa molar no hay forma de
+elegir.
+
+**Y el motor se niega.** Si las razones no caen en enteros ni multiplicando por
+2, 3, 4, 5 o 6, no devuelve una formula aproximada: devuelve un error diciendo
+que razon no cuadra. Redondear 1,5 a 2 convierte el Fe₂O₃ en FeO, que existe,
+es negro en vez de rojo y es otra sustancia. Lo mismo con la masa molar: si
+M / M(minima) sale 3,33, se declara en lugar de redondear.
+
+**Un fallo que esta unidad destapo.** Al montar la tabla de nomenclatura
+aparecieron nombres inexistentes: el motor aplicaba la morfologia -oso/-ico a
+cualquier elemento con raiz latina, incluidos los no metales, y producia «oxido
+carbico» (CO₂), «oxido fosfico» (P₂O₅) y «oxido pernitrico» (N₂O₅). El tercero
+es literalmente el ejemplo que el comentario del propio modulo ponia como
+muestra de lo que no se debe generar: alli se habia evitado con una tabla
+curada para los oxoacidos, y se colaba por la puerta de los oxidos. Ahora el
+oxido de un no metal se nombra como **anhidrido**, derivandolo de esa misma
+tabla curada —anhidrido carbonico, fosforico, nitrico—, y un metal de un solo
+estado de oxidacion no recibe adjetivo, porque no habria nada que distinguir.
+No habia ninguna prueba que lo cazara; ahora hay cinco.
+
 Once figuras 3D sostienen la unidad, y varias usan la geometria de verdad del
 constructor VSEPR — el agua a 104,5°, no a ojo. Cuando la figura es el
 argumento, el angulo no se puede aproximar.
@@ -231,16 +283,16 @@ lleva a la otra.
 |---|---|
 | **De arriba abajo** | El orden en que se puede estudiar. Cada apartado cae por DEBAJO de todo lo que necesita, porque las capas se calculan por camino mas largo. |
 | **26 flechas naranjas** | Cruzan de una unidad a otra. Son las que no se ven leyendo: la ley de las proporciones multiples (1.8.3) es lo que empuja a los modelos atomicos (2.2.1.2), y estan a cuarenta pantallas. |
-| **9 nodos en gris** | Las ramas que aun no existen, colgando de lo que ya las sostiene. |
+| **8 nodos en gris** | Las ramas que aun no existen, colgando de lo que ya las sostiene. |
 
 **`requires` no es `connects`.** Se intento derivar el arbol de los enlaces que
 ya habia y no valia: `connects` es lateral y va en los dos sentidos —el
 2.11.1.1 enlaza al 2.11.1.3 y el 2.11.1.3 enlaza de vuelta— y un arbol con esa
 arista tendria un ciclo, es decir, tres apartados que no se pueden estudiar en
-ningun orden. Ademas solo cubria 33 de los 58. Asi que `requires` es una arista
+ningun orden. Ademas solo cubria 39 de los 66. Asi que `requires` es una arista
 DIRIGIDA y nueva, y **hay una prueba que impide los ciclos**.
 
-**Las ramas previstas dicen que motor las sostiene ya.** Seis de las nueve
+**Las ramas previstas dicen que motor las sostiene ya.** Cinco de las ocho
 apuntan a codigo escrito y probado: `stoichiometry.ts` para la estequiometria,
 `nomenclature/inorganic.ts` para la nomenclatura, `energy.ts`
 para la termoquimica, `redox.ts` para la electroquimica. Lo que les falta es el
@@ -254,7 +306,7 @@ sirve todavia no esta escrito.
 
 ### Las tarjetas de repaso
 
-**65 tarjetas, y ninguna esta escrita aparte.** Lo evidente habria sido anadir
+**106 tarjetas, y ninguna esta escrita aparte.** Lo evidente habria sido anadir
 un campo `flash` a cada apartado y redactar cien preguntas nuevas; habria sido
 crear una SEGUNDA version de una quimica que ya existe, libre de contradecir a
 la primera a partir del dia siguiente.
@@ -285,7 +337,7 @@ una marca de repaso.
 
 ### Las figuras 3D del temario
 
-`scenes.ts` define **diecisiete juegos con cincuenta y dos escenas**, que se dibujan con el
+`scenes.ts` define **diecinueve juegos con cincuenta y ocho escenas**, que se dibujan con el
 mismo renderizador WebGL2 del visor de moleculas — no con imagenes:
 
 | Juego | Escenas | Donde |
@@ -307,6 +359,8 @@ mismo renderizador WebGL2 del visor de moleculas — no con imagenes:
 | **Lo que pasa ENTRE moleculas** | Dentro y fuera de la molecula | 3.3 Uniones intermoleculares |
 | **La red que sostiene al agua** | Cuatro puentes por molecula | 3.3.1.2 Puentes de hidrogeno |
 | **Dipolos que duran un instante** | En promedio simetrica; en un instante, no | 3.3.1.3 Fuerzas de dispersion |
+| **Se cuentan elementos, no atomos** | NaCl binario, H₂SO₄ ternario, NaHCO₃ cuaternario | 4.1 Notacion y nomenclatura |
+| **La misma proporcion, tres sustancias** | CH₂O, C₂H₄O₂, C₆H₁₂O₆ | 4.2 Formulas |
 
 Las escenas de orbitales, llenado y magnetismo no estan dibujadas: estan
 **calculadas**. Ver mas abajo.
@@ -326,7 +380,7 @@ simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos en
 silencio, dejando lienzos en negro; asi que el contexto **se crea cuando la
 figura entra en pantalla** (`IntersectionObserver`) y **se libera al abandonar
 el modo**. Y se dibuja **bajo demanda**, no en un bucle: las escenas son
-estaticas, y mantener cincuenta y dos bucles de animacion calentaria el portatil de un
+estaticas, y mantener cincuenta y ocho bucles de animacion calentaria el portatil de un
 estudiante para no ensenar nada nuevo.
 
 Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.
@@ -522,7 +576,7 @@ frontera esta limpia. Pero el resultado se ejecuta hoy, con `node` y `tsc`.
 
 ## Estado
 
-**350 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
+**371 pruebas** cubren el nucleo, la nomenclatura, el motor de reacciones y el
 motor de analisis. Incluyen redox exigentes, la cadena completa del calcio, la
 ruta del azufre al acido sulfurico, el ejemplo estequiometrico del §26 (2,00 g
 de CaCO₃ en 50 mL de HCl 1,0 M: limitante, exceso y volumen de CO₂), y los

@@ -36,6 +36,7 @@ import { sampleOrbital, radiusContaining, ORBITALS } from './orbitals.js';
 import { configureAtom } from '../analysis/electronic.js';
 import { buildStructure } from '../geometry/vsepr.js';
 import { parseFormula } from '../core/formula/parse.js';
+import { hillOrder } from '../core/formula/composition.js';
 
 export interface Scene {
   readonly id: string;
@@ -582,6 +583,8 @@ const BUILDERS: Record<string, () => SceneSet> = {
   intermoleculares: imfSet,
   puentes: hydrogenBondSet,
   dispersion: dispersionSet,
+  aridad: aritySet,
+  minima: minimalSet,
 };
 
 const SETS = new Map<string, SceneSet>();
@@ -1725,6 +1728,225 @@ function dispersionSet(): SceneSet {
           'atraccion neta es el promedio de todos ellos.',
         structure: molecular([...blob(-4, -0.9, DELTA_MINUS), ...blob(4, -0.9, DELTA_MINUS)]),
       },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 18 y 19. LAS DOS FIGURAS DE LA UNIDAD 4
+// ---------------------------------------------------------------------------
+
+/*
+ * POR QUE ESTAS DOS FIGURAS NO SON MOLECULAS.
+ *
+ * Todas las figuras anteriores dibujan geometria: angulos, distancias,
+ * orientaciones. Estas dos, a proposito, no.
+ *
+ * El motivo es que la unidad 4 no va de formas, va de CUENTAS. La aridad se
+ * decide contando cuantos elementos DISTINTOS hay —no cuantos atomos—, y la
+ * formula minima se decide comparando PROPORCIONES. Un dibujo de la geometria
+ * del bicarbonato no ayudaria a ver que tiene cuatro elementos y seis atomos:
+ * los taparia unos con otros.
+ *
+ * Asi que se dibuja lo que de verdad se esta contando. Una columna por
+ * elemento, una esfera por atomo. El numero de COLUMNAS es la aridad y el
+ * numero de ESFERAS es el recuento, y las dos cosas se ven a la vez sin tener
+ * que creerse nada.
+ *
+ * Y hay una razon de honradez ademas de una didactica: el motor de geometria
+ * NO sabe construir el bicarbonato de sodio ni la glucosa —lo he comprobado,
+ * devuelve null— porque VSEPR no cubre ni las sales ni los organicos de varios
+ * carbonos. Dibujarlos «a ojo» habria sido inventarse una estructura, que es
+ * exactamente lo que el proyecto no hace (§32). Contar, en cambio, se puede
+ * hacer con total exactitud a partir de la formula.
+ */
+
+/** Separacion entre columnas y entre esferas dentro de una columna. */
+/**
+ * Geometria del recuento, medida y no adivinada.
+ *
+ * El primer intento dejaba que el renderizador pusiera el radio de cada
+ * elemento, igual que hacen las escenas de moleculas. Fotografiado, salia
+ * ilegible: un hidrogeno recibe radio covalente x 0,42, o sea 0,13, y contra
+ * una separacion de columnas de 4,4 las esferas quedaban como polvo disperso.
+ * Encima, una fila de cuatro esferas era mas ancha que la separacion entre
+ * columnas, asi que las columnas se solapaban y no se distinguia cual era cual.
+ *
+ * Se arregla con dos decisiones:
+ *
+ *   - RADIO UNIFORME. Aqui una esfera es una FICHA DE CONTAR, no un atomo a
+ *     escala. Dibujarlas todas iguales no es una licencia: es lo correcto para
+ *     lo que la figura afirma, que es cuantas hay. Las escenas lo declaran en
+ *     su limite, porque un hidrogeno y un sodio no se parecen en tamano.
+ *   - LA COLUMNA MANDA SOBRE LA FILA. El ancho de un bloque se calcula primero
+ *     y la separacion entre columnas se toma mayor, de modo que dos columnas no
+ *     puedan tocarse por muchos atomos que tenga una.
+ *
+ * El color SI se deja al elemento: es lo que permite reconocer de un vistazo
+ * que la columna roja es el oxigeno.
+ */
+const TOKEN_R = 0.8;
+/** Separacion entre esferas contiguas, en cualquier direccion. */
+const TOKEN_PITCH = 1.9;
+/** Altura maxima de una pila antes de abrir otra al lado. */
+const STACK_MAX = 6;
+/** Aire entre una columna y la siguiente. */
+const COL_AIR = 2.4;
+
+/**
+ * Una columna por elemento, una esfera por atomo, APILADAS EN VERTICAL.
+ *
+ * Que apilen hacia arriba y no hacia los lados no es un detalle estetico: es
+ * lo que hace que la figura se lea. Con las esferas repartidas en filas
+ * horizontales el conjunto salia ancho y plano, la camara se alejaba para
+ * encuadrarlo y las cuatro columnas del bicarbonato parecian una hilera suelta
+ * de bolitas. Apiladas, la ALTURA de cada columna es el recuento de ese
+ * elemento y el NUMERO de columnas es la aridad — las dos cantidades que la
+ * unidad 4 pide comparar, cada una en un eje.
+ *
+ * Una pila de mas de seis se parte en dos al lado, porque doce hidrogenos en
+ * vertical dejarian la figura tan alta que habria que alejarse otra vez.
+ */
+function countingColumns(formula: string): StructureAtom[] {
+  const parsed = parseFormula(formula);
+  if (!parsed.ok) return [];
+  const composition = parsed.value.composition;
+
+  const symbols = hillOrder(composition);
+
+  // Cada elemento ocupa tantas pilas como necesite; el ancho de su columna
+  // sale de ahi, y las columnas se colocan una tras otra con aire en medio.
+  const stacksOf = (symbol: string): number =>
+    Math.max(1, Math.ceil((composition.get(symbol) ?? 0) / STACK_MAX));
+
+  const widths = symbols.map((s) => (stacksOf(s) - 1) * TOKEN_PITCH);
+  const total = widths.reduce((a, w) => a + w, 0) + COL_AIR * (symbols.length - 1);
+
+  const out: StructureAtom[] = [];
+  let cursor = -total / 2;
+
+  symbols.forEach((symbol, col) => {
+    const n = composition.get(symbol) ?? 0;
+    const stacks = stacksOf(symbol);
+    const centre = cursor + widths[col]! / 2;
+
+    for (let i = 0; i < n; i++) {
+      const stack = Math.floor(i / STACK_MAX);
+      const row = i % STACK_MAX;
+      // Cuantas esferas tiene ESTA pila: la ultima puede ir a medias.
+      const inStack = Math.min(STACK_MAX, n - stack * STACK_MAX);
+      const x = centre + (stack - (stacks - 1) / 2) * TOKEN_PITCH;
+      const y = (row - (inStack - 1) / 2) * TOKEN_PITCH;
+      out.push({ id: `c${counter++}`, symbol, position: v(x, y, 0), radius: TOKEN_R });
+    }
+
+    cursor += widths[col]! + COL_AIR;
+  });
+
+  return out;
+}
+
+/** 4.1 — binario, ternario, cuaternario: se cuentan COLUMNAS. */
+function aritySet(): SceneSet {
+  const scene = (formula: string, title: string, caption: string, limit: string): Scene => ({
+    id: formula.toLowerCase().replace(/[()]/g, ''),
+    title,
+    caption,
+    limit,
+    structure: molecular(countingColumns(formula)),
+  });
+
+  return {
+    id: 'aridad',
+    title: 'Se cuentan elementos, no atomos',
+    intro:
+      'Una columna por ELEMENTO distinto, una esfera por atomo. El nombre del compuesto —binario, ' +
+      'ternario, cuaternario— sale de contar columnas. El error clasico es contar esferas, y estas ' +
+      'tres figuras estan elegidas para que ese error se vea: el numero de esferas sube de 2 a 7 y ' +
+      'vuelve a bajar a 6, mientras el de columnas sube limpiamente de 2 a 3 y a 4.',
+    scenes: [
+      scene(
+        'NaCl',
+        'NaCl · binario · 2 columnas, 2 esferas',
+        'Dos elementos, dos atomos. Aqui contar atomos y contar elementos da lo mismo, y por eso este ' +
+          'caso no ensena a distinguirlos: esta puesto como punto de partida.',
+        'Todas las esferas estan dibujadas del MISMO tamano, y un sodio es mucho mayor que un cloro. ' +
+          'Aqui una esfera es una ficha de contar, no un atomo a escala. Ademas, las dos juntas ' +
+          'sugieren una molecula de NaCl y no la hay: el cloruro de sodio es un cristal de iones ' +
+          'alternos, como se vio en el 3.2.1.',
+      ),
+      scene(
+        'H2SO4',
+        'H₂SO₄ · ternario · 3 columnas, 7 esferas',
+        'SIETE atomos y TRES elementos. Quien cuenta atomos dira «compuesto de siete» y no existe tal ' +
+          'cosa. Las columnas son tres: hidrogeno, azufre y oxigeno. Ternario.',
+        'Mismo tamano para todas las esferas, que no es el real. Y la figura no dice nada de como estan ' +
+          'unidos: el azufre esta en el centro rodeado de los cuatro oxigenos, y aqui aparece en su ' +
+          'propia columna. Para la estructura de verdad, el 3.2.2.4.',
+      ),
+      scene(
+        'NaHCO3',
+        'NaHCO₃ · cuaternario · 4 columnas, 6 esferas',
+        'El caso que zanja la cuestion: tiene MENOS atomos que el acido sulfurico —seis frente a ' +
+          'siete— y sin embargo es de orden superior, porque tiene CUATRO elementos distintos. Si la ' +
+          'aridad dependiera del numero de atomos, este compuesto estaria por debajo del anterior. ' +
+          'Esta por encima.',
+        'Mismo tamano para todas, que no es el real. Y el bicarbonato es en realidad un cristal de iones ' +
+          'Na⁺ y HCO₃⁻, no una molecula suelta: el hidrogeno va pegado a un oxigeno y no suelto en su ' +
+          'columna. La figura cuenta; no describe.',
+      ),
+    ],
+  };
+}
+
+/** 4.2 — la misma proporcion en tres sustancias distintas. */
+function minimalSet(): SceneSet {
+  const scene = (formula: string, title: string, caption: string, limit: string): Scene => ({
+    id: formula.toLowerCase(),
+    title,
+    caption,
+    limit,
+    structure: molecular(countingColumns(formula)),
+  });
+
+  return {
+    id: 'minima',
+    title: 'La misma proporcion, tres sustancias',
+    intro:
+      'Las tres tienen un carbono por cada dos hidrogenos y un oxigeno. Miradas como proporcion son ' +
+      'IDENTICAS, y por eso dan exactamente los mismos porcentajes en masa: 40,00 % C, 6,71 % H, ' +
+      '53,28 % O las tres. Lo que cambia es cuantas veces se repite el patron — y eso el analisis ' +
+      'elemental no lo puede ver. Hace falta la masa molar.',
+    scenes: [
+      scene(
+        'CH2O',
+        'CH₂O · el patron, una vez',
+        'Un carbono, dos hidrogenos, un oxigeno. Es la formula MINIMA: la proporcion escrita con los ' +
+          'numeros enteros mas pequenos posibles. Esta sustancia existe y es el formaldehido.',
+        'Las esferas van todas del mismo tamano: son fichas de contar, no atomos a escala. Y que la ' +
+          'formula minima coincida aqui con la molecular es una casualidad de esta sustancia, no una ' +
+          'regla — en las dos siguientes no coincide.',
+      ),
+      scene(
+        'C2H4O2',
+        'C₂H₄O₂ · el patron, dos veces',
+        'El doble de cada cosa. La proporcion no ha cambiado —sigue siendo 1 : 2 : 1— y los ' +
+          'porcentajes tampoco. Es el acido acetico, el del vinagre, y no se parece en nada al ' +
+          'formaldehido.',
+        'Dibujado como columnas, esto parece simplemente «lo mismo pero mas». En realidad los atomos estan ' +
+          'unidos de otra manera, y de ahi viene que sea otra sustancia; la figura no lo muestra ' +
+          'porque no va de eso. Los tamanos tampoco son los reales: todas las esferas son iguales.',
+      ),
+      scene(
+        'C6H12O6',
+        'C₆H₁₂O₆ · el patron, seis veces',
+        'Seis veces. Misma proporcion, mismos porcentajes, y es GLUCOSA. Si el analisis de una ' +
+          'muestra da 40,00 % de carbono, estas tres son compatibles con el resultado y no hay forma ' +
+          'de elegir sin saber cuanto pesa un mol.',
+        'Doce hidrogenos en columna no es como esta hecha la glucosa: es un anillo de cinco carbonos y un ' +
+          'oxigeno con los hidrogenos repartidos. El motor de geometria no construye la glucosa, y ' +
+          'dibujarla a ojo seria inventarla. Las esferas, ademas, van todas del mismo tamano.',
+      ),
     ],
   };
 }

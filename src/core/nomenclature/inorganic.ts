@@ -13,7 +13,7 @@
  * la haya desaconsejado.
  */
 
-import type { Composition, Nomenclature } from '../types.js';
+import { isMetal, type Composition, type Nomenclature } from '../types.js';
 import { classify, type Classification } from '../classify.js';
 import { getElement } from '../../data/elements.js';
 import { getIon, getIonsByFormula, CATIONS_BY_ELEMENT } from '../../data/ions.js';
@@ -182,7 +182,34 @@ function traditionalSuffix(state: number, states: readonly number[]): { prefix: 
   }
 }
 
-/** Concuerda el genero del adjetivo tradicional: "oxido ferrico". */
+/**
+ * Concuerda el genero del adjetivo tradicional: "oxido ferrico".
+ *
+ * SOLO PARA CATIONES METALICOS CON MAS DE UN ESTADO, Y ESA RESTRICCION ES LA
+ * PARTE IMPORTANTE DE LA FUNCION.
+ *
+ * Sin ella, la morfologia regular -oso/-ico se aplicaba a cualquier cosa que
+ * tuviera raiz en la tabla y salian palabras que no existen. Estaban saliendo,
+ * comprobadas una a una:
+ *
+ *   CO₂   → «oxido carbico»     (es anhidrido carbonico)
+ *   P₂O₅  → «oxido fosfico»     (es anhidrido fosforico)
+ *   N₂O₅  → «oxido pernitrico»  (es anhidrido nitrico)
+ *   Al₂O₃ → «oxido aluminico»   (es, simplemente, oxido de aluminio)
+ *
+ * El tercero es literalmente el ejemplo que el comentario de OXOACID_TRADITIONAL
+ * pone como muestra de lo que no se puede generar: alli se evito con una tabla
+ * explicita, y aqui se colaba por la puerta de al lado.
+ *
+ * Las dos condiciones:
+ *
+ *   - METAL. Un no metal no lleva este adjetivo. Su oxido es un anhidrido y se
+ *     nombra desde la tabla de oxoacidos, que esta curada.
+ *   - MAS DE UN ESTADO POSITIVO. El sufijo -oso/-ico existe para distinguir
+ *     estados; con uno solo no hay nada que distinguir, y «oxido de aluminio»
+ *     ya es el nombre tradicional completo. Inventarle un adjetivo no anade
+ *     informacion: anade una palabra falsa.
+ */
 function traditionalCationName(symbol: string, state: number): string | null {
   const el = getElement(symbol);
   if (!el) return null;
@@ -191,11 +218,35 @@ function traditionalCationName(symbol: string, state: number): string | null {
   const ion = getIon(symbol, state);
   if (ion?.traditionalName) return ion.traditionalName;
 
+  if (!isMetal(el)) return null;
+  if (el.oxidationStates.filter((s) => s > 0).length < 2) return null;
+
   const root = TRADITIONAL_ROOT[symbol];
   if (!root) return null;
   const s = traditionalSuffix(state, el.oxidationStates);
   if (!s) return null;
   return `${s.prefix}${root}${s.suffix}`;
+}
+
+/**
+ * Nombre tradicional del oxido de un NO METAL: el anhidrido.
+ *
+ * No se genera con sufijos: se DERIVA de la tabla de oxoacidos, que ya esta
+ * curada y revisada. El anhidrido es el oxido del que procede el oxoacido con
+ * el mismo estado de oxidacion, y su nombre es el mismo adjetivo:
+ *
+ *   C  +4  acido carbonico  → anhidrido carbonico   (CO₂)
+ *   S  +4  acido sulfuroso  → anhidrido sulfuroso   (SO₂)
+ *   S  +6  acido sulfurico  → anhidrido sulfurico   (SO₃)
+ *   N  +5  acido nitrico    → anhidrido nitrico     (N₂O₅)
+ *
+ * Si el oxoacido no esta en la tabla, aqui tampoco hay nombre. Devolver null
+ * es la respuesta correcta.
+ */
+function anhydrideName(central: string, state: number): string | null {
+  const acid = OXOACID_TRADITIONAL[`${central}:${state}`];
+  if (!acid) return null;
+  return acid.replace(/^acido /, 'anhidrido ');
 }
 
 /** ¿Tiene el elemento un unico estado de oxidacion positivo? */
@@ -265,8 +316,21 @@ export function nameCompound(
             ? `oxido de ${el.name.toLowerCase()}`
             : `oxido de ${el.name.toLowerCase()}(${roman(state)})`;
 
-      const trad = state === null ? null : traditionalCationName(metal, state);
-      const traditional = trad ? `oxido ${trad}` : null;
+      /*
+       * El oxido de un no metal es un ANHIDRIDO y no lleva el adjetivo de los
+       * cationes metalicos. Separar los dos caminos es lo que impide que salga
+       * «oxido carbico» por CO₂.
+       */
+      const el2 = getElement(metal);
+      const traditional =
+        state === null
+          ? null
+          : el2 && !isMetal(el2)
+            ? anhydrideName(metal, state)
+            : (() => {
+                const trad = traditionalCationName(metal, state);
+                return trad ? `oxido ${trad}` : null;
+              })();
 
       return { stock, systematic, traditional, common: null };
     }

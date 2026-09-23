@@ -15,7 +15,7 @@ No hay nada marcado como hecho que no lo este.
 | 1 | Concepto central: cadena de transformaciones | **Hecho** | `engine/graph.ts`. La cadena Ca → CaO → Ca(OH)₂ → CaCO₃ → CaCl₂ sale del grafo. |
 | 2 | Objetivo educativo: interpretar, no listar | **Hecho** | `teach/explain.ts` y las explicaciones de `data/reactions.ts`. |
 | 3 | Interfaz: biblioteca con buscador | **Hecho** | `data/search.ts`, 320 entradas. Las 14 categorias del brief estan. |
-| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. El mismo renderizador dibuja las **cincuenta y dos escenas didacticas** del temario (`teach/scenes.ts`). **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
+| 4 | Sandbox 3D | **Parcial** | `render/webgl/`. Rotar, acercar, desplazar, seleccionar, tres representaciones, mostrar/ocultar enlaces y etiquetas. El mismo renderizador dibuja las **cincuenta y ocho escenas didacticas** del temario (`teach/scenes.ts`). **Falta:** separar y unir componentes con el raton, mostrar cargas sobre los atomos, modo de orbitales. |
 | 5 | Constructor de compuestos | **Parcial** | `core/build/ionicFormula.ts` genera la formula con su derivacion y la ficha completa. **Falta:** el arrastrar y soltar sobre el lienzo 3D. |
 | 6 | Binarios, ternarios y cuaternarios | **Hecho** | `core/formula/composition.ts`. Cuenta elementos, no atomos. Ver la nota sobre NH₄NO₃ en el README. |
 | 7 | Generador de formulas | **Hecho** | Seis pasos de derivacion, incluida la comprobacion `2(+3) + 3(−2) = 0`. |
@@ -39,7 +39,7 @@ No hay nada marcado como hecho que no lo este.
 | 25 | Laboratorio virtual | **Pendiente** | El material de vidrio y el trasvase. El modelo (`Container`) esta definido en `core/types.ts`. |
 | 26 | Cantidades reales | **Parcial** | `engine/stoichiometry.ts` completo y probado: unidades, limitante, exceso, rendimientos, gases, molaridad. **Falta:** la interfaz. |
 | 27 | Propiedades | **Hecho** | Ficha completa con procedencia citada. Lo que no se sabe se muestra como no disponible. |
-| 28 | Nomenclatura | **Hecho** | Stock, sistematica y tradicional, etiquetando cual es cual. |
+| 28 | Nomenclatura | **Hecho** | Stock, sistematica y tradicional, etiquetando cual es cual. Los oxidos de no metales se nombran como anhidridos desde la tabla curada de oxoacidos; antes se generaban con sufijos y salian palabras inexistentes. |
 | 29 | Quimica organica | **Parcial** | El modelo la admite desde el inicio: tipos de reaccion organicos, clasificacion, dos reacciones curadas (esterificacion de Fischer, hidrogenacion) y cadenas 3D. **Falta:** nomenclatura IUPAC organica, grupos funcionales como entidad y mecanismos. |
 | 30 | Modelo de datos | **Hecho** | `core/types.ts`. Estan las 16 entidades que pide el brief. |
 | 31 | Motor de reglas separado | **Hecho** | Siete capas con dependencias solo hacia abajo. |
@@ -47,7 +47,7 @@ No hay nada marcado como hecho que no lo este.
 | 33 | Cuatro niveles de visualizacion | **Parcial** | El nivel macro (apariencia, observaciones), el molecular y el atomico estan. **Falta:** el nivel electronico animado y el conmutador durante la reaccion. |
 | 34 | Modo profesor | **Hecho** | Las diez preguntas, para cualquier reaccion. |
 | 35 | Modo examen | **Pendiente** | El generador de ejercicios. Los datos necesarios (dificultad, conceptos por reaccion) ya se almacenan. |
-| 36 | Sistema de progresion | **Parcial** | Cada reaccion lleva nivel de dificultad 1–5 y sus conceptos, y el temario tiene **65 tarjetas de repaso** con progreso guardado (`teach/flashcards.ts`). **Falta:** los 15 niveles, el seguimiento del alumno y la repeticion espaciada. |
+| 36 | Sistema de progresion | **Parcial** | Cada reaccion lleva nivel de dificultad 1–5 y sus conceptos, y el temario tiene **106 tarjetas de repaso** con progreso guardado (`teach/flashcards.ts`). **Falta:** los 15 niveles, el seguimiento del alumno y la repeticion espaciada. |
 | 37 | Simulacion industrial | **Pendiente** | Hay reacciones industriales curadas con sus condiciones reales (contacto, Haber-Bosch, alto horno, calcinacion); falta el modelo de operaciones unitarias. |
 | 38 | Rendimiento y realismo | **Parcial** | El calculo ideal esta; el rendimiento porcentual tambien. **Falta:** el modo de simulacion realista con perdidas y equilibrio. |
 | 39 | Arquitectura tecnica | **Hecho** | Modular, con el motor utilizable sin interfaz. |
@@ -194,7 +194,7 @@ sigue siendo el que se usa para ajustar una ecuacion.
 
 `teach/bond.ts` y `ui/bond-view.ts`. Los diecisiete apartados de 3.1 a 3.3.1.3.
 
-Es la unidad que MAS se calcula de las tres, porque el motor de analisis ya
+Es la unidad que MAS se calcula del temario, porque el motor de analisis ya
 estaba escrito: estructuras de Lewis derivadas (`lewis.ts`), geometria VSEPR
 (`hybridization.ts`), suma VECTORIAL de dipolos (`polarity.ts`) y fuerzas
 intermoleculares (`imf.ts`). Aqui casi no se afirma nada: se pregunta.
@@ -213,6 +213,47 @@ Once figuras 3D, varias con la geometria real del constructor VSEPR.
 ni de mar de electrones; el apartado explica el modelo con datos medidos de los
 elementos y dice que no calcula nada sobre el enlace.
 
+---
+
+## Teoria — Unidad 4: combinaciones quimicas
+
+`teach/combos.ts` y `ui/combos-theory-view.ts` (que NO es `ui/combos-view.ts`:
+aquel es la tabla de cationes x aniones). Los ocho apartados de 4.1 a 4.2.3.
+
+Es la unica unidad que va HACIA ATRAS. Las tres anteriores parten de la formula
+y la analizan; esta parte de masas medidas y llega a la formula.
+
+| Demostracion | Que ensena |
+|---|---|
+| Los tres sistemas | Cada fila se pide a `nomenclature/inorganic.ts`, huecos incluidos. Una casilla vacia dice «en este sistema no hay nombre», que es un dato. |
+| Aridad | Atomos y elementos en columnas contiguas. H₂SO₄ tiene 7 atomos y es ternario; NaHCO₃ tiene 6 y es cuaternario: los dos ordenes se invierten. |
+| Formula minima | Porcentajes → moles → razon → enteros, paso a paso. Con los casos en que el motor se NIEGA a redondear. |
+| **Formula molecular** | El formaldehido, el acido acetico y la glucosa dan porcentajes identicos. Los numeros se calculan, no se escriben. |
+| Composicion porcentual | El desglose de la masa molar, con barras. El agua tiene el doble de hidrogenos y un 11 % de hidrogeno en masa. |
+
+Dos figuras 3D, y son las unicas que NO dibujan geometria: una columna por
+elemento y una esfera por atomo. Es deliberado por dos razones. La unidad va de
+contar, no de formas; y el motor de geometria no construye el bicarbonato ni la
+glucosa —devuelve null—, asi que dibujarlos «a ojo» habria sido inventar una
+estructura. Contar, en cambio, se puede hacer con exactitud.
+
+**Motor nuevo:** `core/formula/fromPercent.ts`. Es lo unico que faltaba; el
+resto de la unidad se apoya en modulos que ya existian. Rechaza tres cosas en
+lugar de aproximarlas: porcentajes que no suman 100, razones que no caen en
+enteros ni multiplicando hasta por 6, y masas molares que no son multiplo
+entero de la minima.
+
+**Fallo corregido al montarla:** `nomenclature/inorganic.ts` generaba nombres
+inexistentes para los oxidos de no metales —«oxido carbico», «oxido fosfico»,
+«oxido pernitrico»— aplicando la morfologia de los cationes metalicos a
+cualquier elemento con raiz latina. Ahora esos oxidos se nombran como
+anhidridos, derivados de la tabla curada de oxoacidos, y un metal de un solo
+estado de oxidacion no lleva adjetivo. No existia ninguna prueba que lo cazara.
+
+**Hueco declarado:** el motor es de nomenclatura INORGANICA. No cubre organicos,
+compuestos de coordinacion ni sales con dos cationes poliatomicos —(NH₄)₂SO₄
+sale sin nombre—, y el apartado 4.1 lo muestra en lugar de esconderlo.
+
 ## El arbol del conocimiento (§22, §36)
 
 `teach/tree.ts` y `ui/tree-view.ts`. 52 nodos, 72 aristas, 21 capas. Es el
@@ -220,7 +261,7 @@ mapa de prerrequisitos del temario, no su indice: dice que hace falta entender
 antes de cada apartado, y donde encaja lo que aun no existe.
 
 La arista `requires` es nueva y DIRIGIDA. No se pudo derivar de `connects`,
-que es lateral y reciproco (33 de 58 apartados, y con pares en los dos
+que es lateral y reciproco (39 de 66 apartados, y con pares en los dos
 sentidos que habrian creado ciclos). Una prueba comprueba que el grafo es
 aciclico: un ciclo ahi seria un temario sin punto de entrada.
 
@@ -229,7 +270,7 @@ nodo cae despues de todo lo que necesita, y la altura dice cuantas cosas hay
 encadenadas antes. Dentro de cada capa, los nodos se ordenan por el baricentro
 de sus padres — una pasada, que es la que se nota.
 
-**Nueve ramas previstas**, colgadas de apartados reales, con lo que cada una ya
+**Ocho ramas previstas**, colgadas de apartados reales, con lo que cada una ya
 tiene: nomenclatura (`nomenclature/inorganic.ts`), reaccion (`predict.ts`,
 `balance.ts`), estequiometria (`stoichiometry.ts`), termoquimica
 (`energy.ts`), redox (`redox.ts`)... Eran once: el enlace quimico y las
@@ -246,7 +287,7 @@ falta.
 
 ## Tarjetas de repaso (§36)
 
-`teach/flashcards.ts` y la pestana «Tarjetas» de cada apartado. **65 tarjetas
+`teach/flashcards.ts` y la pestana «Tarjetas» de cada apartado. **106 tarjetas
 para 41 apartados**, y ninguna escrita aparte: se DERIVAN de la
 autocomprobacion (`check`, 53) y del ejercicio resuelto (`worked`, 12) que el
 temario ya tenia. Los 13 apartados que no daban ninguna se resolvieron
@@ -268,7 +309,7 @@ algoritmo de memoria, y no se presenta como tal.
 
 ## Las figuras 3D del temario (§4)
 
-`teach/scenes.ts` y `ui/figure-3d.ts`. Diecisiete juegos, cincuenta y dos escenas, dibujadas
+`teach/scenes.ts` y `ui/figure-3d.ts`. Diecinueve juegos, cincuenta y ocho escenas, dibujadas
 con el renderizador WebGL2 del visor — no hay ni una imagen.
 
 | Juego | Escenas | Apartado |
@@ -290,6 +331,8 @@ con el renderizador WebGL2 del visor — no hay ni una imagen.
 | Lo que pasa ENTRE moleculas | dentro y fuera | 3.3 |
 | La red que sostiene al agua | cuatro puentes por molecula | 3.3.1.2 |
 | Dipolos que duran un instante | en promedio · en un instante | 3.3.1.3 |
+| Se cuentan elementos, no atomos | NaCl · H₂SO₄ · NaHCO₃ | 4.1 |
+| La misma proporcion, tres sustancias | CH₂O · C₂H₄O₂ · C₆H₁₂O₆ | 4.2 |
 
 **Toda escena declara en que MIENTE el dibujo**, y el tipo lo exige: sin ese
 campo no compila. Es la misma regla de las analogias, porque un dibujo de un
@@ -300,7 +343,7 @@ Dos restricciones reales dan forma al modulo. Un navegador limita los contextos
 WebGL simultaneos — del orden de dieciseis — y al pasarse descarta los antiguos
 en silencio, dejando lienzos negros; por eso el contexto se crea al entrar la
 figura en pantalla (`IntersectionObserver`) y se libera al salir del modo. Y se
-dibuja bajo demanda, no en bucle: son escenas estaticas, y cincuenta y dos bucles de
+dibuja bajo demanda, no en bucle: son escenas estaticas, y cincuenta y ocho bucles de
 animacion solo calentarian el portatil.
 
 Sin WebGL la figura se sustituye por un aviso y el temario se lee igual.
